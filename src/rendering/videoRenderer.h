@@ -14,15 +14,19 @@ public:
     ~VideoRenderer();
 
     // Set up pipeline, shaders, buffers
-    void initialize(QRhi* rhiBackend,
-                    const QString& vertexShaderPath = ":/shaders/vertex.qsb",
-                    const QString& fragmentShaderPath = ":/shaders/fragment.qsb");
+    void initialize(QRhi *rhiBackend,
+                    QRhiSwapChain *swapChain,
+                    QRhiRenderPassDescriptor *rpDesc,
+                    const QString &vertexShaderPath = ":/shaders/vertex.qsb",
+                    const QString &fragmentShaderPath = ":/shaders/fragment.qsb");
 
     // Copy frame data to GPU
     void uploadFrame(const FrameData& frame);
 
     // Issue draw command
     void render(QRhiCommandBuffer* cb, QRhiRenderPassDescriptor* rp);
+
+    QRhiTexture *createTexture();
 
 private:
     QRhi* rhi = nullptr;
