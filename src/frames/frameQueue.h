@@ -1,63 +1,45 @@
 #pragma once
 
-#include <QThread>
-#include <QMutex>
-#include <QWaitCondition>
-#include <QList>
-#include <memory>
-#include "frameData.h"
-#include "../readers/frameReader.h"
+#include <cstdint>
+#include <frameData.h>
+#include <frameMeta.h>
 
-class FrameReader;
+class FrameQueue{
 
-class FrameQueue : public QThread {
-    Q_OBJECT
+    public:
+        // Takes in FrameMeta to initialize the queue
+        FrameQueue(FrameMeta* meta);
+        ~FrameQueue();
 
-public:
+        // Getter for metaData
+        FrameMeta* metaDataPtr() const {return m_meta;};
 
-    FrameQueue();
-    ~FrameQueue() override;
+        // Getter the current frame data pointer for renderer
+        FrameData* getHead();
 
-    void run() override;
-    void wake();    // wake the thread when a frame was consumed
+        // Get the next frame to be loaded for decoder
+        FrameData* getTail();
 
-    std::unique_ptr<FrameData> allocateFrame();
-    void releaseFrame(std::unique_ptr<FrameData> frame);
+        // Incrementing head and tail
+        void incrementHead();
+        void incrementTail();
 
-    void setReader(FrameReader* r)  { reader = r; }
 
-    std::unique_ptr<FrameData> getNextFrame(int speed, int direction);
+    private:
+        // Size of the queue
+        const int queueSize = 50;
 
-private:
-    int calNextFrameIndex(bool future);
-    void addFrames(bool future);
+        // Points to current frame
+        int64_t head = 0;
 
-    FrameReader* reader = nullptr;
+        // Points to future un-loaded frame
+        int64_t tail = 0;
 
-    // Recently displayed frames (for seeking/backstep)
-    QList<std::unique_ptr<FrameData>> pastFrames;
+        // Frame metadata
+        FrameMeta* m_meta;
 
-    // Buffered frames ready for upcoming display
-    QList<std::unique_ptr<FrameData>> futureFrames;
+        // Memory pool for frame data
+        std::shared_ptr<FrameData> memoryPool;
 
-    // Pool of reusable FrameData objects (memory recycling)
-    QList<std::unique_ptr<FrameData>> usedFrames;
 
-    // Mutex for thread-safe access to frame lists
-    QMutex listMutex;
-
-    // Currently displayed frame (for rendering)
-    std::unique_ptr<FrameData> displayFrame;
-    int displayFrameIndex = 0;
-    
-    // Playback control variables
-    int direction = 0;  // 0: stopped, 1: forward, -1: backward
-    int speed = 0;
-
-    // Condition variable to signal when a frame is consumed
-    QWaitCondition frameConsumed;
-    // Mutex to protect frame access
-    QMutex frameMutex;
-
-    bool m_doReading = true;
 };
