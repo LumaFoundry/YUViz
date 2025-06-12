@@ -24,7 +24,7 @@ public:
     // TODO: Frame read control
     // TODO: Pass frameData ptr to renderer
     // TODO: Playback control
-    
+    // TODO: QElapsedTimer for frame timing
     void play();
     void pause();
     void reverse(int dir);
