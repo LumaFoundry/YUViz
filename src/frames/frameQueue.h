@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <frameData.h>
-#include <frameMeta.h>
+#include "frameData.h"
+#include "frameMeta.h"
+#include <QtGui>
 
 class FrameQueue{
 
@@ -12,15 +13,18 @@ class FrameQueue{
         ~FrameQueue();
 
         // Getter for metaData
-        FrameMeta* metaDataPtr() const {return m_meta;};
+        const FrameMeta* metaDataPtr() const {return m_meta;};
 
         // Getter the current frame data pointer for renderer
-        FrameData* getHead();
+        // Should be thread-safe - block until there is frame to read
+        FrameData* getHeadFrame();
 
         // Get the next frame to be loaded for decoder
-        FrameData* getTail();
+        // Should be thread-safe - block until there is space to write
+        FrameData* getTailFrame();
 
         // Incrementing head and tail
+        // Should be thread-safe
         void incrementHead();
         void incrementTail();
 
@@ -35,11 +39,23 @@ class FrameQueue{
         // Points to future un-loaded frame
         int64_t tail = 0;
 
+        // Thread safety
+        QMutex m_mutex;
+        QWaitCondition m_canRead;
+        QWaitCondition m_canWrite;
+
         // Frame metadata
         FrameMeta* m_meta;
 
-        // Memory pool for frame data
-        std::shared_ptr<FrameData> memoryPool;
+        // Shared buffer for the raw YUV data
+        std::shared_ptr<std::vector<uint8_t>> m_memoryPool;
 
+        // Frame data queue 
+        std::vector<FrameData> m_queue;
+
+        // Indicators for whether queue is full / empty
+        // Should not be called explicitly, use getHeadFrame() and getTailFrame() instead
+        bool isFull() const;
+        bool isEmpty() const; 
 
 };

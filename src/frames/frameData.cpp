@@ -3,7 +3,7 @@
 #include <memory>
 
 FrameData::FrameData(int ySize, int uvSize, int64_t pts, 
-                     std::shared_ptr<uint8_t> poolPtr,
+                     std::shared_ptr<std::vector<uint8_t>> poolPtr,
                      size_t poolOffset): 
     m_pts(pts),
     m_poolPtr(poolPtr),
@@ -18,17 +18,17 @@ FrameData::~FrameData() = default;
 
 uint8_t* FrameData::yPtr() const {
     if (!m_poolPtr) return nullptr;
-    return m_poolPtr.get() + m_poolOffset + m_planeOffset[0];
+    return m_poolPtr->data() + m_poolOffset + m_planeOffset[0];
 }
 
 uint8_t* FrameData::uPtr() const {
     if (!m_poolPtr) return nullptr;
-    return m_poolPtr.get() + m_poolOffset + m_planeOffset[1];
+    return m_poolPtr->data() + m_poolOffset + m_planeOffset[1];
 }
 
 uint8_t* FrameData::vPtr() const {
     if (!m_poolPtr) return nullptr;
-    return m_poolPtr.get() + m_poolOffset + m_planeOffset[2];
+    return m_poolPtr->data() + m_poolOffset + m_planeOffset[2];
 }
 
 int64_t FrameData::pts() const {

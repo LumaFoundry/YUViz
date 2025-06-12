@@ -37,6 +37,10 @@ public:
     int yHeight() const;
     int uvWidth() const;
     int uvHeight() const;
+
+    int ySize() const {return yWidth() * yHeight(); };
+    int uvSize() const {return uvWidth() * uvHeight(); };
+
     PixelFormat format() const;
     AVRational timeBase() const;
     AVRational sampleAspectRatio() const;
