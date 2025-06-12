@@ -9,8 +9,8 @@
 class FrameData {
 public:
     FrameData(int ySize, int uvSize, 
-              std::shared_ptr<std::vector<uint8_t>> poolPtr,
-              size_t poolOffset);
+              std::shared_ptr<std::vector<uint8_t>> bufferPtr,
+              size_t bufferOffset);
     ~FrameData();
 
     uint8_t* yPtr() const;
@@ -23,7 +23,7 @@ public:
 
 private:
     int64_t m_pts = -1;
-    std::shared_ptr<std::vector<uint8_t>> m_poolPtr;
-    size_t m_poolOffset;
+    std::shared_ptr<std::vector<uint8_t>> m_bufferPtr;
+    size_t m_bufferOffset;
     std::array<size_t, 3> m_planeOffset;
 };

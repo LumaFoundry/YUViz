@@ -14,7 +14,7 @@ class FrameQueue{
         ~FrameQueue();
 
         // Getter for metaData
-        const FrameMeta* metaDataPtr() const {return &m_meta;};
+        std::shared_ptr<FrameMeta> metaPtr() const {return m_metaPtr;};
 
         // Getter the current frame data pointer for renderer
         // Should be thread-safe - block until there is frame to read
@@ -46,10 +46,10 @@ class FrameQueue{
         QWaitCondition m_canWrite;
 
         // Frame metadata
-        FrameMeta m_meta;
+        std::shared_ptr<FrameMeta> m_metaPtr;
 
         // Shared buffer for the raw YUV data
-        std::shared_ptr<std::vector<uint8_t>> m_memoryPool;
+        std::shared_ptr<std::vector<uint8_t>> m_bufferPtr;
 
         // Frame data queue 
         std::vector<FrameData> m_queue;

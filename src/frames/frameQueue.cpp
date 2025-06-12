@@ -1,19 +1,21 @@
 #include "frameQueue.h"
 
-FrameQueue::FrameQueue(FrameMeta meta) : m_meta(meta) {
-
-    int ySize = m_meta.ySize();
-    int uvSize = m_meta.uvSize();
+FrameQueue::FrameQueue(FrameMeta meta)
+{
+    m_metaPtr = std::make_shared<FrameMeta>(meta);
+    
+    int ySize = m_metaPtr->ySize();
+    int uvSize = m_metaPtr->uvSize();
     size_t frameSize = ySize + uvSize * 2;
     size_t bufferSize = frameSize * queueSize;
 
-    m_memoryPool = std::make_shared<std::vector<uint8_t>>(bufferSize);
+    m_bufferPtr = std::make_shared<std::vector<uint8_t>>(bufferSize);
 
     // Allocate frame data queue
     m_queue.resize(queueSize);
     for (int i = 0; i < queueSize; ++i) {
         m_queue[i] = FrameData(ySize, uvSize,
-                               m_memoryPool, i * frameSize);
+                               m_bufferPtr, i * frameSize);
     }
 
 }

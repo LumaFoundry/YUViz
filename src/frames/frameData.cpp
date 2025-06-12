@@ -3,10 +3,10 @@
 #include <memory>
 
 FrameData::FrameData(int ySize, int uvSize, 
-                     std::shared_ptr<std::vector<uint8_t>> poolPtr,
-                     size_t poolOffset): 
-    m_poolPtr(poolPtr),
-    m_poolOffset(poolOffset)
+                     std::shared_ptr<std::vector<uint8_t>> bufferPtr,
+                     size_t bufferOffset): 
+    m_bufferPtr(bufferPtr),
+    m_bufferOffset(bufferOffset)
 {
     m_planeOffset[0] = 0;
     m_planeOffset[1] = ySize;
@@ -16,18 +16,18 @@ FrameData::FrameData(int ySize, int uvSize,
 FrameData::~FrameData() = default;
 
 uint8_t* FrameData::yPtr() const {
-    if (!m_poolPtr) return nullptr;
-    return m_poolPtr->data() + m_poolOffset + m_planeOffset[0];
+    if (!m_bufferPtr) return nullptr;
+    return m_bufferPtr->data() + m_bufferOffset + m_planeOffset[0];
 }
 
 uint8_t* FrameData::uPtr() const {
-    if (!m_poolPtr) return nullptr;
-    return m_poolPtr->data() + m_poolOffset + m_planeOffset[1];
+    if (!m_bufferPtr) return nullptr;
+    return m_bufferPtr->data() + m_bufferOffset + m_planeOffset[1];
 }
 
 uint8_t* FrameData::vPtr() const {
-    if (!m_poolPtr) return nullptr;
-    return m_poolPtr->data() + m_poolOffset + m_planeOffset[2];
+    if (!m_bufferPtr) return nullptr;
+    return m_bufferPtr->data() + m_bufferOffset + m_planeOffset[2];
 }
 
 int64_t FrameData::pts() const {
