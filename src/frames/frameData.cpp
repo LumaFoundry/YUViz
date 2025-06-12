@@ -2,10 +2,9 @@
 #include <cassert>
 #include <memory>
 
-FrameData::FrameData(int ySize, int uvSize, int64_t pts, 
+FrameData::FrameData(int ySize, int uvSize, 
                      std::shared_ptr<std::vector<uint8_t>> poolPtr,
                      size_t poolOffset): 
-    m_pts(pts),
     m_poolPtr(poolPtr),
     m_poolOffset(poolOffset)
 {
