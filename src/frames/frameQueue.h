@@ -3,7 +3,8 @@
 #include <cstdint>
 #include "frameData.h"
 #include "frameMeta.h"
-#include <QtGui>
+#include <QMutex>
+#include <QWaitCondition>
 
 class FrameQueue{
 

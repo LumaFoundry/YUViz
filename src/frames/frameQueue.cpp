@@ -11,7 +11,7 @@ FrameQueue::FrameQueue(FrameMeta* meta) : m_meta(meta) {
     // Allocate frame data queue
     m_queue.resize(queueSize);
     for (int i = 0; i < queueSize; ++i) {
-        m_queue[i] = FrameData(meta->ySize, meta->uvSize,
+        m_queue[i] = FrameData(meta->ySize(), meta->uvSize(),
                                m_memoryPool, i * frameSize);
     }
 
