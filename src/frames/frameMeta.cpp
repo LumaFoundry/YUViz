@@ -2,11 +2,12 @@
 #include <cassert>
 
 
-FrameMeta::FrameMeta(int width, int height, PixelFormat fmt,
+FrameMeta::FrameMeta(int width, int height, 
+                     AVPixelFormat fmt,
                      AVRational timeBase,
                      AVRational sampleAspectRatio, 
-                     ColorRange range,
-                     ColorSpace space):
+                     AVColorRange range,
+                     AVColorSpace space):
     m_yWidth(width), 
     m_yHeight(height), 
     m_fmt(fmt),
@@ -16,15 +17,15 @@ FrameMeta::FrameMeta(int width, int height, PixelFormat fmt,
     m_colorSpace(space)
 {
     switch (m_fmt) {
-    case PixelFormat::YUV420P:
+    case AVPixelFormat::AV_PIX_FMT_YUV420P:
         m_uvWidth = width / 2;
         m_uvHeight = height / 2;
         break;
-    case PixelFormat::YUV422P:
+    case AVPixelFormat::AV_PIX_FMT_YUV422P:
         m_uvWidth = width / 2;
         m_uvHeight = height;
         break;
-    case PixelFormat::YUV444P:
+    case AVPixelFormat::AV_PIX_FMT_YUV444P:
         m_uvWidth = width;
         m_uvHeight = height;
         break;
@@ -49,7 +50,7 @@ int FrameMeta::uvHeight() const {
     return m_uvHeight;
 }
 
-PixelFormat FrameMeta::format() const {
+AVPixelFormat FrameMeta::format() const {
     return m_fmt;
 }
 
@@ -61,10 +62,10 @@ AVRational FrameMeta::sampleAspectRatio() const {
     return m_sampleAspectRatio;
 }
 
-ColorRange FrameMeta::colorRange() const {
+AVColorRange FrameMeta::colorRange() const {
     return m_colorRange;
 }
 
-ColorSpace FrameMeta::colorSpace() const {
+AVColorSpace FrameMeta::colorSpace() const {
     return m_colorSpace;
 }

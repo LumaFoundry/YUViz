@@ -4,33 +4,17 @@
 #include <vector>
 extern "C" {
 #include <libavutil/rational.h>
+#include <libavutil/pixfmt.h>
 }
-
-enum class PixelFormat {
-    YUV420P,
-    YUV422P,
-    YUV444P
-};
-
-enum class ColorRange {
-    Limited,
-    Full
-};
-
-enum class ColorSpace {
-    Rec601,
-    Rec709,
-    Rec2020,
-    Unspecified
-};
 
 class FrameMeta {
 public:
-    FrameMeta(int width, int height, PixelFormat fmt,
-              AVRational timeBase = AVRational{0,1},
-              AVRational sampleAspectRatio = AVRational{1,1},
-              ColorRange range = ColorRange::Limited,
-              ColorSpace space = ColorSpace::Unspecified);
+    FrameMeta(int width, int height, 
+              AVPixelFormat fmt,
+              AVRational timeBase,
+              AVRational sampleAspectRatio,
+              AVColorRange range, 
+              AVColorSpace space);
     ~FrameMeta();
 
     int yWidth() const;
@@ -41,20 +25,20 @@ public:
     int ySize() const {return yWidth() * yHeight(); };
     int uvSize() const {return uvWidth() * uvHeight(); };
 
-    PixelFormat format() const;
+    AVPixelFormat format() const;
     AVRational timeBase() const;
     AVRational sampleAspectRatio() const;
-    ColorRange colorRange() const;
-    ColorSpace colorSpace() const;
+    AVColorRange colorRange() const;
+    AVColorSpace colorSpace() const;
 
 private:
     int m_yWidth;
     int m_yHeight;
     int m_uvWidth;
     int m_uvHeight;
-    PixelFormat m_fmt;
+    AVPixelFormat m_fmt;
     AVRational m_timeBase;
     AVRational m_sampleAspectRatio;
-    ColorRange m_colorRange;
-    ColorSpace m_colorSpace;
+    AVColorRange m_colorRange;
+    AVColorSpace m_colorSpace;
 };
