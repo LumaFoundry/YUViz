@@ -1,9 +1,10 @@
 #include "frameQueue.h"
 
-FrameQueue::FrameQueue(FrameMeta* meta) : m_meta(meta) {
+FrameQueue::FrameQueue(FrameMeta meta) : m_meta(meta) {
 
-    size_t frameSize = meta->ySize() + meta->uvSize() * 2;
-
+    int ySize = m_meta.ySize();
+    int uvSize = m_meta.uvSize();
+    size_t frameSize = ySize + uvSize * 2;
     size_t bufferSize = frameSize * queueSize;
 
     m_memoryPool = std::make_shared<std::vector<uint8_t>>(bufferSize);
@@ -11,7 +12,7 @@ FrameQueue::FrameQueue(FrameMeta* meta) : m_meta(meta) {
     // Allocate frame data queue
     m_queue.resize(queueSize);
     for (int i = 0; i < queueSize; ++i) {
-        m_queue[i] = FrameData(meta->ySize(), meta->uvSize(),
+        m_queue[i] = FrameData(ySize, uvSize,
                                m_memoryPool, i * frameSize);
     }
 
