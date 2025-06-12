@@ -2,35 +2,7 @@
 #include <cassert>
 
 
-FrameMeta::FrameMeta(int width, int height, 
-                     AVPixelFormat fmt,
-                     AVRational timeBase,
-                     AVRational sampleAspectRatio, 
-                     AVColorRange range,
-                     AVColorSpace space):
-    m_yWidth(width), 
-    m_yHeight(height), 
-    m_fmt(fmt),
-    m_timeBase(timeBase),
-    m_sampleAspectRatio(sampleAspectRatio),
-    m_colorRange(range),
-    m_colorSpace(space)
-{
-    switch (m_fmt) {
-    case AVPixelFormat::AV_PIX_FMT_YUV420P:
-        m_uvWidth = width / 2;
-        m_uvHeight = height / 2;
-        break;
-    case AVPixelFormat::AV_PIX_FMT_YUV422P:
-        m_uvWidth = width / 2;
-        m_uvHeight = height;
-        break;
-    case AVPixelFormat::AV_PIX_FMT_YUV444P:
-        m_uvWidth = width;
-        m_uvHeight = height;
-        break;
-    }
-}
+FrameMeta::FrameMeta() {}
 
 FrameMeta::~FrameMeta() = default;
 
@@ -68,4 +40,48 @@ AVColorRange FrameMeta::colorRange() const {
 
 AVColorSpace FrameMeta::colorSpace() const {
     return m_colorSpace;
+}
+
+std::string FrameMeta::filename() const {
+    return m_filename;
+}
+
+void FrameMeta::setYWidth(int width) {
+    m_yWidth = width;
+}
+
+void FrameMeta::setYHeight(int height) {
+    m_yHeight = height;
+}
+
+void FrameMeta::setUVWidth(int width) {
+    m_uvWidth = width;
+}
+
+void FrameMeta::setUVHeight(int height) {
+    m_uvHeight = height;
+}
+
+void FrameMeta::setFormat(AVPixelFormat fmt) {
+    m_fmt = fmt;
+}
+
+void FrameMeta::setTimeBase(AVRational timeBase) {
+    m_timeBase = timeBase;
+}
+
+void FrameMeta::setSampleAspectRatio(AVRational sampleAspectRatio) {
+    m_sampleAspectRatio = sampleAspectRatio;
+}
+
+void FrameMeta::setColorRange(AVColorRange range) {
+    m_colorRange = range;
+}
+
+void FrameMeta::setColorSpace(AVColorSpace space) {
+    m_colorSpace = space;
+}
+
+void FrameMeta::setFilename(const std::string& filename) {
+    m_filename = filename;
 }

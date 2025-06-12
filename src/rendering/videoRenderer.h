@@ -1,5 +1,5 @@
 #pragma once
-#include <rhi/qrhi.h>
+#include "rhi/qrhi.h"
 #include <QSize>
 #include "../frames/frameData.h"
 

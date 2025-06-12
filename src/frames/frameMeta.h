@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
+
 extern "C" {
 #include <libavutil/rational.h>
 #include <libavutil/pixfmt.h>
@@ -9,12 +11,18 @@ extern "C" {
 
 class FrameMeta {
 public:
-    FrameMeta(int width, int height, 
-              AVPixelFormat fmt,
-              AVRational timeBase,
-              AVRational sampleAspectRatio,
-              AVColorRange range, 
-              AVColorSpace space);
+    FrameMeta();
+
+    void setYWidth(int width);
+    void setYHeight(int height);
+    void setUVWidth(int width);
+    void setUVHeight(int height);
+    void setPixelFormat(AVPixelFormat fmt);
+    void setTimeBase(AVRational timeBase);
+    void setSampleAspectRatio(AVRational sampleAspectRatio);
+    void setColorRange(AVColorRange range);
+    void setColorSpace(AVColorSpace space);
+    void setFilename(const std::string& filename);
     ~FrameMeta();
 
     int yWidth() const;
@@ -30,6 +38,7 @@ public:
     AVRational sampleAspectRatio() const;
     AVColorRange colorRange() const;
     AVColorSpace colorSpace() const;
+    std::string filename() const;
 
 private:
     int m_yWidth;
@@ -41,4 +50,5 @@ private:
     AVRational m_sampleAspectRatio;
     AVColorRange m_colorRange;
     AVColorSpace m_colorSpace;
+    std::string m_filename;
 };
