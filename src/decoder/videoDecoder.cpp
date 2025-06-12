@@ -170,10 +170,11 @@ void VideoDecoder::loadFrame(FrameData* frameData)
     
     if (isRawYUV) {
         loadRawYUVFrame(frameData);
+    } else{
+        // For compressed codecs, use the standard decoding path
+        loadCompressedFrame(frameData);
     }
-    
-    // For compressed codecs, use the standard decoding path
-    loadCompressedFrame(frameData);
+
 }
 
 FrameMeta VideoDecoder::getMetaData()
