@@ -62,7 +62,7 @@ void FrameMeta::setUVHeight(int height) {
     m_uvHeight = height;
 }
 
-void FrameMeta::setFormat(AVPixelFormat fmt) {
+void FrameMeta::setPixelFormat(AVPixelFormat fmt) {
     m_fmt = fmt;
 }
 
