@@ -27,7 +27,7 @@ public:
 	void setFileName(const std::string& fileName);
 
 	void openFile();
-    FrameMeta* getMetaData();
+    FrameMeta getMetaData();
 
 public slots:
     void loadFrame(FrameData* frame);
@@ -42,7 +42,7 @@ private:
 	int videoStreamIndex;
 	
 	// Metadata and state
-	FrameMeta* metadata;
+	FrameMeta metadata;
 	int currentFrameIndex;
 	
 	// Video properties (for backward compatibility or override)
