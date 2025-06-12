@@ -1,9 +1,10 @@
 #pragma once
 #include "rhi/qrhi.h"
 #include <QSize>
-#include "../frames/frameData.h"
+#include "frames/frameData.h"
 
-class VideoRenderer {
+class VideoRenderer : public QObject {
+    Q_OBJECT
 public:
     struct Vertex {
         QVector2D pos;
@@ -27,6 +28,12 @@ public:
     void render(QRhiCommandBuffer* cb, QRhiRenderPassDescriptor* rp);
 
     QRhiTexture *createTexture();
+
+public slots:
+    void renderFrame(FrameData* frame);
+
+signals:
+    void frameRendered();
 
 private:
     QRhi* rhi = nullptr;
