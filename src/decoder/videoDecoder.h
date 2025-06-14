@@ -1,8 +1,9 @@
 #include <string>
 #include <fstream>
 #include <QObject>
-#include "../frames/frameMeta.h"
-#include "../frames/frameData.h"
+#include "frames/frameMeta.h"
+#include "frames/frameData.h"
+#include "utils/errorReporter.h"
 
 extern "C" {
 #include <libavformat/avformat.h>

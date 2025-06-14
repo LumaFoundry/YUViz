@@ -63,13 +63,13 @@ void VideoDecoder::openFile()
     
     // Open input file
     if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, nullptr) < 0) {
-        std::cerr << "Error: Could not open input file " << m_fileName << std::endl;
+        ErrorReporter::instance().report("Could not open input file " + m_fileName, LogLevel::Error);
         return;
     }
     
     // Retrieve stream information
     if (avformat_find_stream_info(formatContext, nullptr) < 0) {
-        std::cerr << "Error: Could not find stream information" << std::endl;
+        ErrorReporter::instance().report("Could not find stream information", LogLevel::Error);
         closeFile();
         return;
     }
@@ -77,7 +77,7 @@ void VideoDecoder::openFile()
     // Find the video stream
     videoStreamIndex = av_find_best_stream(formatContext, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
     if (videoStreamIndex < 0) {
-        std::cerr << "Error: Could not find video stream" << std::endl;
+        ErrorReporter::instance().report("Could not find video stream", LogLevel::Error);
         closeFile();
         return;
     }
@@ -87,7 +87,7 @@ void VideoDecoder::openFile()
     // Find decoder for the video stream
     const AVCodec* codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
     if (!codec) {
-        std::cerr << "Error: Unsupported codec" << std::endl;
+        ErrorReporter::instance().report("Unsupported codec", LogLevel::Error);
         closeFile();
         return;
     }
@@ -95,21 +95,21 @@ void VideoDecoder::openFile()
     // Allocate codec context
     codecContext = avcodec_alloc_context3(codec);
     if (!codecContext) {
-        std::cerr << "Error: Could not allocate codec context" << std::endl;
+        ErrorReporter::instance().report("Could not allocate codec context", LogLevel::Error);
         closeFile();
         return;
     }
     
     // Copy codec parameters to context
     if (avcodec_parameters_to_context(codecContext, videoStream->codecpar) < 0) {
-        std::cerr << "Error: Could not copy codec parameters to context" << std::endl;
+        ErrorReporter::instance().report("Could not copy codec parameters to context", LogLevel::Error);
         closeFile();
         return;
     }
     
     // Open codec
     if (avcodec_open2(codecContext, codec, nullptr) < 0) {
-        std::cerr << "Error: Could not open codec" << std::endl;
+        ErrorReporter::instance().report("Could not open codec", LogLevel::Error);
         closeFile();
         return;
     }
@@ -161,10 +161,10 @@ void VideoDecoder::openFile()
 void VideoDecoder::loadFrame(FrameData* frameData)
 {
     if (!formatContext || !codecContext || !frameData) {
-        std::cerr << "Error: VideoDecoder not properly initialized" << std::endl;
+        ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
         emit frameLoaded(false);
     }
-    
+
     // Check if this is a raw YUV format that doesn't need decoding
     bool isRawYUV = isRawYUVCodec(codecContext->codec_id);
     
@@ -214,7 +214,7 @@ void VideoDecoder::loadRawYUVFrame(FrameData* frameData)
     // Allocate packet for reading raw data
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
-        std::cerr << "Error: Could not allocate packet" << std::endl;
+        ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit frameLoaded(false);
         return;
     }
@@ -235,7 +235,7 @@ void VideoDecoder::loadRawYUVFrame(FrameData* frameData)
             int vSize = metadata.uvSize();
             
             if (packetSize < ySize + uSize + vSize) {
-                std::cerr << "Error: Packet size too small for frame data" << std::endl;
+                ErrorReporter::instance().report("Packet size too small for frame data", LogLevel::Error);
                 av_packet_unref(tempPacket);
                 break;
             }
@@ -263,13 +263,13 @@ void VideoDecoder::loadRawYUVFrame(FrameData* frameData)
     }
     
     if (ret < 0 && ret != AVERROR_EOF) {
-        std::cerr << "Error: Failed to read raw YUV frame" << std::endl;
+        ErrorReporter::instance().report("Failed to read raw YUV frame", LogLevel::Error);
     }
     
     // Clean up allocations
     av_packet_free(&tempPacket);
     emit frameLoaded(false);
-    return;;
+    return;
 }
 
 void VideoDecoder::loadCompressedFrame(FrameData* frameData)
@@ -277,7 +277,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     // Allocate packet for this decoding operation
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
-        std::cerr << "Error: Could not allocate packet" << std::endl;
+        ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit frameLoaded(false);
         return;
     }
@@ -290,7 +290,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
             // Send packet to decoder
             ret = avcodec_send_packet(codecContext, tempPacket);
             if (ret < 0) {
-                std::cerr << "Error: Failed to send packet to decoder" << std::endl;
+                ErrorReporter::instance().report("Failed to send packet to decoder", LogLevel::Error);
                 av_packet_unref(tempPacket);
                 break;
             }
@@ -298,7 +298,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
             // Allocate a temporary frame for decoding
             AVFrame* tempFrame = av_frame_alloc();
             if (!tempFrame) {
-                std::cerr << "Error: Could not allocate temporary frame" << std::endl;
+                ErrorReporter::instance().report("Could not allocate temporary frame", LogLevel::Error);
                 av_packet_unref(tempPacket);
                 break;
             }
@@ -356,7 +356,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
                 av_packet_unref(tempPacket);
                 continue;
             } else {
-                std::cerr << "Error: Failed to receive frame from decoder" << std::endl;
+                ErrorReporter::instance().report("Failed to receive frame from decoder", LogLevel::Error);
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
                 break;
@@ -366,7 +366,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     }
     
     if (ret < 0 && ret != AVERROR_EOF) {
-        std::cerr << "Error: Failed to read frame" << std::endl;
+        ErrorReporter::instance().report("Failed to read frame", LogLevel::Error);
     }
     
     // Clean up allocations

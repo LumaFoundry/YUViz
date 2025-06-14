@@ -29,6 +29,8 @@ class FrameQueue{
         void incrementHead();
         void incrementTail();
 
+        const int getSize() const { return queueSize; }
+
 
     private:
         // Size of the queue
