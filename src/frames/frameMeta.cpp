@@ -22,6 +22,14 @@ int FrameMeta::uvHeight() const {
     return m_uvHeight;
 }
 
+int FrameMeta::ySize() const {
+    return yWidth() * yHeight();
+}
+
+int FrameMeta::uvSize() const {
+    return uvWidth() * uvHeight();
+}
+
 AVPixelFormat FrameMeta::format() const {
     return m_fmt;
 }
