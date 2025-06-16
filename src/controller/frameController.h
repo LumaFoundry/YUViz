@@ -3,17 +3,17 @@
 #include <QThread>
 #include <QElapsedTimer>
 #include <QtConcurrent>
-#include "FrameQueue.h"
-#include "FrameMeta.h"
-#include "FrameData.h"
+#include "frames/FrameQueue.h"
+#include "frames/FrameMeta.h"
+#include "frames/FrameData.h"
 #include "decoder/videoDecoder.h"
 #include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
+#include "controller/playBackWorker.h"
 
 // One controller per FrameQueue
 
 class FrameController : public QObject{
-
     Q_OBJECT
 
 public:
@@ -21,18 +21,15 @@ public:
     FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer);
     ~FrameController();
 
-    // Start decoder and renderer threads
+    // Start decoder, renderer and timer threads
     void start();
 
-    // TODO: Frame read control
-    // TODO: Pass frameData ptr to renderer
-    // TODO: Playback control
-    // TODO: QElapsedTimer for frame timing
-    void play(bool resumed=false);
+    // Interface method for playback control for UI
+    void play();
     void pause();
     void resume();
-    void reverse(int dir);
-    void changeSpeed(float speed);
+    void step();
+    void stop();
 
 public slots:
     // Receive signals from decoder and renderer
@@ -46,6 +43,14 @@ signals:
     void requestDecode(FrameData* frame);
     void requestUpload(FrameData* frame);
     void requestRender();
+    void requestNextSleep(int64_t deltaMs);
+
+    // For interface control
+    void requestPlaybackStart();
+    void requestPlaybackPause();
+    void requestPlaybackResume();
+    void requestPlaybackStep();
+    void requestPlaybackStop();
 
 private:
 
@@ -58,21 +63,19 @@ private:
     // VideoRenderer to render frames
     std::unique_ptr<VideoRenderer> m_Renderer = nullptr;
 
+    // Playback worker to control playback
+    std::unique_ptr<PlaybackWorker> m_playbackWorker = nullptr;
+
     // Thread for reading / writing frames object
     QThread m_renderThread;
     QThread m_decodeThread;
+    QThread m_timerThread;
 
-    // Timer for synchronization
-    QElapsedTimer m_timer;
-
-    bool m_playing = false;
+    // Last PTS for calculating delta time
+    int64_t m_lastPTS = 0;
 
     // Playback control variables
     double m_speed = 1.0;
     int m_direction = 1; // 1 = forward, 0 = pause, -1 = reverse
-
-    int64_t m_nextWakeMs = 0;
-    int64_t m_lastPTS = 0;
-    int64_t m_pausedAt = 0;
 
 };
