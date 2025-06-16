@@ -12,13 +12,13 @@ FrameQueue::FrameQueue(FrameMeta meta)
     m_bufferPtr = std::make_shared<std::vector<uint8_t>>(bufferSize);
 
     // Allocate frame data queue
-    m_queue.resize(queueSize);
+    m_queue.reserve(queueSize);
     for (int i = 0; i < queueSize; ++i) {
-        m_queue[i] = FrameData(ySize, uvSize,
-                               m_bufferPtr, i * frameSize);
+        m_queue.emplace_back(ySize, uvSize, m_bufferPtr, i * frameSize);
     }
-
 }
+
+FrameQueue::~FrameQueue() = default;
 
 bool FrameQueue::isEmpty() const {
     return head >= tail;
