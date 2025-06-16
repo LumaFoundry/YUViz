@@ -20,7 +20,7 @@ static QByteArray loadShaderSource(const QString &path) {
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     QQuickWindow window;
-    window.setTitle("YUV420P QQuickWindow Renderer");
+    window.setTitle("videoplayer");
     window.resize(900, 600);
     window.show();
 
@@ -74,16 +74,18 @@ int main(int argc, char *argv[]) {
 
     // --- QRhi setup ---
     // Create RHI instance for Metal on macOS
-    QRhiMetalInitParams initParams;
-    initParams.window = &window;
-    QRhi *rhi = QRhi::create(QRhi::Implementation::Metal, &initParams);
+    QRhiMetalInitParams params;
+    QRhi *rhi = QRhi::create(QRhi::Metal, &params);
     if (!rhi) {
         qWarning() << "Failed to create QRhi";
         return -1;
     }
 
     // SwapChain tied to QQuickWindow
-    QRhiSwapChain *swapChain = rhi->newSwapChain(QRhiSwapChain::Flags(), &window);
+    QRhiSwapChain *swapChain = rhi->newSwapChain();
+    swapChain->setWindow(&window);
+    QRhiRenderPassDescriptor *rpDesc = swapChain->newCompatibleRenderPassDescriptor();
+    swapChain->setRenderPassDescriptor(rpDesc);
     swapChain->createOrResize();
     // Rebuild on resize
     QObject::connect(&window, &QQuickWindow::widthChanged, [&](int){
@@ -97,9 +99,6 @@ int main(int argc, char *argv[]) {
     QRhiTexture *yTex = rhi->newTexture(QRhiTexture::R8, QSize(yWidth, yHeight));
     QRhiTexture *uTex = rhi->newTexture(QRhiTexture::R8, QSize(uvWidth, uvHeight));
     QRhiTexture *vTex = rhi->newTexture(QRhiTexture::R8, QSize(uvWidth, uvHeight));
-    yTex->setFlags(QRhiTexture::UsedAsTransferSource);
-    uTex->setFlags(QRhiTexture::UsedAsTransferSource);
-    vTex->setFlags(QRhiTexture::UsedAsTransferSource);
 
     if (!yTex->create() || !uTex->create() || !vTex->create()) {
         qWarning() << "Failed to create YUV textures";
@@ -109,14 +108,41 @@ int main(int argc, char *argv[]) {
     // Initial upload of planes
     {
         QRhiResourceUpdateBatch *batch0 = rhi->nextResourceUpdateBatch();
-        // Prepare upload description with explicit row pitch
-        QRhiTextureUploadDescription descY(yTex, 0, 0, yPlane, yWidth);
+        // Prepare and upload Y plane using QRhiTextureSubresourceUploadDescription
+        QRhiTextureUploadDescription descY;
+        {
+            QRhiTextureSubresourceUploadDescription subDescY(yPlane, yWidth * yHeight);
+            subDescY.setDataStride(yWidth);
+            QRhiTextureUploadEntry entryY(0, 0, subDescY);
+            descY.setEntries({ entryY });
+        }
         batch0->uploadTexture(yTex, descY);
-        QRhiTextureUploadDescription descU(uTex, 0, 0, uPlane, uvWidth);
+
+        // Prepare and upload U plane
+        QRhiTextureUploadDescription descU;
+        {
+            QRhiTextureSubresourceUploadDescription subDescU(uPlane, uvWidth * uvHeight);
+            subDescU.setDataStride(uvWidth);
+            QRhiTextureUploadEntry entryU(0, 0, subDescU);
+            descU.setEntries({ entryU });
+        }
         batch0->uploadTexture(uTex, descU);
-        QRhiTextureUploadDescription descV(vTex, 0, 0, vPlane, uvWidth);
+
+        // Prepare and upload V plane
+        QRhiTextureUploadDescription descV;
+        {
+            QRhiTextureSubresourceUploadDescription subDescV(vPlane, uvWidth * uvHeight);
+            subDescV.setDataStride(uvWidth);
+            QRhiTextureUploadEntry entryV(0, 0, subDescV);
+            descV.setEntries({ entryV });
+        }
         batch0->uploadTexture(vTex, descV);
-        rhi->resourceUpdate(batch0);
+        // Submit resource updates via the swap chain's command buffer
+        // Submit resource updates within a frame
+        rhi->beginFrame(swapChain);
+        QRhiCommandBuffer *cmdBuf = swapChain->currentFrameCommandBuffer();
+        cmdBuf->resourceUpdate(batch0);
+        rhi->endFrame(swapChain);
     }
 
     // --- Load precompiled shaders (.qsb) via QShader ---
@@ -131,7 +157,7 @@ int main(int argc, char *argv[]) {
 
     // --- Graphics pipeline ---
     QRhiGraphicsPipeline *pip = rhi->newGraphicsPipeline();
-    pip->setShaderStages(shaderStages, 2);
+    pip->setShaderStages({ shaderStages[0], shaderStages[1] });
 
     QRhiVertexInputLayout vil;
     vil.setBindings({ { sizeof(float) * 4 } });
@@ -139,14 +165,20 @@ int main(int argc, char *argv[]) {
         { 0, 0, QRhiVertexInputAttribute::Float2, 0 },
         { 1, 0, QRhiVertexInputAttribute::Float2, sizeof(float) * 2 }
     };
-    vil.setAttributes(via, 2);
+    vil.setAttributes(via, via + 2);
     pip->setVertexInputLayout(vil);
 
-    QRhiGraphicsPipelineState ps;
-    ps.rasterizer.cullMode = QRhiGraphicsPipelineState::None;
-    ps.colorTargetCount    = 1;
-    ps.colorTargets[0].format = swapChain->preferredFormat();
-    pip->setGraphicsPipelineState(ps);
+    // Configure pipeline state via QRhiGraphicsPipeline setters (Qt 6.9)
+    pip->setCullMode(QRhiGraphicsPipeline::None);
+    // One render target, no blending
+    pip->setTargetBlends({ QRhiGraphicsPipeline::TargetBlend() });
+    // Primitive topology
+    pip->setTopology(QRhiGraphicsPipeline::Triangles);
+    // Match the swap chain's sample count
+    pip->setSampleCount(swapChain->sampleCount());
+    // No depth or stencil
+    pip->setDepthTest(false);
+    pip->setDepthWrite(false);
     pip->setRenderPassDescriptor(swapChain->renderPassDescriptor());
     pip->create();
 
@@ -164,38 +196,53 @@ int main(int argc, char *argv[]) {
     vbuf->create();
     {
         QRhiResourceUpdateBatch *initBatch = rhi->nextResourceUpdateBatch();
-        initBatch->uploadBuffer(vbuf, 0, verts, sizeof(verts));
-        rhi->resourceUpdate(initBatch);
+        initBatch->uploadStaticBuffer(vbuf, 0, sizeof(verts), verts);
+        // Submit static buffer upload via command buffer
+        rhi->beginFrame(swapChain);
+        QRhiCommandBuffer *cmdBuf = swapChain->currentFrameCommandBuffer();
+        cmdBuf->resourceUpdate(initBatch);
+        rhi->endFrame(swapChain);
     }
 
     // --- Sampler & resource bindings ---
-    QRhiSampler *sam = rhi->newSampler();
-    sam->setMinMagFilters(QRhiSampler::Linear, QRhiSampler::Linear);
+    // Create sampler with linear filtering and repeat addressing
+    QRhiSampler *sam = rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear,
+                                       QRhiSampler::None,
+                                       QRhiSampler::Repeat, QRhiSampler::Repeat);
     sam->create();
 
-    QRhiResourceBindings *rb = rhi->newResourceBindings();
+    // Create shader resource bindings for the Y, U, V textures
+    QRhiShaderResourceBindings *rb = rhi->newShaderResourceBindings();
     rb->setBindings({
-        QRhiResourceBindings::SamplerBinding(0, sam),
-        QRhiResourceBindings::TextureBinding(sam, yTex, 1),
-        QRhiResourceBindings::TextureBinding(sam, uTex, 2),
-        QRhiResourceBindings::TextureBinding(sam, vTex, 3)
+        // Bind each plane texture + sampler to fragment shader
+        QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, yTex, sam),
+        QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, uTex, sam),
+        QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, vTex, sam)
     });
     rb->create();
+    // Attach to pipeline
+    pip->setShaderResourceBindings(rb);
 
-    // --- Render loop via renderRequested ---
-    QObject::connect(&window, &QQuickWindow::renderRequested,
-                     [&](QQuickWindow *w){
-        swapChain->prepare();
+    // --- Render loop via beforeRendering ---
+    QObject::connect(&window, &QQuickWindow::beforeRendering,
+                     &window,
+                     [&](){
+        // Begin a new frame instead of deprecated prepare()
+        rhi->beginFrame(swapChain);
         QRhiCommandBuffer *cb = swapChain->currentFrameCommandBuffer();
         cb->beginPass(swapChain->currentFrameRenderTarget(),
                       QColor(0,0,0,255), { 1.0f, 0 });
         cb->setGraphicsPipeline(pip);
-        cb->setViewport(QRect(0,0, w->width(), w->height()));
-        cb->setVertexInput(0, vbuf, 0);
-        cb->setResourceBindings(rb);
+        // Set viewport using QRhiViewport instead of QRect
+        cb->setViewport(QRhiViewport(0, 0, window.width(), window.height()));
+        // Bind vertex buffer at binding point 0 with offset 0
+        QRhiCommandBuffer::VertexInput viBinding(vbuf, 0);
+        cb->setVertexInput(0, 1, &viBinding);
+        cb->setShaderResources();  // bind the resources to the current pipeline
         cb->draw(4);
         cb->endPass();
-        rhi->finishFrame(swapChain);
+        // End the frame instead of deprecated finishFrame()
+        rhi->endFrame(swapChain);
     }, Qt::DirectConnection);
 
     // Trigger the first frame render
