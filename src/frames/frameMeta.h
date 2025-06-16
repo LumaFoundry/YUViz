@@ -12,6 +12,21 @@ extern "C" {
 class FrameMeta {
 public:
     FrameMeta();
+    ~FrameMeta();
+
+    int yWidth() const;
+    int yHeight() const;
+    int uvWidth() const;
+    int uvHeight() const;
+    int ySize() const;
+    int uvSize() const;
+
+    AVPixelFormat format() const;
+    AVRational timeBase() const;
+    AVRational sampleAspectRatio() const;
+    AVColorRange colorRange() const;
+    AVColorSpace colorSpace() const;
+    std::string filename() const;
 
     void setYWidth(int width);
     void setYHeight(int height);
@@ -23,22 +38,6 @@ public:
     void setColorRange(AVColorRange range);
     void setColorSpace(AVColorSpace space);
     void setFilename(const std::string& filename);
-    ~FrameMeta();
-
-    int yWidth() const;
-    int yHeight() const;
-    int uvWidth() const;
-    int uvHeight() const;
-
-    int ySize() const {return yWidth() * yHeight(); };
-    int uvSize() const {return uvWidth() * uvHeight(); };
-
-    AVPixelFormat format() const;
-    AVRational timeBase() const;
-    AVRational sampleAspectRatio() const;
-    AVColorRange colorRange() const;
-    AVColorSpace colorSpace() const;
-    std::string filename() const;
 
 private:
     int m_yWidth;
