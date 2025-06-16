@@ -73,13 +73,31 @@ int main(int argc, char *argv[]) {
     }
 
     // --- QRhi setup ---
-    // Create RHI instance for Metal on macOS
-    QRhiMetalInitParams params;
-    QRhi *rhi = QRhi::create(QRhi::Metal, &params);
-    if (!rhi) {
-        qWarning() << "Failed to create QRhi";
-        return -1;
-    }
+// Use the generic QRhiInitParams for cross-platform compatibility.
+QRhiInitParams params;
+QRhi *rhi = nullptr;
+
+#if defined(Q_OS_WIN)
+    // Prefer Direct3D 11 on Windows
+    rhi = QRhi::create(QRhi::D3D11, &params);
+#elif defined(Q_OS_MACOS) || defined(Q_OS_IOS)
+    // Metal is the only modern choice on Apple platforms
+    rhi = QRhi::create(QRhi::Metal, &params);
+#elif defined(Q_OS_LINUX) || defined(Q_OS_ANDROID)
+    // Vulkan is the preferred choice on Linux and Android
+    rhi = QRhi::create(QRhi::Vulkan, &params);
+#endif
+
+// If the preferred backend could not be initialized, fall back to OpenGL.
+if (!rhi) {
+    rhi = QRhi::create(QRhi::OpenGLES2, &params);
+}
+
+// Final check to ensure a backend was successfully created.
+if (!rhi) {
+    qWarning() << "Failed to create a suitable QRhi backend.";
+    return -1;
+}
 
     // SwapChain tied to QQuickWindow
     QRhiSwapChain *swapChain = rhi->newSwapChain();

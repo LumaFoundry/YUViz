@@ -13,7 +13,6 @@ find_package(Qt6 REQUIRED COMPONENTS
   Core
   Gui
   Quick
-  GuiPrivate
 )
 
 find_package(PkgConfig REQUIRED)
