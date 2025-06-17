@@ -3,13 +3,13 @@
 #include <QThread>
 #include <QElapsedTimer>
 #include <QtConcurrent>
-#include "frames/FrameQueue.h"
-#include "frames/FrameMeta.h"
-#include "frames/FrameData.h"
-#include "decoder/videoDecoder.h"
-#include "rendering/videoRenderer.h"
-#include "utils/errorReporter.h"
-#include "controller/playBackWorker.h"
+#include "../frames/frameQueue.h"
+#include "../frames/frameMeta.h"
+#include "../frames/frameData.h"
+#include "../decoder/videoDecoder.h"
+#include "../rendering/videoRenderer.h"
+#include "../utils/errorReporter.h"
+#include "playBackWorker.h"
 
 // One controller per FrameQueue
 

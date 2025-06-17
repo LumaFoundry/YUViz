@@ -6,6 +6,7 @@ extern "C" {
 #include <libavutil/rational.h>
 #include <libavutil/pixfmt.h>
 #include <libavutil/pixdesc.h>
+#include <libswscale/swscale.h>
 }
 
 VideoDecoder::VideoDecoder(QObject* parent) : 
@@ -116,7 +117,7 @@ void VideoDecoder::openFile()
     
     AVRational timeBase;
     // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
-    if (isRawYUVCodec(codecContext->codec_id) 
+    if (isYUV(codecContext->codec_id) 
     || !videoStream->time_base.num || !videoStream->time_base.den) {
         timeBase = av_d2q(1.0 / m_framerate, 1000000);
     } else {
@@ -166,10 +167,10 @@ void VideoDecoder::loadFrame(FrameData* frameData)
     }
 
     // Check if this is a raw YUV format that doesn't need decoding
-    bool isRawYUV = isRawYUVCodec(codecContext->codec_id);
+    bool isRawYUV = isYUV(codecContext->codec_id);
     
     if (isRawYUV) {
-        loadRawYUVFrame(frameData);
+        loadYUVFrame(frameData);
     } else{
         // For compressed codecs, use the standard decoding path
         loadCompressedFrame(frameData);
@@ -198,7 +199,7 @@ void VideoDecoder::closeFile()
     currentFrameIndex = 0;
 }
 
-bool VideoDecoder::isRawYUVCodec(AVCodecID codecId)
+bool VideoDecoder::isYUV(AVCodecID codecId)
 {
     switch (codecId) {
         case AV_CODEC_ID_RAWVIDEO:
@@ -209,64 +210,67 @@ bool VideoDecoder::isRawYUVCodec(AVCodecID codecId)
     }
 }
 
-void VideoDecoder::loadRawYUVFrame(FrameData* frameData)
+void VideoDecoder::loadYUVFrame(FrameData* frameData)
 {
-    // Allocate packet for reading raw data
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit frameLoaded(false);
         return;
     }
-    
     int ret;
-    
-    // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
-            // For raw YUV, the packet data contains the raw frame data
-            // Copy data directly from packet to FrameData buffers
             uint8_t* packetData = tempPacket->data;
             int packetSize = tempPacket->size;
-            
-            // Calculate plane sizes
-            int ySize = metadata.ySize();
-            int uSize = metadata.uvSize();
-            int vSize = metadata.uvSize();
-            
-            if (packetSize < ySize + uSize + vSize) {
-                ErrorReporter::instance().report("Packet size too small for frame data", LogLevel::Error);
+
+            AVPixelFormat srcFmt = metadata.format();
+            int width = metadata.yWidth();
+            int height = metadata.yHeight();
+
+            // Prepare source pointers and line sizes
+            uint8_t* srcData[4] = {nullptr};
+            int srcLinesize[4] = {0};
+            av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
+
+            // Prepare destination pointers and line sizes (planar YUV420P)
+            uint8_t* dstData[4] = { frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr };
+            int dstLinesize[4] = { width, width/2, width/2, 0 };
+            SwsContext* swsCtx = sws_getContext(
+                width, height, srcFmt,
+                width, height, AV_PIX_FMT_YUV420P,
+                SWS_POINT, nullptr, nullptr, nullptr);
+
+            if (!swsCtx) {
+                ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                 av_packet_unref(tempPacket);
                 break;
             }
             
-            // Copy Y plane
-            memcpy(frameData->yPtr(), packetData, ySize);
-            
-            // Copy U plane
-            memcpy(frameData->uPtr(), packetData + ySize, uSize);
-            
-            // Copy V plane
-            memcpy(frameData->vPtr(), packetData + ySize + uSize, vSize);
-            
-            // Set presentation timestamp
+            // Scale and convert the YUV frame
+            int res = sws_scale(swsCtx, (const uint8_t* const*)srcData, srcLinesize, 0, height, dstData, dstLinesize);
+            sws_freeContext(swsCtx);
+
+            if (res <= 0) {
+                ErrorReporter::instance().report("sws_scale failed to convert/copy YUV frame", LogLevel::Error);
+                av_packet_unref(tempPacket);
+                break;
+            }
+
             frameData->setPts(tempPacket->pts);
-            
             av_packet_unref(tempPacket);
             currentFrameIndex++;
-            
-            // Clean up allocations
             av_packet_free(&tempPacket);
+
             emit frameLoaded(true);
             return;
         }
     }
-    
+
     if (ret < 0 && ret != AVERROR_EOF) {
         ErrorReporter::instance().report("Failed to read raw YUV frame", LogLevel::Error);
     }
-    
-    // Clean up allocations
+
     av_packet_free(&tempPacket);
     emit frameLoaded(false);
     return;

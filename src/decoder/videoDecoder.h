@@ -1,9 +1,9 @@
 #include <string>
 #include <fstream>
 #include <QObject>
-#include "frames/frameMeta.h"
-#include "frames/frameData.h"
-#include "utils/errorReporter.h"
+#include "../frames/frameMeta.h"
+#include "../frames/frameData.h"
+#include "../utils/errorReporter.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -56,8 +56,8 @@ private:
 	void closeFile();
 	
 	// Helper methods for YUV format detection and loading
-	bool isRawYUVCodec(AVCodecID codecId);
-	void loadRawYUVFrame(FrameData* frameData);
+	bool isYUV(AVCodecID codecId);
+	void loadYUVFrame(FrameData* frameData);
 	void loadCompressedFrame(FrameData* frameData);
 
 };
