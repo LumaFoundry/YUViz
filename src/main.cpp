@@ -253,12 +253,32 @@ int main(int argc, char *argv[]) {
     QTimer *timer = new QTimer(&window);
     timer->setInterval(16);
     QObject::connect(timer, &QTimer::timeout, &window, [&](){
+        // Letterbox: preserve video aspect ratio with black bars
         rhi->beginFrame(swapChain);
         auto cb = swapChain->currentFrameCommandBuffer();
         cb->beginPass(swapChain->currentFrameRenderTarget(),
                       QColor(0,0,0,255), {1.0f,0});
         cb->setGraphicsPipeline(pip);
-        cb->setViewport(QRhiViewport(0,0, window.width(), window.height()));
+
+        // Compute aspect-correct viewport
+        int winW = window.width();
+        int winH = window.height();
+        float winAspect = float(winW) / winH;
+        const float vidAspect = float(yWidth) / yHeight;
+        int vpX=0, vpY=0, vpW=winW, vpH=winH;
+        if (winAspect > vidAspect) {
+            // window is wider -> vertical bars
+            vpH = winH;
+            vpW = int(vidAspect * vpH + 0.5f);
+            vpX = (winW - vpW) / 2;
+        } else {
+            // window is taller -> horizontal bars
+            vpW = winW;
+            vpH = int(vpW / vidAspect + 0.5f);
+            vpY = (winH - vpH) / 2;
+        }
+        cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
+
         QRhiCommandBuffer::VertexInput vi(vbuf, 0);
         cb->setVertexInput(0,1,&vi);
         cb->setShaderResources();
