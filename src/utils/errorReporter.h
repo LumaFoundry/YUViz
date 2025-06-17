@@ -6,6 +6,7 @@
 #include <iostream>
 #include <QDebug>
 #include <QString>
+#include <functional>
 
 enum class LogLevel { Info, Warning, Error, Fatal };
 
