@@ -44,6 +44,9 @@ set(SRC
 
 add_executable(videoplayer ${SRC})
 
+enable_testing()
+add_subdirectory(test)
+
 target_include_directories(videoplayer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_SOURCE_DIR}/src/frames
