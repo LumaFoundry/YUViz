@@ -19,8 +19,6 @@ class VideoDecoder : public QObject {
 public:
 	VideoDecoder(QObject* parent = nullptr);
 	virtual ~VideoDecoder();
-
-	// Setters for video properties (kept for backward compatibility)
 	void setWidth(int width);
 	void setHeight(int height);
 	void setFramerate(double framerate);
@@ -37,16 +35,13 @@ signals:
     void frameLoaded(bool success);
 
 private:
-	// FFmpeg structures
 	AVFormatContext* formatContext;
 	AVCodecContext* codecContext;
 	int videoStreamIndex;
 	
-	// Metadata and state
 	FrameMeta metadata;
 	int currentFrameIndex;
 	
-	// Video properties (for backward compatibility or override)
 	int m_width;
 	int m_height;
 	double m_framerate;
@@ -55,9 +50,9 @@ private:
 
 	void closeFile();
 	
-	// Helper methods for YUV format detection and loading
 	bool isYUV(AVCodecID codecId);
-	void loadYUVFrame(FrameData* frameData);
-	void loadCompressedFrame(FrameData* frameData);
+    void loadYUVFrame(FrameData *frameData);
+    void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
+    void loadCompressedFrame(FrameData* frameData);
 
 };

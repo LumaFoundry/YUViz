@@ -221,48 +221,10 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
     int ret;
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
-            uint8_t* packetData = tempPacket->data;
-            int packetSize = tempPacket->size;
-
-            AVPixelFormat srcFmt = metadata.format();
-            int width = metadata.yWidth();
-            int height = metadata.yHeight();
-
-            // Prepare source pointers and line sizes
-            uint8_t* srcData[4] = {nullptr};
-            int srcLinesize[4] = {0};
-            av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-
-            // Prepare destination pointers and line sizes (planar YUV420P)
-            uint8_t* dstData[4] = { frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr };
-            int dstLinesize[4] = { width, width/2, width/2, 0 };
-            SwsContext* swsCtx = sws_getContext(
-                width, height, srcFmt,
-                width, height, AV_PIX_FMT_YUV420P,
-                SWS_POINT, nullptr, nullptr, nullptr);
-
-            if (!swsCtx) {
-                ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
-                av_packet_unref(tempPacket);
+            int retFlag;
+            copyFrame(tempPacket, frameData, retFlag);
+            if (retFlag == 2)
                 break;
-            }
-            
-            // Scale and convert the YUV frame
-            int res = sws_scale(swsCtx, (const uint8_t* const*)srcData, srcLinesize, 0, height, dstData, dstLinesize);
-            sws_freeContext(swsCtx);
-
-            if (res <= 0) {
-                ErrorReporter::instance().report("sws_scale failed to convert/copy YUV frame", LogLevel::Error);
-                av_packet_unref(tempPacket);
-                break;
-            }
-
-            frameData->setPts(tempPacket->pts);
-            av_packet_unref(tempPacket);
-            currentFrameIndex++;
-            av_packet_free(&tempPacket);
-
-            emit frameLoaded(true);
             return;
         }
     }
@@ -278,7 +240,7 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
 
 void VideoDecoder::loadCompressedFrame(FrameData* frameData)
 {
-    // Allocate packet for this decoding operation
+    // Allocate packet for decoding operation
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
@@ -307,66 +269,16 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
                 break;
             }
             
-            // Receive frame from decoder
             ret = avcodec_receive_frame(codecContext, tempFrame);
+
             if (ret == 0) {
-                // Successfully decoded a frame - copy data to our FrameData buffers
-                
-                // Copy Y plane
-                uint8_t* yDst = frameData->yPtr();
-                uint8_t* ySrc = tempFrame->data[0];
-                int yHeight = codecContext->height;
-                int yLinesize = tempFrame->linesize[0];
-                int yWidth = codecContext->width;
-                
-                for (int y = 0; y < yHeight; y++) {
-                    memcpy(yDst + y * yWidth, ySrc + y * yLinesize, yWidth);
-                }
-                
-                // Copy U plane
-                uint8_t* uDst = frameData->uPtr();
-                uint8_t* uSrc = tempFrame->data[1];
-                int uvHeight = metadata.uvHeight();
-                int uvWidth = metadata.uvWidth();
-                int uLinesize = tempFrame->linesize[1];
-                
-                for (int y = 0; y < uvHeight; y++) {
-                    memcpy(uDst + y * uvWidth, uSrc + y * uLinesize, uvWidth);
-                }
-                
-                // Copy V plane
-                uint8_t* vDst = frameData->vPtr();
-                uint8_t* vSrc = tempFrame->data[2];
-                int vLinesize = tempFrame->linesize[2];
-                
-                for (int y = 0; y < uvHeight; y++) {
-                    memcpy(vDst + y * uvWidth, vSrc + y * vLinesize, uvWidth);
-                }
-                
-                // Set presentation timestamp
-                frameData->setPts(tempFrame->pts);
-                
-                av_packet_unref(tempPacket);
-                av_frame_free(&tempFrame);
-                currentFrameIndex++;
-                
-                // Clean up allocations
-                av_packet_free(&tempPacket);
-                emit frameLoaded(true);
+                int retFlag;
+                copyFrame(tempPacket, frameData, retFlag);
+                if (retFlag == 2)
+                    break;
                 return;
-            } else if (ret == AVERROR(EAGAIN)) {
-                // Need more input
-                av_frame_free(&tempFrame);
-                av_packet_unref(tempPacket);
-                continue;
-            } else {
-                ErrorReporter::instance().report("Failed to receive frame from decoder", LogLevel::Error);
-                av_frame_free(&tempFrame);
-                av_packet_unref(tempPacket);
-                break;
             }
         }
-        av_packet_unref(tempPacket);
     }
     
     if (ret < 0 && ret != AVERROR_EOF) {
@@ -376,6 +288,72 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     // Clean up allocations
     av_packet_free(&tempPacket);
     emit frameLoaded(false);
+    return;
+}
+
+/**
+ * @brief Copies the decoded frame data into the provided FrameData structure.
+ *
+ * This function handles the conversion of the decoded frame data into a planar YUV format
+ * and populates the FrameData structure with the Y, U, and V plane pointers.
+ *
+ * @param tempPacket Pointer to the AVPacket containing the decoded frame data.
+ * @param frameData Pointer to the FrameData structure to populate.
+ * @param retFlag Reference to an integer flag indicating success or failure of the operation.
+ */
+void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag)
+{
+    retFlag = 1;
+    uint8_t *packetData = tempPacket->data;
+    int packetSize = tempPacket->size;
+
+    AVPixelFormat srcFmt = metadata.format();
+    int width = metadata.yWidth();
+    int height = metadata.yHeight();
+
+    // Prepare source pointers and line sizes
+    uint8_t *srcData[4] = {nullptr};
+    int srcLinesize[4] = {0};
+    av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
+
+    // Prepare destination pointers and line sizes (planar YUV420P)
+    uint8_t *dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+    int dstLinesize[4] = {width, width / 2, width / 2, 0};
+    SwsContext *swsCtx = sws_getContext(
+        width, height, srcFmt,
+        width, height, AV_PIX_FMT_YUV420P,
+        SWS_POINT, nullptr, nullptr, nullptr);
+
+    if (!swsCtx)
+    {
+        ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
+        av_packet_unref(tempPacket);
+        {
+            retFlag = 2;
+            return;
+        };
+    }
+
+    // Scale and convert the YUV frame
+    int res = sws_scale(swsCtx, (const uint8_t *const *)srcData, srcLinesize, 0, height, dstData, dstLinesize);
+    sws_freeContext(swsCtx);
+
+    if (res <= 0)
+    {
+        ErrorReporter::instance().report("sws_scale failed to convert/copy YUV frame", LogLevel::Error);
+        av_packet_unref(tempPacket);
+        {
+            retFlag = 2;
+            return;
+        };
+    }
+
+    frameData->setPts(tempPacket->pts);
+    av_packet_unref(tempPacket);
+    currentFrameIndex++;
+    av_packet_free(&tempPacket);
+
+    emit frameLoaded(true);
     return;
 }
 
