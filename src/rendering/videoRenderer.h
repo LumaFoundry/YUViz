@@ -11,7 +11,7 @@ public:
         QVector2D texCoord;
     };
 
-    VideoRenderer();
+    VideoRenderer(QObject *parent = nullptr);
     ~VideoRenderer();
 
     // Set up pipeline, shaders, buffers
