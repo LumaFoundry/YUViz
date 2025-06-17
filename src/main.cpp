@@ -26,7 +26,13 @@ int main(int argc, char *argv[]) {
 
     // --- Window setup ---
     QWindow window;
+#if defined(Q_OS_MACOS)
     window.setSurfaceType(QSurface::MetalSurface);
+#elif defined(Q_OS_WIN)
+    window.setSurfaceType(QSurface::OpenGLSurface);
+#else
+    window.setSurfaceType(QSurface::VulkanSurface);
+#endif
     window.setTitle("videoplayer");
     window.resize(900, 600);
     window.show();
@@ -55,12 +61,23 @@ int main(int argc, char *argv[]) {
     uint8_t *uPlane = data->uPtr();
     uint8_t *vPlane = data->vPtr();
 
-    // Fill with a simple 3×3 grid of test colors
+    // Fill with typical test colors in YUV
     struct YUV { uint8_t y,u,v; };
     YUV grid[3][3] = {
-        { { 82, 90,240}, {145, 54, 34}, { 41,240,110} },
-        { {210, 16,146}, {149, 58, 76}, {170,166,  0} },
-        { {235,128,128}, {128,128,128}, { 16,128,128} }
+    // 第一行：基础色
+    { {  76,  85, 255},  // 红色 (255, 0, 0)
+        { 150,  44,  21},  // 绿色 (0, 255, 0)
+        {  29, 255, 107} },// 蓝色 (0, 0, 255)
+
+    // 第二行：组合色
+    { {165,  42, 179},  // 橙色 (255,165,0)
+        { 61, 165, 175},  // 紫色 (128,0,128)
+        {170, 166,  16} }, // 青色 (0,255,255)
+
+    // 第三行：灰阶标准
+    { {235,128,128},   // 白色 (255,255,255)
+        {128,128,128},   // 灰色 (128,128,128)
+        { 16,128,128} }  // 黑色 (0,0,0)
     };
     const int tileY = yHeight / 3;
     const int tileX = yWidth  / 3;
@@ -78,11 +95,39 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // --- Pure RHI Metal setup ---
-    QRhiMetalInitParams initParams;
-    QRhi *rhi = QRhi::create(QRhi::Implementation::Metal, &initParams);
+    // --- QRhi setup ---
+    QRhi *rhi = nullptr;
+
+    #if defined(Q_OS_MACOS)
+        // --- Pure RHI Metal setup ---
+        QRhiMetalInitParams initParams;
+        rhi = QRhi::create(QRhi::Implementation::Metal, &initParams);
+        if (!rhi) {
+            qWarning() << "Failed to create Metal QRhi backend";
+            return -1;
+        }
+    #elif defined(Q_OS_WIN)
+        // D3D11 on Windows
+        QRhiD3D11InitParams d3dParams;
+        rhi = QRhi::create(QRhi::D3D11, &d3dParams);
+        if (!rhi) {
+            qWarning() << "Failed to create D3D11 backend, trying OpenGL...";
+            QRhiGles2InitParams glParams;
+            rhi = QRhi::create(QRhi::OpenGLES2, &glParams);
+        }
+    #else
+        // Vulkan on Linux
+        QRhiVulkanInitParams vulkanParams;
+        rhi = QRhi::create(QRhi::Vulkan, &vulkanParams);
+        if (!rhi) {
+            qWarning() << "Failed to create Vulkan backend, trying OpenGL...";
+            QRhiGles2InitParams glParams;
+            rhi = QRhi::create(QRhi::OpenGLES2, &glParams);
+        }
+    #endif
+
     if (!rhi) {
-        qWarning() << "Failed to create Metal QRhi backend";
+        qWarning() << "Failed to create any QRhi backend";
         return -1;
     }
 
