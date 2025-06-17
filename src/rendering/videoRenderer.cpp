@@ -1,6 +1,7 @@
 #include "videoRenderer.h"
 
-VideoRenderer::VideoRenderer(): 
+VideoRenderer::VideoRenderer(QObject *parent): 
+    QObject(parent),
     rhi(nullptr),
     vertexBuffer(nullptr),
     yTex(nullptr),
