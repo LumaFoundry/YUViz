@@ -21,8 +21,6 @@ public:
                     const QString &vertexShaderPath = ":/shaders/vertex.qsb",
                     const QString &fragmentShaderPath = ":/shaders/fragment.qsb");
 
-    // Copy frame data to GPU
-    void uploadFrame(const FrameData& frame);
 
     // Issue draw command
     void render(QRhiCommandBuffer* cb, QRhiRenderPassDescriptor* rp);
@@ -30,10 +28,12 @@ public:
     QRhiTexture *createTexture();
 
 public slots:
-    void renderFrame(FrameData* frame);
+    void uploadFrame(FrameData* frame);
+    void renderFrame();
 
 signals:
-    void frameRendered();
+    void frameUploaded();
+    void errorOccurred();
 
 private:
     QRhi* rhi = nullptr;

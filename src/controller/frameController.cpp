@@ -37,7 +37,7 @@ FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRe
     // Request for rendering frames
     connect(this, &FrameController::requestRender, m_Renderer.get(), &VideoRenderer::renderFrame, Qt::QueuedConnection);
     // Error handling for renderer
-    connect(m_Renderer.get(), &VideoRenderer::errorOccured, this, &FrameController::onRenderError, Qt::QueuedConnection);
+    connect(m_Renderer.get(), &VideoRenderer::errorOccurred, this, &FrameController::onRenderError, Qt::QueuedConnection);
 
     // Clean up worker thread when finished
     connect(&m_timerThread, &QThread::finished, m_playbackWorker.get(), &QObject::deleteLater);
