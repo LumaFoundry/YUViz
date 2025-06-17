@@ -49,6 +49,14 @@ VideoRenderer::~VideoRenderer() {
 
 }
 
+void VideoRenderer::uploadFrame(FrameData* frame) {
+    return;
+}
+
+void VideoRenderer::renderFrame() {
+    return;
+}
+
 
 void VideoRenderer::initialize(QRhi *rhiBackend,
                                QRhiSwapChain *swapChain,

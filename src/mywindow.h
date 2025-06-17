@@ -1,5 +1,4 @@
-#ifndef MYWINDOW_H
-#define MYWINDOW_H
+#pragma once
 
 #include <QMainWindow>
 #include <QString>
@@ -9,6 +8,8 @@ class MyWindow : public QMainWindow {
 
 public:
     MyWindow(QWidget *parent = nullptr);
+    virtual ~MyWindow();
+
     void loadYUV(const QString &filePath, int width, int height);
 
 private:
@@ -16,5 +17,3 @@ private:
     int imageWidth;
     int imageHeight;
 };
-
-#endif // MYWINDOW_H

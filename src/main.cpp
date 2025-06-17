@@ -16,15 +16,15 @@ int main(int argc, char *argv[]) {
     int height = QString(argv[3]).toInt();
     int size = width * height * 3 / 2; // YUV 4:2:0 format
 
-    MyWindow window;
+    // MyWindow window;
     if (!QFile::exists(yuvFilePath)) {
         QMessageBox::critical(nullptr, "Error", "YUV file does not exist.");
         return -1;
     }
 
-    // TODO: More checks (e.g., file format, dimensions)
+    // // TODO: More checks (e.g., file format, dimensions)
 
-    window.show();
+    // window.show();
 
     return app.exec();
 }

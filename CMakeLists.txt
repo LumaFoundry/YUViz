@@ -24,6 +24,8 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(FFMPEG REQUIRED
   libavcodec
   libavutil
+  libswscale
+  libavformat
 )
 
 link_directories(${FFMPEG_LIBRARY_DIRS})
@@ -36,6 +38,7 @@ set(SRC
   src/controller/frameController.cpp
   src/controller/playBackWorker.cpp
   src/rendering/videoRenderer.cpp
+  src/decoder/videoDecoder.cpp
   src/utils/errorReporter.cpp
 )
 
@@ -45,6 +48,7 @@ target_include_directories(videoplayer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${CMAKE_CURRENT_SOURCE_DIR}/src/frames
   ${CMAKE_CURRENT_SOURCE_DIR}/src/controller
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/decoder
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
   ${FFMPEG_INCLUDE_DIRS}

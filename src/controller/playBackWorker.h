@@ -11,8 +11,8 @@ class PlaybackWorker : public QObject {
     Q_OBJECT
 
 public:
-    PlaybackWorker();
-    ~PlaybackWorker();
+    PlaybackWorker(){};
+    ~PlaybackWorker(){};
 
 public slots:
     void scheduleNext(int64_t deltaMs);
