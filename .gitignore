@@ -1,0 +1,9 @@
+# Ignore everything
+/*
+
+# But NOT these:
+!/CMakeLists.txt
+!/src/
+!/src/**
+!/test/
+!/test/**
