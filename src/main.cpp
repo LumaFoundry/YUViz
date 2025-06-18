@@ -106,10 +106,10 @@ int main(int argc, char *argv[]) {
     renderer->uploadFrame(data);
 
     QTimer *t = new QTimer(&window);
-    t->setInterval(0);            // 马上触发
+    t->setInterval(0);
     QObject::connect(t, &QTimer::timeout, [&](){
         renderer->renderFrame();
-        t->stop();                // 停一次就够
+        t->stop();
     });
     t->start();
 
