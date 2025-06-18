@@ -30,7 +30,7 @@ public:
     virtual FrameMeta getMetaData();
 
 public slots:
-    void loadFrame(FrameData* frame);
+    virtual void loadFrame(FrameData* frame);
 
 signals:
     void frameLoaded(bool success);

@@ -54,14 +54,14 @@ signals:
 
 private:
 
-    // FrameQueue to manage frames
-    FrameQueue m_frameQueue;
-
     // YUVReader to read frames from video file
     std::unique_ptr<VideoDecoder> m_Decoder = nullptr;
 
     // VideoRenderer to render frames
     std::unique_ptr<VideoRenderer> m_Renderer = nullptr;
+
+    // FrameQueue to manage frames
+    FrameQueue m_frameQueue;
 
     // Playback worker to control playback
     std::unique_ptr<PlaybackWorker> m_playbackWorker = nullptr;
