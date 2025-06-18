@@ -19,7 +19,7 @@ public:
     void initialize(QRhi::Implementation impl);
 
 public slots:
-    void uploadFrame(FrameData& frame);
+    void uploadFrame(FrameData* frame);
     void renderFrame();
 
 signals:

@@ -147,12 +147,12 @@ static QByteArray loadShaderSource(const QString &path) {
     return f.readAll();
 }
 
-void VideoRenderer::uploadFrame(FrameData& frame) {
+void VideoRenderer::uploadFrame(FrameData* frame) {
     m_batch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame.yPtr(), m_yWidth * m_yHeight);
+        QRhiTextureSubresourceUploadDescription sd(frame->Ptr(), m_yWidth * m_yHeight);
         sd.setDataStride(m_yWidth);
         yDesc.setEntries({ {0, 0, sd} });
     }
@@ -160,7 +160,7 @@ void VideoRenderer::uploadFrame(FrameData& frame) {
 
     QRhiTextureUploadDescription uDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame.uPtr(), m_uvWidth * m_uvHeight);
+        QRhiTextureSubresourceUploadDescription sd(frame->uPtr(), m_uvWidth * m_uvHeight);
         sd.setDataStride(m_uvWidth);
         uDesc.setEntries({ {0, 0, sd} });
     }
@@ -168,7 +168,7 @@ void VideoRenderer::uploadFrame(FrameData& frame) {
 
     QRhiTextureUploadDescription vDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame.vPtr(), m_uvWidth * m_uvHeight);
+        QRhiTextureSubresourceUploadDescription sd(frame->vPtr(), m_uvWidth * m_uvHeight);
         sd.setDataStride(m_uvWidth);
         vDesc.setEntries({ {0, 0, sd} });
     }
