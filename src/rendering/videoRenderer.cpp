@@ -152,7 +152,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
 
     QRhiTextureUploadDescription yDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->Ptr(), m_yWidth * m_yHeight);
+        QRhiTextureSubresourceUploadDescription sd(frame->yPtr(), m_yWidth * m_yHeight);
         sd.setDataStride(m_yWidth);
         yDesc.setEntries({ {0, 0, sd} });
     }
