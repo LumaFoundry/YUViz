@@ -1,30 +1,19 @@
 #include "frameController.h"
 
-FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer) 
+FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, PlaybackWorker* playbackWorker) 
     : QObject(parent),
       m_Decoder(std::unique_ptr<VideoDecoder>(decoder)),
       m_Renderer(std::unique_ptr<VideoRenderer>(renderer)),
+      m_PlaybackWorker(std::unique_ptr<PlaybackWorker>(playbackWorker)),
       m_frameQueue(m_Decoder->getMetaData())
 {
-
-    // Instantiate playback worker
-    m_playbackWorker = std::make_unique<PlaybackWorker>();
-    m_playbackWorker->moveToThread(&m_timerThread);
 
     // Initialize decoder and renderer thread
     m_Decoder->moveToThread(&m_decodeThread);
     m_Renderer->moveToThread(&m_renderThread);
     
     // Request & Receive timer ticks and sleep for frame processing
-    connect(m_playbackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::QueuedConnection);
-    connect(this, &FrameController::requestNextSleep, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
-
-    // Request for interface control signals
-    connect(this, &FrameController::requestPlaybackStart, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
-    connect(this, &FrameController::requestPlaybackPause, m_playbackWorker.get(), &PlaybackWorker::pause, Qt::QueuedConnection);
-    connect(this, &FrameController::requestPlaybackResume, m_playbackWorker.get(), &PlaybackWorker::resume, Qt::QueuedConnection);
-    connect(this, &FrameController::requestPlaybackStep, m_playbackWorker.get(), &PlaybackWorker::step, Qt::QueuedConnection);
-    connect(this, &FrameController::requestPlaybackStop, m_playbackWorker.get(), &PlaybackWorker::stop, Qt::QueuedConnection);
+    connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::QueuedConnection);
 
     // Request & Receive signals for decoding
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::QueuedConnection);
@@ -39,9 +28,6 @@ FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRe
     // Error handling for renderer
     connect(m_Renderer.get(), &VideoRenderer::errorOccurred, this, &FrameController::onRenderError, Qt::QueuedConnection);
 
-    // Clean up worker thread when finished
-    connect(&m_timerThread, &QThread::finished, m_playbackWorker.get(), &QObject::deleteLater);
-
 }
 
 FrameController::~FrameController(){
@@ -50,18 +36,19 @@ FrameController::~FrameController(){
     m_renderThread.quit();
     m_decodeThread.wait();
     m_renderThread.wait();
-    m_timerThread.quit();
-    m_timerThread.wait();
 
     // Clear unique pointers
     m_Decoder.reset();
     m_Renderer.reset();
-    m_playbackWorker.reset();
+    m_PlaybackWorker.reset();
+}
+
+int64_t FrameController::currentPTS() {
+    return m_frameQueue.getHeadFrame()->pts();
 }
 
 // Start the decode and render threads
 void FrameController::start(){
-    m_timerThread.start();
     m_decodeThread.start();
     m_renderThread.start();
 
@@ -72,9 +59,6 @@ void FrameController::start(){
 
     // Initial Frame
     FrameData* firstFrame = m_frameQueue.getHeadFrame();
-
-    // Record initial frame’s PTS as lastPTS
-    m_lastPTS = firstFrame->pts();
 
     // Upload initial frames to GPU
     emit requestUpload(firstFrame);
@@ -92,19 +76,6 @@ void FrameController::onTimerTick() {
     emit requestUpload(headFrame);
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
-
-    // Calculate delta time for next sleep
-    int64_t currentPTS = headFrame->pts();
-    int64_t deltaPTS = currentPTS - m_lastPTS;
-    int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
-    
-    // Handle speed adjustment (TODO: and direction)
-    deltaMs = std::max<int64_t>(1, deltaMs / m_speed);
-
-    // request to schedule next sleep
-    emit requestNextSleep(deltaMs);
-
-    m_lastPTS = currentPTS;
 }
 
 // Handle frame decoding error and increment Tail
@@ -133,24 +104,3 @@ void FrameController::onRenderError() {
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
 }
 
-
-// Interface methods for playback control
-void FrameController::play(){
-    emit requestPlaybackStart();
-}
-
-void FrameController::pause() {
-    emit requestPlaybackPause();
-}
-
-void FrameController::resume() {
-    emit requestPlaybackResume();
-}
-
-void FrameController::step() {
-    emit requestPlaybackStep();
-}
-
-void FrameController::stop() {
-    emit requestPlaybackStop();
-}
