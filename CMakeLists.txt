@@ -28,6 +28,7 @@ set(SRC
   src/frames/frameMeta.cpp
   src/frames/frameQueue.cpp
   src/frames/frameData.cpp
+  src/rendering/videoRenderer.cpp
 )
 
 add_executable(videoplayer ${SRC})
