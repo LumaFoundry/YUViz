@@ -2,16 +2,10 @@
 #include "videoRenderer.h"
 
 VideoRenderer::VideoRenderer(QWindow* window,
-                             int yWidth,
-                             int yHeight,
-                             int uvWidth,
-                             int uvHeight): 
+                             std::shared_ptr<FrameMeta> metaPtr): 
     QObject(window),
     m_window(window),
-    m_yWidth(yWidth),
-    m_yHeight(yHeight),
-    m_uvWidth(uvWidth),
-    m_uvHeight(uvHeight) {}
+    m_metaPtr(metaPtr) {}
 
 VideoRenderer::~VideoRenderer() = default;
 
@@ -48,31 +42,39 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
     m_swapChain.reset(m_rhi->newSwapChain());
     m_swapChain->setWindow(m_window);
     QRhiRenderPassDescriptor* rpDesc = m_swapChain->newCompatibleRenderPassDescriptor();
+
+    if (!rpDesc) {
+        qWarning() << "Failed to create render pass descriptor";
+        emit errorOccurred();
+        return;
+    }
+    
     m_swapChain->setRenderPassDescriptor(rpDesc);
-    m_swapChain->createOrResize();
+    
+    if (!m_swapChain->createOrResize()) {
+        qWarning() << "Failed to create swap chain";
+        emit errorOccurred();
+        return;
+    }
 
     QObject::connect(m_window, &QWindow::widthChanged, this, [this](int){ m_swapChain->createOrResize(); });
     QObject::connect(m_window, &QWindow::heightChanged, this, [this](int){ m_swapChain->createOrResize(); });
 
-    m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_yWidth, m_yHeight)));
-    m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_uvWidth, m_uvHeight)));
-    m_vTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_uvWidth, m_uvHeight)));
+    m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
+    m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
+    m_vTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
 
-    bool okY = m_yTex->create();
-    bool okU = m_uTex->create();
-    bool okV = m_vTex->create();
-
-    if (!(okY && okU && okV)) {
+    if (!m_yTex->create() || !m_uTex->create() || !m_vTex->create()) {
         qWarning() << "Failed to create YUV textures";
         emit errorOccurred();
         return;
     }
 
-    QByteArray vsQsb = loadShaderSource("../shaders/vertex.qsb");
-    QByteArray fsQsb = loadShaderSource("../shaders/fragment.qsb");
+    QByteArray vsQsb = loadShaderSource("../src/shaders/vertex.qsb");
+    QByteArray fsQsb = loadShaderSource("../src/shaders/fragment.qsb");
 
     if (vsQsb.isEmpty() || fsQsb.isEmpty()) {
-        qWarning() << "Missing .qsb shader files";
+        qWarning() << "Failed to open shader file";
         emit errorOccurred();
         return;
     }
@@ -106,16 +108,33 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
                                       QRhiSampler::None,
                                       QRhiSampler::Repeat,
                                       QRhiSampler::Repeat));
-    m_sampler->create();
+    
+    if (!m_sampler->create()) {
+        qWarning() << "Failed to create sampler";
+        emit errorOccurred();
+        return;
+    }
+
     m_resourceBindings.reset(m_rhi->newShaderResourceBindings());
     m_resourceBindings->setBindings({
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_yTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_uTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get())
     });
-    m_resourceBindings->create();
+    
+    if (!m_resourceBindings->create()) {
+        qWarning() << "Failed to create shader resource bindings";
+        emit errorOccurred();
+        return;
+    }
+    
     m_pip->setShaderResourceBindings(m_resourceBindings.get());
-    m_pip->create();
+    
+    if (!m_pip->create()) {
+        qWarning() << "Failed to create graphics pipeline";
+        emit errorOccurred();
+        return;
+    }
 
     struct V { float x,y,u,v; };
     V verts[4] = {
@@ -127,21 +146,21 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
     m_vbuf.reset(m_rhi->newBuffer(QRhiBuffer::Immutable,
                                   QRhiBuffer::VertexBuffer,
                                   sizeof(verts)));
-    m_vbuf->create();
+    
+    if (!m_vbuf->create()) {
+        qWarning() << "Failed to create vertex buffer";
+        emit errorOccurred();
+        return;
+    }
     {
-        QRhiResourceUpdateBatch* initBatch = m_rhi->nextResourceUpdateBatch();
-        initBatch->uploadStaticBuffer(m_vbuf.get(), 0, sizeof(verts), verts);
-        m_rhi->beginFrame(m_swapChain.get());
-        QRhiCommandBuffer* cb = m_swapChain->currentFrameCommandBuffer();
-        cb->resourceUpdate(initBatch);
-        m_rhi->endFrame(m_swapChain.get());
+        m_initBatch = m_rhi->nextResourceUpdateBatch();
+        m_initBatch->uploadStaticBuffer(m_vbuf.get(), 0, sizeof(verts), verts);
     }
 }
 
-static QByteArray loadShaderSource(const QString &path) {
+QByteArray VideoRenderer::loadShaderSource(const QString &path) {
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
-        qWarning() << "Failed to open shader file" << path;
         return {};
     }
     return f.readAll();
@@ -152,35 +171,40 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
 
     QRhiTextureUploadDescription yDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->yPtr(), m_yWidth * m_yHeight);
-        sd.setDataStride(m_yWidth);
+        QRhiTextureSubresourceUploadDescription sd(frame->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        sd.setDataStride(m_metaPtr->yWidth());
         yDesc.setEntries({ {0, 0, sd} });
     }
     m_batch->uploadTexture(m_yTex.get(), yDesc);
 
     QRhiTextureUploadDescription uDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->uPtr(), m_uvWidth * m_uvHeight);
-        sd.setDataStride(m_uvWidth);
+        QRhiTextureSubresourceUploadDescription sd(frame->uPtr(), m_metaPtr->uvWidth() * m_metaPtr->uvHeight());
+        sd.setDataStride(m_metaPtr->uvWidth());
         uDesc.setEntries({ {0, 0, sd} });
     }
     m_batch->uploadTexture(m_uTex.get(), uDesc);
 
     QRhiTextureUploadDescription vDesc;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->vPtr(), m_uvWidth * m_uvHeight);
-        sd.setDataStride(m_uvWidth);
+        QRhiTextureSubresourceUploadDescription sd(frame->vPtr(), m_metaPtr->uvWidth() * m_metaPtr->uvHeight());
+        sd.setDataStride(m_metaPtr->uvWidth());
         vDesc.setEntries({ {0, 0, sd} });
     }
     m_batch->uploadTexture(m_vTex.get(), vDesc);
 
-    emit frameUpLoaded();
+    emit frameUploaded();
 }
 
 
 void VideoRenderer::renderFrame() {
     m_rhi->beginFrame(m_swapChain.get());
     QRhiCommandBuffer* cb = m_swapChain->currentFrameCommandBuffer();
+
+    if (m_initBatch) {
+        cb->resourceUpdate(m_initBatch);
+        m_initBatch = nullptr;
+    }
 
     if (m_batch) {
         cb->resourceUpdate(m_batch);
@@ -200,7 +224,7 @@ void VideoRenderer::renderFrame() {
     const int physHeight = winHeight * dpr;
 
     const float winAspect = float(winWidth) / winHeight;
-    const float vidAspect = float(m_yWidth) / m_yHeight;
+    const float vidAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
 
     int vpX = 0, vpY = 0, vpW = physWidth, vpH = physHeight;
     if (winAspect > vidAspect) {
