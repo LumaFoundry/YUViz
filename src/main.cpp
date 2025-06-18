@@ -29,9 +29,12 @@ int main(int argc, char *argv[]) {
 #if defined(Q_OS_MACOS)
     window.setSurfaceType(QSurface::MetalSurface);
 #elif defined(Q_OS_WIN)
-    window.setSurfaceType(QSurface::OpenGLSurface);
+    window.setSurfaceType(QSurface::Direct3DSurface);
+// LINUX commented out as it requires additional setup
+// #elif defined(Q_OS_LINUX)
+//     window.setSurfaceType(QSurface::VulkanSurface);
 #else
-    window.setSurfaceType(QSurface::VulkanSurface);
+    window.setSurfaceType(QSurface::OpenGLSurface);
 #endif
     window.setTitle("videoplayer");
     window.resize(900, 600);
@@ -96,36 +99,24 @@ int main(int argc, char *argv[]) {
     QRhi *rhi = nullptr;
 
     #if defined(Q_OS_MACOS)
-        // --- Pure RHI Metal setup ---
-        QRhiMetalInitParams initParams;
-        rhi = QRhi::create(QRhi::Implementation::Metal, &initParams);
-        if (!rhi) {
-            qWarning() << "Failed to create Metal QRhi backend";
-            return -1;
-        }
+        QRhiMetalInitParams metalParams;
+        rhi = QRhi::create(QRhi::Implementation::Metal, &metalParams);
     #elif defined(Q_OS_WIN)
         // D3D11 on Windows
         QRhiD3D11InitParams d3dParams;
         rhi = QRhi::create(QRhi::D3D11, &d3dParams);
-        if (!rhi) {
-            qWarning() << "Failed to create D3D11 backend, trying OpenGL...";
-            QRhiGles2InitParams glParams;
-            rhi = QRhi::create(QRhi::OpenGLES2, &glParams);
-        }
-    #else
-        // Vulkan on Linux
-        QRhiVulkanInitParams vulkanParams;
-        rhi = QRhi::create(QRhi::Vulkan, &vulkanParams);
-        if (!rhi) {
-            qWarning() << "Failed to create Vulkan backend, trying OpenGL...";
-            QRhiGles2InitParams glParams;
-            rhi = QRhi::create(QRhi::OpenGLES2, &glParams);
-        }
+    // LINUX commented out as it requires additional setup
+    // #elif defined(Q_OS_LINUX)
+    //     // Vulkan on Linux
+    //     QRhiVulkanInitParams vulkanParams;
+    //     rhi = QRhi::create(QRhi::Vulkan, &vulkanParams);
     #endif
 
     if (!rhi) {
-        qWarning() << "Failed to create any QRhi backend";
-        return -1;
+        qWarning() << "Warning: Failed to create QRhi instance, attempting to use OpenGL as fallback";
+        QRhiGles2InitParams glParams;
+        glParams.window = &window;
+        rhi = QRhi::create(QRhi::OpenGLES2, &glParams);
     }
 
     // Swap chain tied to QWindow
