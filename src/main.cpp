@@ -30,9 +30,16 @@ int main(int argc, char *argv[]) {
     window.setSurfaceType(QSurface::MetalSurface);
 #elif defined(Q_OS_WIN)
     window.setSurfaceType(QSurface::Direct3DSurface);
-// LINUX commented out as it requires additional setup
-// #elif defined(Q_OS_LINUX)
-//     window.setSurfaceType(QSurface::VulkanSurface);
+#elif defined(Q_OS_LINUX)
+    QVulkanInstance vulkanInst;
+    vulkanInst.setLayers({ "VK_LAYER_KHRONOS_validation" });
+    vulkanInst.setExtensions(QRhiVulkanInitParams::preferredInstanceExtensions());
+    window.setSurfaceType(QSurface::VulkanSurface);
+    if (!vulkanInst.create()) {
+        qWarning("Failed to create Vulkan instance, switching to OpenGL");
+        window.setSurfaceType(QSurface::OpenGLSurface);
+    }
+    window.setVulkanInstance(&vulkanInst);
 #else
     window.setSurfaceType(QSurface::OpenGLSurface);
 #endif
@@ -98,19 +105,18 @@ int main(int argc, char *argv[]) {
     // --- QRhi setup ---
     QRhi *rhi = nullptr;
 
-    #if defined(Q_OS_MACOS)
-        QRhiMetalInitParams metalParams;
-        rhi = QRhi::create(QRhi::Implementation::Metal, &metalParams);
-    #elif defined(Q_OS_WIN)
-        // D3D11 on Windows
-        QRhiD3D11InitParams d3dParams;
-        rhi = QRhi::create(QRhi::D3D11, &d3dParams);
-    // LINUX commented out as it requires additional setup
-    // #elif defined(Q_OS_LINUX)
-    //     // Vulkan on Linux
-    //     QRhiVulkanInitParams vulkanParams;
-    //     rhi = QRhi::create(QRhi::Vulkan, &vulkanParams);
-    #endif
+#if defined(Q_OS_MACOS)
+    QRhiMetalInitParams metalParams;
+    rhi = QRhi::create(QRhi::Metal, &metalParams);
+#elif defined(Q_OS_WIN)
+    QRhiD3D11InitParams d3dParams;
+    rhi = QRhi::create(QRhi::D3D11, &d3dParams);
+#elif defined(Q_OS_LINUX)
+    QRhiVulkanInitParams vulkanParams;
+    vulkanParams.inst = window.vulkanInstance();
+    vulkanParams.window = &window;
+    rhi = QRhi::create(QRhi::Vulkan, &vulkanParams);
+#endif
 
     if (!rhi) {
         qWarning() << "Warning: Failed to create QRhi instance, attempting to use OpenGL as fallback";
