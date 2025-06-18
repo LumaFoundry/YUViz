@@ -24,10 +24,9 @@ int main(int argc, char *argv[]) {
         QMessageBox::critical(nullptr, "Error", "YUV file does not exist.");
         return -1;
     }
-    VideoDecoder decoder;
+    VideoDecoder decoder = nullptr;
     decoder.setFileName(yuvFilePath.toStdString());
-    decoder.setWidth(width);
-    decoder.setHeight(height);
+    decoder.setDimensions(width, height);
     decoder.openFile();
 
     VideoRenderer renderer;

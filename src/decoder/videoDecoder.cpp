@@ -13,6 +13,7 @@ VideoDecoder::VideoDecoder(QObject* parent) :
     QObject(parent),
     formatContext(nullptr),
     codecContext(nullptr),
+    inputOptions(nullptr),
     videoStreamIndex(-1),
     currentFrameIndex(0),
     m_width(1920),
@@ -29,15 +30,13 @@ VideoDecoder::~VideoDecoder()
 	closeFile();
 }
 
-void VideoDecoder::setWidth(int width)
+void VideoDecoder::setDimensions(int width, int height)
 {
     m_width = width;
+    m_height = height;
+    av_dict_set(&inputOptions, "video_size", (std::to_string(m_width) + "x" + std::to_string(m_height)).c_str(), 0);
 }
 
-void VideoDecoder::setHeight(int height)
-{
-    m_height = height;
-}
 
 void VideoDecoder::setFramerate(double framerate)
 {
@@ -62,12 +61,11 @@ void VideoDecoder::openFile()
     // Close any previously opened file
     closeFile();
 
-    AVDictionary *input_options = nullptr;
     //av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
     //av_dict_set(&input_options, "pixel_format", "yuv420p", 0);
-    av_dict_set(&input_options, "video_size", (std::to_string(m_width) + "x" + std::to_string(m_height)).c_str(), 0);
+
     // Open input file
-    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, &input_options) < 0) {
+    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, &inputOptions) < 0) {
         ErrorReporter::instance().report("Could not open input file " + m_fileName, LogLevel::Error);
         return;
     }
@@ -309,7 +307,6 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
 {
     retFlag = 1;
     uint8_t *packetData = tempPacket->data;
-    int packetSize = tempPacket->size;
 
     AVPixelFormat srcFmt = metadata.format();
     int width = metadata.yWidth();
@@ -339,7 +336,7 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     }
 
     // Scale and convert the YUV frame
-    int res = sws_scale(swsCtx, (const uint8_t *const *)srcData, srcLinesize, 0, height, dstData, dstLinesize);
+    int res = sws_scale(swsCtx, srcData, srcLinesize, 0, height, dstData, dstLinesize);
     sws_freeContext(swsCtx);
 
     if (res <= 0)

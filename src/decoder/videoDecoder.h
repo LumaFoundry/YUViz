@@ -21,8 +21,7 @@ class VideoDecoder : public QObject {
 public:
 	VideoDecoder(QObject* parent = nullptr);
 	virtual ~VideoDecoder();
-	void setWidth(int width);
-	void setHeight(int height);
+	void setDimensions(int width, int height);
 	void setFramerate(double framerate);
 	void setFormat(AVPixelFormat format);
 	void setFileName(const std::string& fileName);
@@ -39,6 +38,7 @@ signals:
 private:
 	AVFormatContext* formatContext;
 	AVCodecContext* codecContext;
+	AVDictionary* inputOptions;
 	int videoStreamIndex;
 	
 	FrameMeta metadata;
