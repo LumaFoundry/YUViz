@@ -37,15 +37,15 @@ int main(int argc, char *argv[]) {
     window.setSurfaceType(QSurface::OpenGLSurface);
 #endif
     window.setTitle("videoplayer");
-    window.resize(900, 600);
+    window.resize(300, 1200);
     window.show();
 
     // --- Frame generation ---
     FrameMeta meta;
-    meta.setYWidth(900);
-    meta.setYHeight(600);
-    meta.setUVWidth(450);
-    meta.setUVHeight(300);
+    meta.setYWidth(300);
+    meta.setYHeight(1200);
+    meta.setUVWidth(150);
+    meta.setUVHeight(600);
     meta.setPixelFormat(AV_PIX_FMT_YUV420P);
     meta.setColorRange(AVColorRange::AVCOL_RANGE_MPEG);
     meta.setColorSpace(AVColorSpace::AVCOL_SPC_BT709);
@@ -64,34 +64,134 @@ int main(int argc, char *argv[]) {
     uint8_t *uPlane = data->uPtr();
     uint8_t *vPlane = data->vPtr();
 
-    // Fill with typical test colors in YUV
+    // Extended test color matrix: 2 rows × 3 columns, each pattern contains six basic colors (black, white, gray, red, green, blue)
+    // First row: MPEG range (16-235)
+    // Second row: JPEG range (0-255)
+    // Columns: Three main color space standards, each standard uses corresponding YUV values to ensure purest RGB
     struct YUV { uint8_t y,u,v; };
-    YUV grid[3][3] = {
-    { {  76,  85, 255}, 
-        { 150,  44,  21}, 
-        {  29, 255, 107} },
-
-    { {165,  42, 179},  
-        { 61, 165, 175}, 
-        {170, 166,  16} }, 
-
-    { {235,128,128},   
-        {128,128,128},  
-        { 16,128,128} } 
+    
+    // Six basic colors' RGB values (for calculating YUV)
+    struct RGB { float r, g, b; };
+    RGB pureColors[6] = {
+        {0.0f, 0.0f, 0.0f},  // Black
+        {1.0f, 1.0f, 1.0f},  // White
+        {0.5f, 0.5f, 0.5f},  // Gray
+        {1.0f, 0.0f, 0.0f},  // Red
+        {0.0f, 1.0f, 0.0f},  // Green
+        {0.0f, 0.0f, 1.0f}   // Blue
     };
-    const int tileY = yHeight / 3;
-    const int tileX = yWidth  / 3;
-    for (int gy = 0; gy < 3; ++gy) {
-        for (int gx = 0; gx < 3; ++gx) {
-            auto col = grid[gy][gx];
-            for (int y = gy * tileY; y < (gy + 1) * tileY; ++y)
-                for (int x = gx * tileX; x < (gx + 1) * tileX; ++x)
-                    yPlane[y * yWidth + x] = col.y;
-            for (int y = (gy * tileY) / 2; y < ((gy + 1) * tileY) / 2; ++y)
-                for (int x = (gx * tileX) / 2; x < ((gx + 1) * tileX) / 2; ++x) {
-                    uPlane[y * uvWidth + x] = col.u;
-                    vPlane[y * uvWidth + x] = col.v;
+    
+    // RGB to YUV conversion function (BT.709)
+    auto rgbToYuv709 = [](const RGB& rgb) -> YUV {
+        float y = 0.2126f * rgb.r + 0.7152f * rgb.g + 0.0722f * rgb.b;
+        float u = -0.1146f * rgb.r - 0.3854f * rgb.g + 0.5000f * rgb.b;
+        float v = 0.5000f * rgb.r - 0.4542f * rgb.g - 0.0458f * rgb.b;
+        return {(uint8_t)(y * 255), (uint8_t)((u + 0.5f) * 255), (uint8_t)((v + 0.5f) * 255)};
+    };
+    
+    // RGB to YUV conversion function (BT.601)
+    auto rgbToYuv601 = [](const RGB& rgb) -> YUV {
+        float y = 0.2990f * rgb.r + 0.5870f * rgb.g + 0.1140f * rgb.b;
+        float u = -0.1687f * rgb.r - 0.3313f * rgb.g + 0.5000f * rgb.b;
+        float v = 0.5000f * rgb.r - 0.4187f * rgb.g - 0.0813f * rgb.b;
+        return {(uint8_t)(y * 255), (uint8_t)((u + 0.5f) * 255), (uint8_t)((v + 0.5f) * 255)};
+    };
+    
+    // RGB to YUV conversion function (BT.2020)
+    auto rgbToYuv2020 = [](const RGB& rgb) -> YUV {
+        float y = 0.2627f * rgb.r + 0.6780f * rgb.g + 0.0593f * rgb.b;
+        float u = -0.1396f * rgb.r - 0.3604f * rgb.g + 0.5000f * rgb.b;
+        float v = 0.5000f * rgb.r - 0.4598f * rgb.g - 0.0402f * rgb.b;
+        return {(uint8_t)(y * 255), (uint8_t)((u + 0.5f) * 255), (uint8_t)((v + 0.5f) * 255)};
+    };
+    
+    // Calculate correct YUV values for each standard
+    YUV bt709Colors[6], bt601Colors[6], bt2020Colors[6];
+    for (int i = 0; i < 6; ++i) {
+        bt709Colors[i] = rgbToYuv709(pureColors[i]);
+        bt601Colors[i] = rgbToYuv601(pureColors[i]);
+        bt2020Colors[i] = rgbToYuv2020(pureColors[i]);
+    }
+    
+    // Adjust to MPEG range (16-235 for Y, 16-240 for U/V)
+    auto adjustToMpegRange = [](const YUV& yuv) -> YUV {
+        uint8_t y = (uint8_t)(16 + (yuv.y - 0) * (235 - 16) / 255);
+        uint8_t u = (uint8_t)(16 + (yuv.u - 0) * (240 - 16) / 255);
+        uint8_t v = (uint8_t)(16 + (yuv.v - 0) * (240 - 16) / 255);
+        return {y, u, v};
+    };
+    
+    // Adjust to JPEG range (0-255)
+    auto adjustToJpegRange = [](const YUV& yuv) -> YUV {
+        return yuv; // Already in 0-255 range
+    };
+    
+    // 2 rows × 3 columns test matrix
+    YUV testMatrix[2][3][6] = {
+        // First row: MPEG range (16-235)
+        {
+            // Column 0: BT.709 (AVCOL_SPC_BT709 = 1)
+            {adjustToMpegRange(bt709Colors[0]), adjustToMpegRange(bt709Colors[1]), adjustToMpegRange(bt709Colors[2]), 
+             adjustToMpegRange(bt709Colors[3]), adjustToMpegRange(bt709Colors[4]), adjustToMpegRange(bt709Colors[5])},
+            // Column 1: BT.601 (AVCOL_SPC_BT470BG = 5, AVCOL_SPC_SMPTE170M = 6)
+            {adjustToMpegRange(bt601Colors[0]), adjustToMpegRange(bt601Colors[1]), adjustToMpegRange(bt601Colors[2]), 
+             adjustToMpegRange(bt601Colors[3]), adjustToMpegRange(bt601Colors[4]), adjustToMpegRange(bt601Colors[5])},
+            // Column 2: BT.2020 (AVCOL_SPC_BT2020_NCL = 9, AVCOL_SPC_BT2020_CL = 10)
+            {adjustToMpegRange(bt2020Colors[0]), adjustToMpegRange(bt2020Colors[1]), adjustToMpegRange(bt2020Colors[2]), 
+             adjustToMpegRange(bt2020Colors[3]), adjustToMpegRange(bt2020Colors[4]), adjustToMpegRange(bt2020Colors[5])}
+        },
+        // Second row: JPEG range (0-255)
+        {
+            // Column 0: BT.709 (AVCOL_SPC_BT709 = 1)
+            {adjustToJpegRange(bt709Colors[0]), adjustToJpegRange(bt709Colors[1]), adjustToJpegRange(bt709Colors[2]), 
+             adjustToJpegRange(bt709Colors[3]), adjustToJpegRange(bt709Colors[4]), adjustToJpegRange(bt709Colors[5])},
+            // Column 1: BT.601 (AVCOL_SPC_BT470BG = 5, AVCOL_SPC_SMPTE170M = 6)
+            {adjustToJpegRange(bt601Colors[0]), adjustToJpegRange(bt601Colors[1]), adjustToJpegRange(bt601Colors[2]), 
+             adjustToJpegRange(bt601Colors[3]), adjustToJpegRange(bt601Colors[4]), adjustToJpegRange(bt601Colors[5])},
+            // Column 2: BT.2020 (AVCOL_SPC_BT2020_NCL = 9, AVCOL_SPC_BT2020_CL = 10)
+            {adjustToJpegRange(bt2020Colors[0]), adjustToJpegRange(bt2020Colors[1]), adjustToJpegRange(bt2020Colors[2]), 
+             adjustToJpegRange(bt2020Colors[3]), adjustToJpegRange(bt2020Colors[4]), adjustToJpegRange(bt2020Colors[5])}
+        }
+    };
+    
+    // Calculate size of each color block
+    const int tileY = yHeight / 2;  // 2 rows
+    const int tileX = yWidth / 3;   // 3 columns
+    const int colorTileY = tileY / 6;  // Height of each color block
+    const int colorTileX = tileX;      // Width of each color block
+    
+    // Fill YUV planes
+    for (int row = 0; row < 2; ++row) {
+        for (int col = 0; col < 3; ++col) {
+            for (int colorIdx = 0; colorIdx < 6; ++colorIdx) {
+                auto yuvColor = testMatrix[row][col][colorIdx];
+                
+                // Calculate position of current color block
+                int startY = row * tileY + colorIdx * colorTileY;
+                int endY = startY + colorTileY;
+                int startX = col * tileX;
+                int endX = startX + colorTileX;
+                
+                // Fill Y plane
+                for (int y = startY; y < endY; ++y) {
+                    for (int x = startX; x < endX; ++x) {
+                        yPlane[y * yWidth + x] = yuvColor.y;
+                    }
                 }
+                
+                // Fill U/V planes (note: UV plane size is half of Y plane)
+                int uvStartY = startY / 2;
+                int uvEndY = endY / 2;
+                int uvStartX = startX / 2;
+                int uvEndX = endX / 2;
+                
+                for (int y = uvStartY; y < uvEndY; ++y) {
+                    for (int x = uvStartX; x < uvEndX; ++x) {
+                        uPlane[y * uvWidth + x] = yuvColor.u;
+                        vPlane[y * uvWidth + x] = yuvColor.v;
+                    }
+                }
+            }
         }
     }
 
@@ -212,11 +312,30 @@ int main(int argc, char *argv[]) {
                                        QRhiSampler::None,
                                        QRhiSampler::Repeat, QRhiSampler::Repeat);
     sam->create();
+    
+    // Create color space and color range uniform buffer
+    struct ColorSpaceParams {
+        int colorSpace;  // AVColorSpace: 1=BT.709, 5=BT.470BG, 6=SMPTE170M, 9=BT.2020_NCL, 10=BT.2020_CL
+        int colorRange;  // AVColorRange: 1=MPEG (16-235), 2=JPEG (0-255)
+        int padding[2];  // Alignment to 16-byte boundary
+    };
+    
+    QRhiBuffer *colorSpaceUBO = rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(ColorSpaceParams));
+    colorSpaceUBO->create();
+    
+    // Initialize color space parameters (using video metadata)
+    ColorSpaceParams colorSpaceParams;
+    colorSpaceParams.colorSpace = meta.colorSpace();
+    colorSpaceParams.colorRange = meta.colorRange();
+    colorSpaceParams.padding[0] = 0;
+    colorSpaceParams.padding[1] = 0;
+    
     QRhiShaderResourceBindings *rb = rhi->newShaderResourceBindings();
     rb->setBindings({
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, yTex, sam),
         QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, uTex, sam),
-        QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, vTex, sam)
+        QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, vTex, sam),
+        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, colorSpaceUBO)
     });
     rb->create();
     pip->setShaderResourceBindings(rb);
@@ -233,7 +352,10 @@ int main(int argc, char *argv[]) {
     vbuf->create();
     {
         auto initBatch = rhi->nextResourceUpdateBatch();
+        // Upload static vertex buffer
         initBatch->uploadStaticBuffer(vbuf, 0, sizeof(verts), verts);
+        // Upload static color space parameters
+        initBatch->updateDynamicBuffer(colorSpaceUBO, 0, sizeof(ColorSpaceParams), &colorSpaceParams);
         rhi->beginFrame(swapChain);
         auto cb1 = swapChain->currentFrameCommandBuffer();
         cb1->resourceUpdate(initBatch);
