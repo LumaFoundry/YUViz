@@ -24,8 +24,6 @@ public:
     // Start decoder, renderer and timer threads
     void start();
 
-    int64_t currentPTS();
-
 public slots:
     // Receive signals from decoder and renderer
     void onTimerTick();
@@ -37,6 +35,7 @@ signals:
     void requestDecode(FrameData* frame);
     void requestUpload(FrameData* frame);
     void requestRender();
+    void currentPTS(int64_t pts);
 
 private:
 

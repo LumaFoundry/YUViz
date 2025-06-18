@@ -43,10 +43,6 @@ FrameController::~FrameController(){
     m_PlaybackWorker.reset();
 }
 
-int64_t FrameController::currentPTS() {
-    return m_frameQueue.getHeadFrame()->pts();
-}
-
 // Start the decode and render threads
 void FrameController::start(){
     m_decodeThread.start();
@@ -76,6 +72,8 @@ void FrameController::onTimerTick() {
     emit requestUpload(headFrame);
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
+    // Emit current PTS to VideoController
+    emit currentPTS(headFrame->pts());
 }
 
 // Handle frame decoding error and increment Tail
