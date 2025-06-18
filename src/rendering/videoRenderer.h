@@ -1,54 +1,52 @@
 #pragma once
-#include "rhi/qrhi.h"
+
+#include <memory>
 #include <QSize>
+#include <QWindow>
+#include "rhi/qrhi.h"
 #include "frames/frameData.h"
 
 class VideoRenderer : public QObject {
     Q_OBJECT
 public:
-    struct Vertex {
-        QVector2D pos;
-        QVector2D texCoord;
-    };
-
-    VideoRenderer(QObject *parent = nullptr);
+    VideoRenderer(QWindow* window,
+                  int yWidth,
+                  int yHeight,
+                  int uvWidth,
+                  int uvHeight);
     ~VideoRenderer();
 
-    // Set up pipeline, shaders, buffers
-    void initialize(QRhi *rhiBackend,
-                    QRhiSwapChain *swapChain,
-                    QRhiRenderPassDescriptor *rpDesc,
-                    const QString &vertexShaderPath = ":/shaders/vertex.qsb",
-                    const QString &fragmentShaderPath = ":/shaders/fragment.qsb");
-
-    // Copy frame data to GPU
-    void uploadFrame(const FrameData& frame);
-
-    // Issue draw command
-    void render(QRhiCommandBuffer* cb, QRhiRenderPassDescriptor* rp);
-
-    QRhiTexture *createTexture();
+    void initialize(QRhi::Implementation impl);
 
 public slots:
-    void renderFrame(FrameData* frame);
+    void uploadFrame(FrameData& frame);
+    void renderFrame();
 
 signals:
-    void frameRendered();
+    void frameUpLoaded();
+    void errorOccurred();
+
 
 private:
-    QRhi* rhi = nullptr;
-
-    QRhiBuffer* vertexBuffer = nullptr;
-    QRhiTexture* yTex = nullptr;
-    QRhiTexture* uTex = nullptr;
-    QRhiTexture* vTex = nullptr;
-
-    QRhiSampler* sampler = nullptr;
-    QRhiShaderResourceBindings* bindings = nullptr;
-    QRhiGraphicsPipeline* pipeline = nullptr;
-
-    QSize currentSize; // for avoiding redundant texture reallocation
-
     VideoRenderer(const VideoRenderer&) = delete;
     VideoRenderer& operator=(const VideoRenderer&) = delete;
+
+    int m_yWidth;
+    int m_yHeight;
+    int m_uvWidth;
+    int m_uvHeight;
+
+    QWindow* m_window = nullptr;
+    std::unique_ptr<QRhi> m_rhi;
+    std::unique_ptr<QRhiSwapChain> m_swapChain;
+    std::unique_ptr<QRhiTexture> m_yTex;
+    std::unique_ptr<QRhiTexture> m_uTex;
+    std::unique_ptr<QRhiTexture> m_vTex;
+    QRhiResourceUpdateBatch* m_batch = nullptr;
+    std::unique_ptr<QRhiGraphicsPipeline> m_pip;
+    std::unique_ptr<QRhiSampler> m_sampler;
+    std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
+    std::unique_ptr<QRhiBuffer> m_vbuf;
+
+    static QByteArray loadShaderSource(const QString &path);
 };
