@@ -251,23 +251,32 @@ int main(int argc, char *argv[]) {
                       QColor(0,0,0,255), {1.0f,0});
         cb->setGraphicsPipeline(pip);
 
-        // Compute aspect-correct viewport
-        int winW = window.width();
-        int winH = window.height();
-        float winAspect = float(winW) / winH;
+        // Get logical window size
+        const int winW = window.width();
+        const int winH = window.height();
+
+        // Get the device pixel ratio to convert logical to physical pixels
+        const qreal dpr = window.devicePixelRatio();
+        const int physicalW = winW * dpr;
+        const int physicalH = winH * dpr;
+
+        // Aspect ratios can be calculated with logical or physical sizes
+        const float winAspect = float(winW) / winH;
         const float vidAspect = float(yWidth) / yHeight;
-        int vpX=0, vpY=0, vpW=winW, vpH=winH;
+
+        int vpX = 0, vpY = 0, vpW = physicalW, vpH = physicalH;
         if (winAspect > vidAspect) {
-            // window is wider -> vertical bars
-            vpH = winH;
+            // Window is wider -> pillarbox (vertical bars)
+            vpH = physicalH;
             vpW = int(vidAspect * vpH + 0.5f);
-            vpX = (winW - vpW) / 2;
-        } else {
-            // window is taller -> horizontal bars
-            vpW = winW;
+            vpX = (physicalW - vpW) / 2;
+        } else if (vidAspect > winAspect) {
+            // Window is taller -> letterbox (horizontal bars)
+            vpW = physicalW;
             vpH = int(vpW / vidAspect + 0.5f);
-            vpY = (winH - vpH) / 2;
+            vpY = (physicalH - vpH) / 2;
         }
+        // Set the viewport using physical pixel dimensions
         cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
 
         QRhiCommandBuffer::VertexInput vi(vbuf, 0);
