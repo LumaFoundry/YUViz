@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <set>
 #include "frames/frameQueue.h"
 #include "frames/frameMeta.h"
 
