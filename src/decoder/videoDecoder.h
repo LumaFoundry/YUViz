@@ -28,7 +28,7 @@ public:
 	void setFileName(const std::string& fileName);
 
 	void openFile();
-    FrameMeta getMetaData();
+    virtual FrameMeta getMetaData();
 
 public slots:
     void loadFrame(FrameData* frame);

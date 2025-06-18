@@ -2,6 +2,9 @@
 #include <QFile>
 #include <QMessageBox>
 #include "mywindow.h"
+#include "decoder/videoDecoder.h"
+#include "controller/frameController.h"
+#include "rendering/videoRenderer.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -21,6 +24,15 @@ int main(int argc, char *argv[]) {
         QMessageBox::critical(nullptr, "Error", "YUV file does not exist.");
         return -1;
     }
+    VideoDecoder decoder;
+    decoder.setFileName(yuvFilePath.toStdString());
+    decoder.setWidth(width);
+    decoder.setHeight(height);
+    decoder.openFile();
+
+    VideoRenderer renderer;
+
+    FrameController frameController(nullptr, &decoder, &renderer);
 
     // // TODO: More checks (e.g., file format, dimensions)
 

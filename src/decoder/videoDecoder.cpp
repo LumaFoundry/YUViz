@@ -61,9 +61,13 @@ void VideoDecoder::openFile()
 {
     // Close any previously opened file
     closeFile();
-    
+
+    AVDictionary *input_options = nullptr;
+    //av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
+    //av_dict_set(&input_options, "pixel_format", "yuv420p", 0);
+    av_dict_set(&input_options, "video_size", (std::to_string(m_width) + "x" + std::to_string(m_height)).c_str(), 0);
     // Open input file
-    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, nullptr) < 0) {
+    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, &input_options) < 0) {
         ErrorReporter::instance().report("Could not open input file " + m_fileName, LogLevel::Error);
         return;
     }
@@ -126,13 +130,13 @@ void VideoDecoder::openFile()
 
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
     const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
-    int yWidth = codecContext->width;
-    int yHeight = codecContext->height;
-    int uvWidth = AV_CEIL_RSHIFT(yWidth, pixDesc->log2_chroma_w);
-    int uvHeight = AV_CEIL_RSHIFT(yHeight, pixDesc->log2_chroma_h);
+    // int yWidth = codecContext->width;
+    // int yHeight = codecContext->height;
+    int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
     
-    metadata.setYWidth(yWidth);
-    metadata.setYHeight(yHeight);
+    metadata.setYWidth(m_width);
+    metadata.setYHeight(m_height);
     metadata.setUVWidth(uvWidth);
     metadata.setUVHeight(uvHeight);
     metadata.setPixelFormat(codecContext->pix_fmt);
