@@ -70,6 +70,17 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
         return;
     }
 
+    m_colorParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic,
+                                         QRhiBuffer::UniformBuffer,
+                                         sizeof(int)*4));
+    if (!m_colorParams->create()) {
+        qWarning() << "Failed to create color parameters uniform buffer";
+        emit errorOccurred();
+        return;
+    }
+
+    setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
+
     QByteArray vsQsb = loadShaderSource("../src/shaders/vertex.qsb");
     QByteArray fsQsb = loadShaderSource("../src/shaders/fragment.qsb");
 
@@ -119,7 +130,8 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
     m_resourceBindings->setBindings({
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_yTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_uTex.get(), m_sampler.get()),
-        QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get())
+        QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get()),
+        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get())
     });
     
     if (!m_resourceBindings->create()) {
@@ -166,8 +178,16 @@ QByteArray VideoRenderer::loadShaderSource(const QString &path) {
     return f.readAll();
 }
 
+void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
+    struct ColorParams { int colorSpace, colorRange, padding[2]; };
+    ColorParams cp = { space, range, {0,0} };
+    m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
+    m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
+}
+
+
 void VideoRenderer::uploadFrame(FrameData* frame) {
-    m_batch = m_rhi->nextResourceUpdateBatch();
+    m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc;
     {
@@ -175,7 +195,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc.setEntries({ {0, 0, sd} });
     }
-    m_batch->uploadTexture(m_yTex.get(), yDesc);
+    m_frameBatch->uploadTexture(m_yTex.get(), yDesc);
 
     QRhiTextureUploadDescription uDesc;
     {
@@ -183,7 +203,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
         sd.setDataStride(m_metaPtr->uvWidth());
         uDesc.setEntries({ {0, 0, sd} });
     }
-    m_batch->uploadTexture(m_uTex.get(), uDesc);
+    m_frameBatch->uploadTexture(m_uTex.get(), uDesc);
 
     QRhiTextureUploadDescription vDesc;
     {
@@ -191,7 +211,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
         sd.setDataStride(m_metaPtr->uvWidth());
         vDesc.setEntries({ {0, 0, sd} });
     }
-    m_batch->uploadTexture(m_vTex.get(), vDesc);
+    m_frameBatch->uploadTexture(m_vTex.get(), vDesc);
 
     emit frameUploaded();
 }
@@ -206,9 +226,14 @@ void VideoRenderer::renderFrame() {
         m_initBatch = nullptr;
     }
 
-    if (m_batch) {
-        cb->resourceUpdate(m_batch);
-        m_batch = nullptr;
+    if (m_colorParamsBatch) {
+        cb->resourceUpdate(m_colorParamsBatch);
+        m_colorParamsBatch = nullptr;
+    }
+
+    if (m_frameBatch) {
+        cb->resourceUpdate(m_frameBatch);
+        m_frameBatch = nullptr;
     }
 
     cb->beginPass(m_swapChain->currentFrameRenderTarget(),

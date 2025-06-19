@@ -15,6 +15,7 @@ public:
     ~VideoRenderer();
 
     void initialize(QRhi::Implementation impl);
+    void setColorParams(AVColorSpace space, AVColorRange range);
 
 public slots:
     void uploadFrame(FrameData* frame);
@@ -37,8 +38,10 @@ private:
     std::unique_ptr<QRhiTexture> m_yTex;
     std::unique_ptr<QRhiTexture> m_uTex;
     std::unique_ptr<QRhiTexture> m_vTex;
-    QRhiResourceUpdateBatch* m_batch = nullptr;
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
+    QRhiResourceUpdateBatch* m_frameBatch = nullptr;
+    QRhiResourceUpdateBatch* m_colorParamsBatch = nullptr;
+    std::unique_ptr<QRhiBuffer> m_colorParams;
     std::unique_ptr<QRhiGraphicsPipeline> m_pip;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
