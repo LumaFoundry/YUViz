@@ -22,7 +22,8 @@ public slots:
     void renderFrame();
 
 signals:
-    void frameUploaded();
+    void batchUploaded();
+    void gpuUploaded();
     void errorOccurred();
 
 

@@ -246,7 +246,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
     }
     m_frameBatch->uploadTexture(m_vTex.get(), vDesc);
 
-    emit frameUploaded();
+    emit batchUploaded();
 }
 
 
@@ -268,6 +268,7 @@ void VideoRenderer::renderFrame() {
         cb->resourceUpdate(m_frameBatch);
         m_frameBatch = nullptr;
     }
+    emit gpuUploaded();
 
     cb->beginPass(m_swapChain->currentFrameRenderTarget(),
                   QColor(0, 0, 0, 255),
