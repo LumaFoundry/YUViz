@@ -10,24 +10,54 @@ VideoRenderer::VideoRenderer(QWindow* window,
 VideoRenderer::~VideoRenderer() = default;
 
 
-void VideoRenderer::initialize(QRhi::Implementation impl) 
-{
-    switch (impl)
-    {
-    case QRhi::Null:
-        break;
-    case QRhi::Vulkan:
-        break;
-    case QRhi::OpenGLES2:
-        break;
-    case QRhi::D3D11:
-        break;
-    case QRhi::D3D12:
-        break;
-    case QRhi::Metal:
-        QRhiMetalInitParams params;
-        m_rhi.reset(QRhi::create(QRhi::Metal, &params));
-        break;
+void VideoRenderer::initialize(QRhi::Implementation impl)  {
+    switch (impl) {
+        case QRhi::Null: {
+            QRhiNullInitParams params;
+            m_rhi.reset(QRhi::create(QRhi::Null, &params));
+            break;
+        }
+
+    #if QT_CONFIG(opengl)
+        case QRhi::OpenGLES2: {
+            QRhiGles2InitParams glParams;
+            glParams.window = m_window;
+            m_rhi.reset(QRhi::create(QRhi::OpenGLES2, &glParams));
+            break;
+        }
+    #endif
+
+    #if QT_CONFIG(vulkan)
+        case QRhi::Vulkan: {
+            QRhiVulkanInitParams vulkanParams;
+            vulkanParams.inst = m_window->vulkanInstance();
+            vulkanParams.window = m_window;
+            m_rhi.reset(QRhi::create(QRhi::Vulkan, &vulkanParams));
+            break;
+        }
+    #endif
+
+    #if defined(Q_OS_WIN)
+        case QRhi::D3D11: {
+            QRhiD3D11InitParams d3dParams;
+            m_rhi.reset(QRhi::create(QRhi::D3D11, &d3dParams));
+            break;
+        }
+        
+        case QRhi::D3D12: {
+            QRhiD3D12InitParams d3dParams;
+            m_rhi.reset(QRhi::create(QRhi::D3D12, &d3dParams));
+            break;
+        }
+    #endif
+
+    #if QT_CONFIG(metal)
+        case QRhi::Metal: {
+            QRhiMetalInitParams params;
+            m_rhi.reset(QRhi::create(QRhi::Metal, &params));
+            break;
+        }
+    #endif
     }
 
     if (m_rhi) {
