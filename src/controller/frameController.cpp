@@ -2,25 +2,26 @@
 
 #include <utility>
 
-FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker)
+FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker, int index)
     : QObject(parent),
         m_Decoder(std::unique_ptr<VideoDecoder>(decoder)),
         m_Renderer(std::unique_ptr<VideoRenderer>(renderer)),
         m_PlaybackWorker(playbackWorker),
-        m_frameQueue(m_Decoder->getMetaData())
+        m_frameQueue(m_Decoder->getMetaData()),
+        m_index(index)
 {
 
     // Initialize decoder and renderer thread
     m_Decoder->moveToThread(&m_decodeThread);
     m_Renderer->moveToThread(&m_renderThread);
-    
+
     // Request & Receive timer ticks and sleep for frame processing
     connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::QueuedConnection);
 
     // Request & Receive signals for decoding
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::QueuedConnection);
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onFrameDecoded, Qt::QueuedConnection);
-    
+
     // Request & Receive signals for uploading texture to GPU
     connect(this, &FrameController::requestUpload, m_Renderer.get(), &VideoRenderer::uploadFrame, Qt::QueuedConnection);
     connect(m_Renderer.get(), &VideoRenderer::frameUploaded, this, &FrameController::onFrameUploaded, Qt::QueuedConnection);
@@ -74,7 +75,7 @@ void FrameController::onTimerTick() {
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
     // Emit current PTS to VideoController
-    emit currentPTS(headFrame->pts());
+    emit currentPTS(headFrame->pts(), m_index);
 }
 
 // Handle frame decoding error and increment Tail

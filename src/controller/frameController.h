@@ -18,11 +18,13 @@ class FrameController : public QObject{
 
 public:
 
-    FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker);
+    FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker, int index);
     ~FrameController();
 
     // Start decoder, renderer and timer threads
     void start();
+
+    int m_index; // Index of video being read in, 0-based
 
 public slots:
     // Receive signals from decoder and renderer
@@ -35,7 +37,7 @@ signals:
     void requestDecode(FrameData* frame);
     void requestUpload(FrameData* frame);
     void requestRender();
-    void currentPTS(int64_t pts);
+    void currentPTS(int64_t pts, int index);
 
 private:
 
