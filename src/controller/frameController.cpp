@@ -1,11 +1,13 @@
 #include "frameController.h"
 
-FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, PlaybackWorker* playbackWorker) 
+#include <utility>
+
+FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker)
     : QObject(parent),
-      m_Decoder(std::unique_ptr<VideoDecoder>(decoder)),
-      m_Renderer(std::unique_ptr<VideoRenderer>(renderer)),
-      m_PlaybackWorker(std::unique_ptr<PlaybackWorker>(playbackWorker)),
-      m_frameQueue(m_Decoder->getMetaData())
+        m_Decoder(std::unique_ptr<VideoDecoder>(decoder)),
+        m_Renderer(std::unique_ptr<VideoRenderer>(renderer)),
+        m_PlaybackWorker(playbackWorker),
+        m_frameQueue(m_Decoder->getMetaData())
 {
 
     // Initialize decoder and renderer thread
@@ -40,7 +42,6 @@ FrameController::~FrameController(){
     // Clear unique pointers
     m_Decoder.reset();
     m_Renderer.reset();
-    m_PlaybackWorker.reset();
 }
 
 // Start the decode and render threads

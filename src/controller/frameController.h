@@ -18,7 +18,7 @@ class FrameController : public QObject{
 
 public:
 
-    FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, PlaybackWorker* playbackWorker);
+    FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker);
     ~FrameController();
 
     // Start decoder, renderer and timer threads
@@ -46,7 +46,7 @@ private:
     std::unique_ptr<VideoRenderer> m_Renderer = nullptr;
 
     // PlaybackWorker to manage timer ticks
-    std::unique_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
+    std::shared_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
 
     // FrameQueue to manage frames
     FrameQueue m_frameQueue;
