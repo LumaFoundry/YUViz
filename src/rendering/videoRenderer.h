@@ -33,6 +33,7 @@ public slots:
 
 signals:
     void frameUploaded(bool success);
+    void frameRendered(bool success);
     void errorOccurred();
 
 private:
