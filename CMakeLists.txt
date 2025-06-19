@@ -21,6 +21,12 @@ pkg_check_modules(FFMPEG REQUIRED
   libavutil
 )
 
+find_package(Vulkan QUIET)
+
+if(Vulkan_FOUND)
+    add_compile_definitions(USE_VULKAN)
+endif()
+
 link_directories(${FFMPEG_LIBRARY_DIRS})
 
 set(SRC

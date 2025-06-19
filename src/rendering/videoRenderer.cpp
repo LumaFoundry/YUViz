@@ -1,5 +1,8 @@
 #include <QFile>
 #include "videoRenderer.h"
+#if QT_CONFIG(vulkan)
+#  include <QVulkanInstance>
+#endif
 
 VideoRenderer::VideoRenderer(QWindow* window,
                              std::shared_ptr<FrameMeta> metaPtr): 
@@ -27,7 +30,7 @@ void VideoRenderer::initialize(QRhi::Implementation impl)  {
         }
     #endif
 
-    #if QT_CONFIG(vulkan)
+    #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
         case QRhi::Vulkan: {
             QRhiVulkanInitParams vulkanParams;
             vulkanParams.inst = m_window->vulkanInstance();
