@@ -41,15 +41,15 @@ void VideoRenderer::initialize(QRhi::Implementation impl)
 
     m_swapChain.reset(m_rhi->newSwapChain());
     m_swapChain->setWindow(m_window);
-    QRhiRenderPassDescriptor* rpDesc = m_swapChain->newCompatibleRenderPassDescriptor();
+    m_renderPassDesc.reset(m_swapChain->newCompatibleRenderPassDescriptor());
 
-    if (!rpDesc) {
+    if (!m_renderPassDesc) {
         qWarning() << "Failed to create render pass descriptor";
         emit errorOccurred();
         return;
     }
     
-    m_swapChain->setRenderPassDescriptor(rpDesc);
+    m_swapChain->setRenderPassDescriptor(m_renderPassDesc.get());
     
     if (!m_swapChain->createOrResize()) {
         qWarning() << "Failed to create swap chain";

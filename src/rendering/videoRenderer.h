@@ -33,6 +33,7 @@ private:
     std::shared_ptr<FrameMeta> m_metaPtr;
     std::unique_ptr<QRhi> m_rhi;
     std::unique_ptr<QRhiSwapChain> m_swapChain;
+    std::unique_ptr<QRhiRenderPassDescriptor> m_renderPassDesc;
     std::unique_ptr<QRhiTexture> m_yTex;
     std::unique_ptr<QRhiTexture> m_uTex;
     std::unique_ptr<QRhiTexture> m_vTex;
