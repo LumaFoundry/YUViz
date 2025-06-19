@@ -22,13 +22,14 @@ FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRe
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::QueuedConnection);
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onFrameDecoded, Qt::QueuedConnection);
 
-    // Request & Receive signals for uploading texture to GPU
+    // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_Renderer.get(), &VideoRenderer::uploadFrame, Qt::QueuedConnection);
     connect(m_Renderer.get(), &VideoRenderer::frameUploaded, this, &FrameController::onFrameUploaded, Qt::QueuedConnection);
 
-    // Request & Receive for rendering frames
+    // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_Renderer.get(), &VideoRenderer::renderFrame, Qt::QueuedConnection);
     connect(m_Renderer.get(), &VideoRenderer::frameRendered, this, &FrameController::onFrameRendered, Qt::QueuedConnection);
+    
     // Error handling for renderer
     connect(m_Renderer.get(), &VideoRenderer::errorOccurred, this, &FrameController::onRenderError, Qt::QueuedConnection);
 
@@ -59,7 +60,10 @@ void FrameController::start(){
     // Initial Frame
     FrameData* firstFrame = m_frameQueue.getHeadFrame();
 
-    // Upload initial frames to GPU
+    // Record initial frame’s PTS as lastPTS
+    m_lastPTS = firstFrame->pts();
+
+    // Upload initial frames to buffer
     emit requestUpload(firstFrame);
 }
 
@@ -73,8 +77,16 @@ void FrameController::onTimerTick() {
     emit requestRender();
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
-    // Emit current PTS to VideoController
-    emit currentPTS(headFrame->pts(), m_index);
+
+    // Calculate delta time for next sleep
+    int64_t currentPTS = headFrame->pts();
+    int64_t deltaPTS = currentPTS - m_lastPTS;
+    int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
+    
+    // send delta to VideoController
+    emit currentDelta(deltaMs, m_index);
+
+    m_lastPTS = currentPTS;
 }
 
 // Handle frame decoding error and increment Tail

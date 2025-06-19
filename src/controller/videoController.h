@@ -19,7 +19,7 @@ class VideoController : public QObject {
     Q_OBJECT
 
 public:
-    VideoController(QObject *parent, PlaybackWorker* playbackWorker);
+    VideoController(QObject *parent, std::shared_ptr<PlaybackWorker> playbackWorker);
     ~VideoController();
 
     void addFrameController(FrameController* controller);

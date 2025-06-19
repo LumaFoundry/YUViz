@@ -1,12 +1,11 @@
 #include "videoController.h"
 
-VideoController::VideoController(QObject *parent, PlaybackWorker* playbackWorker)
+VideoController::VideoController(QObject *parent, std::shared_ptr<PlaybackWorker> playbackWorker)
     : QObject(parent),
-    m_playbackWorker(std::shared_ptr<PlaybackWorker>(playbackWorker)),
+    m_playbackWorker(playbackWorker),
     frame_controllers_({})
 {
     // Connections will be established when adding frame controllers
-    connect(m_playbackWorker.get(), &PlaybackWorker::scheduleNext, this, &VideoController::synchroniseFC, Qt::QueuedConnection);
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
 }
 
@@ -16,6 +15,8 @@ VideoController::~VideoController() {
 
 void VideoController::addFrameController(FrameController* frame_controller) {
     frame_controllers_.push_back(frame_controller);
+    // Connect each FC's signal to VC's slot
+    connect(frame_controller, &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::QueuedConnection);
 }
 
 std::vector<FrameController*> VideoController::getFrameControllers() {

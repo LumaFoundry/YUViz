@@ -24,7 +24,7 @@ public:
     // Start decoder, renderer and timer threads
     void start();
 
-    int m_index; // Index of video being read in, 0-based
+    int m_index; // Index of current FC, for VC orchestration
 
 public slots:
     // Receive signals from decoder and renderer
@@ -38,7 +38,7 @@ signals:
     void requestDecode(FrameData* frame);
     void requestUpload(FrameData* frame);
     void requestRender();
-    void currentPTS(int64_t pts, int index);
+    void currentDelta(int64_t delta, int index);
 
 private:
 
@@ -57,5 +57,8 @@ private:
     // Thread for reading / writing frames object
     QThread m_renderThread;
     QThread m_decodeThread;
+
+    // Last PTS of the frame rendered
+    int64_t m_lastPTS = -1; 
 
 };

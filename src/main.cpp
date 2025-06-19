@@ -29,8 +29,8 @@ int main(int argc, char *argv[]) {
         parser.showHelp(-1);
     }
 
-    std::shared_ptr<PlaybackWorker> playbackWorker = std::make_shared<PlaybackWorker>();
-    VideoController videoController(nullptr, playbackWorker.get());
+    auto playbackWorker = std::make_shared<PlaybackWorker>();
+    VideoController videoController(nullptr, playbackWorker);
 
     int numVideos = args.size() / 3;
     
