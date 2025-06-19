@@ -6,21 +6,25 @@ VideoWindow::VideoWindow(QObject* parent,
     QObject(parent), 
     m_window(new QWindow())
 {
-    switch (impl)
-    {
-    case QRhi::Null:
-        break;
-    case QRhi::Vulkan:
-        break;
-    case QRhi::OpenGLES2:
-        break;
-    case QRhi::D3D11:
-        break;
-    case QRhi::D3D12:
-        break;
-    case QRhi::Metal:
-        m_window->setSurfaceType(QSurface::MetalSurface);
-        break;
+    switch (impl) {
+        // 
+        case QRhi::Null:
+            break;
+        case QRhi::OpenGLES2:
+            m_window->setSurfaceType(QSurface::OpenGLSurface);
+            break;
+        case QRhi::Vulkan:
+            m_window->setSurfaceType(QSurface::VulkanSurface);
+            break;
+        case QRhi::D3D11:
+            m_window->setSurfaceType(QSurface::Direct3DSurface);
+            break;
+        case QRhi::D3D12:
+            m_window->setSurfaceType(QSurface::Direct3DSurface);
+            break;
+        case QRhi::Metal:
+            m_window->setSurfaceType(QSurface::MetalSurface);
+            break;
     }
 
     connect(m_window, &QWindow::widthChanged, this, [this](int w){
