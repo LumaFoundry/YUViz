@@ -29,6 +29,7 @@ public slots:
     void onTimerTick();
     void onFrameDecoded(bool success);
     void onFrameUploaded(bool success);
+    void onFrameRendered(bool success);
     void onRenderError();
    
 signals:

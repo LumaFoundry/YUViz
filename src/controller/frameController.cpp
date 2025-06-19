@@ -25,8 +25,9 @@ FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRe
     connect(this, &FrameController::requestUpload, m_Renderer.get(), &VideoRenderer::uploadFrame, Qt::QueuedConnection);
     connect(m_Renderer.get(), &VideoRenderer::frameUploaded, this, &FrameController::onFrameUploaded, Qt::QueuedConnection);
 
-    // Request for rendering frames
+    // Request & Receive for rendering frames
     connect(this, &FrameController::requestRender, m_Renderer.get(), &VideoRenderer::renderFrame, Qt::QueuedConnection);
+    connect(m_Renderer.get(), &VideoRenderer::frameRendered, this, &FrameController::onFrameRendered, Qt::QueuedConnection);
     // Error handling for renderer
     connect(m_Renderer.get(), &VideoRenderer::errorOccurred, this, &FrameController::onRenderError, Qt::QueuedConnection);
 
@@ -67,10 +68,8 @@ void FrameController::start(){
 void FrameController::onTimerTick() {
 
     FrameData* headFrame = m_frameQueue.getHeadFrame();
-    // request render frames uploaded from previous tick
+    // request render frames uploaded from previous tick (and request upload next frame)
     emit requestRender();
-    // request to upload current head frame
-    emit requestUpload(headFrame);
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
     // Emit current PTS to VideoController
@@ -95,6 +94,17 @@ void FrameController::onFrameUploaded(bool success) {
     }else{
         // Increment head to indicate frame is ready for rendering
         m_frameQueue.incrementHead();
+    }
+}
+
+
+void FrameController::onFrameRendered(bool success) {
+    if (!success) {
+        // TODO: Handle rendering error
+        ErrorReporter::instance().report("Frame rendering error occurred", LogLevel::Error);
+    }else{
+        // Increment head to indicate frame is ready for rendering
+        emit requestUpload(m_frameQueue.getHeadFrame());
     }
 }
 
