@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     if (cmdLineParser.isSet(mtlOption))
         graphicsApi = QRhi::Metal;
 
-    // 使用VideoWindow
+    // use VideoWindow
     VideoWindow videoWin(nullptr, graphicsApi);
     QWindow* window = videoWin.window();
     window->setTitle("videoplayer");
