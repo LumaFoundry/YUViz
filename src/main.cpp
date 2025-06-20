@@ -14,7 +14,7 @@
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
 
-// Code for argument parsing and selection of graphics API taken
+    // Code for argument parsing and selection of graphics API taken
     // from qtbase/examples/gui/rhiwindow/
     QRhi::Implementation graphicsApi;
 
@@ -142,15 +142,28 @@ int main(int argc, char *argv[]) {
 
     // Instantiate and initialize VideoRenderer
     VideoRenderer *renderer = new VideoRenderer(&window, metaPtr);
-#if defined(Q_OS_MACOS)
-    renderer->initialize(QRhi::Metal);
-#elif defined(Q_OS_WIN)
-    renderer->initialize(QRhi::D3D11);
-#elif defined(Q_OS_LINUX)
-    renderer->initialize(QRhi::Vulkan);
-#else
-    renderer->initialize(QRhi::OpenGLES2);
-#endif
+
+    switch(graphicsApi) {
+        case QRhi::Null:
+            renderer->initialize(QRhi::Null);
+            break;
+        case QRhi::OpenGLES2:
+            renderer->initialize(QRhi::OpenGLES2);
+            break;
+        case QRhi::Vulkan:
+            renderer->initialize(QRhi::Vulkan);
+            break;
+        case QRhi::D3D11:
+            renderer->initialize(QRhi::D3D11);
+            break;
+        case QRhi::D3D12:
+            renderer->initialize(QRhi::D3D12);
+            break;
+        case QRhi::Metal:
+            renderer->initialize(QRhi::Metal);
+            break;
+    }
+
     // Upload the first frame
     renderer->uploadFrame(data);
 
