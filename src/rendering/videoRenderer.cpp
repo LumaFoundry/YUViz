@@ -13,54 +13,56 @@ VideoRenderer::VideoRenderer(QWindow* window,
 VideoRenderer::~VideoRenderer() = default;
 
 
-void VideoRenderer::initialize(QRhi::Implementation impl)  {
-    switch (impl) {
+void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
+    switch (graphicsApi) {
         case QRhi::Null: {
             QRhiNullInitParams params;
             m_rhi.reset(QRhi::create(QRhi::Null, &params));
             break;
         }
 
-    #if QT_CONFIG(opengl)
         case QRhi::OpenGLES2: {
+        #if QT_CONFIG(opengl)
             QRhiGles2InitParams glParams;
             glParams.window = m_window;
             m_rhi.reset(QRhi::create(QRhi::OpenGLES2, &glParams));
+        #endif
             break;
         }
-    #endif
 
-    #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
         case QRhi::Vulkan: {
+        #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
             QRhiVulkanInitParams vulkanParams;
             vulkanParams.inst = m_window->vulkanInstance();
             vulkanParams.window = m_window;
             m_rhi.reset(QRhi::create(QRhi::Vulkan, &vulkanParams));
+        #endif
             break;
         }
-    #endif
 
-    #if defined(Q_OS_WIN)
         case QRhi::D3D11: {
+        #if defined(Q_OS_WIN)
             QRhiD3D11InitParams d3dParams;
             m_rhi.reset(QRhi::create(QRhi::D3D11, &d3dParams));
+        #endif
             break;
         }
         
         case QRhi::D3D12: {
+        #if defined(Q_OS_WIN)
             QRhiD3D12InitParams d3dParams;
             m_rhi.reset(QRhi::create(QRhi::D3D12, &d3dParams));
             break;
+        #endif
         }
-    #endif
 
-    #if QT_CONFIG(metal)
         case QRhi::Metal: {
+        #if QT_CONFIG(metal)
             QRhiMetalInitParams params;
             m_rhi.reset(QRhi::create(QRhi::Metal, &params));
             break;
+        #endif
         }
-    #endif
     }
 
     if (m_rhi) {
