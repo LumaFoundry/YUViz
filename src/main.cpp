@@ -145,26 +145,7 @@ int main(int argc, char *argv[]) {
     // Instantiate and initialize VideoRenderer
     VideoRenderer *renderer = new VideoRenderer(window, metaPtr);
 
-    switch(graphicsApi) {
-        case QRhi::Null:
-            renderer->initialize(QRhi::Null);
-            break;
-        case QRhi::OpenGLES2:
-            renderer->initialize(QRhi::OpenGLES2);
-            break;
-        case QRhi::Vulkan:
-            renderer->initialize(QRhi::Vulkan);
-            break;
-        case QRhi::D3D11:
-            renderer->initialize(QRhi::D3D11);
-            break;
-        case QRhi::D3D12:
-            renderer->initialize(QRhi::D3D12);
-            break;
-        case QRhi::Metal:
-            renderer->initialize(QRhi::Metal);
-            break;
-    }
+    renderer->initialize(graphicsApi);
 
     // Upload the first frame
     renderer->uploadFrame(data);
