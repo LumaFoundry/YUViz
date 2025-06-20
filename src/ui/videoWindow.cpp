@@ -1,31 +1,35 @@
 #include "videoWindow.h"
+#include "mywindow.h"
 #include <QSurface>
+#include <QEvent>
+#include <QWheelEvent>
+#include <QMouseEvent>
+#include <QDebug>
 
-VideoWindow::VideoWindow(QObject* parent,
-                         QRhi::Implementation impl):
-    QObject(parent), 
-    m_window(new QWindow())
+VideoWindow::VideoWindow(QObject* parent, QRhi::Implementation impl)
+    : QObject(parent)
 {
-    switch (impl) {
-        // 
-        case QRhi::Null:
-            break;
-        case QRhi::OpenGLES2:
-            m_window->setSurfaceType(QSurface::OpenGLSurface);
-            break;
-        case QRhi::Vulkan:
-            m_window->setSurfaceType(QSurface::VulkanSurface);
-            break;
-        case QRhi::D3D11:
-            m_window->setSurfaceType(QSurface::Direct3DSurface);
-            break;
-        case QRhi::D3D12:
-            m_window->setSurfaceType(QSurface::Direct3DSurface);
-            break;
-        case QRhi::Metal:
-            m_window->setSurfaceType(QSurface::MetalSurface);
-            break;
+    m_window = new MyWindow();
+#if defined(Q_OS_MACOS)
+    m_window->setSurfaceType(QSurface::MetalSurface);
+#elif defined(Q_OS_WIN)
+    m_window->setSurfaceType(QSurface::Direct3DSurface);
+#elif defined(Q_OS_LINUX)
+    QVulkanInstance* vulkanInst = new QVulkanInstance(this);
+    vulkanInst->setLayers({ "VK_LAYER_KHRONOS_validation" });
+    vulkanInst->setExtensions(QRhiVulkanInitParams::preferredInstanceExtensions());
+    m_window->setSurfaceType(QSurface::VulkanSurface);
+    if (!vulkanInst->create()) {
+        qWarning("Failed to create Vulkan instance, switching to OpenGL");
+        m_window->setSurfaceType(QSurface::OpenGLSurface);
+    } else {
+        m_window->setVulkanInstance(vulkanInst);
     }
+#else
+    m_window->setSurfaceType(QSurface::OpenGLSurface);
+#endif
+    m_window->setVisibility(QWindow::Windowed);
+    m_window->requestActivate();
 
     connect(m_window, &QWindow::widthChanged, this, [this](int w){
         emit resized();

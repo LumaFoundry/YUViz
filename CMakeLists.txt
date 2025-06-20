@@ -35,6 +35,8 @@ set(SRC
   src/frames/frameQueue.cpp
   src/frames/frameData.cpp
   src/rendering/videoRenderer.cpp
+  src/ui/videoWindow.cpp
+  src/ui/mywindow.cpp
 )
 
 add_executable(videoplayer ${SRC})

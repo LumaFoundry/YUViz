@@ -10,6 +10,7 @@
 #include "frames/frameQueue.h"
 #include "frames/frameMeta.h"
 #include "rendering/videoRenderer.h"
+#include "ui/videoWindow.h"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
@@ -58,31 +59,12 @@ int main(int argc, char *argv[]) {
     if (cmdLineParser.isSet(mtlOption))
         graphicsApi = QRhi::Metal;
 
-    // The below window code for surface type selection is already implemented
-    // in the VideoWindow class, and is better implemented there.
-    // TODO: Refactor to use VideoWindow class instead of QWindow directly.
-    QWindow window;
-    #if defined(Q_OS_MACOS)
-        window.setSurfaceType(QSurface::MetalSurface);
-    #elif defined(Q_OS_WIN)
-        window.setSurfaceType(QSurface::Direct3DSurface);
-    #elif defined(Q_OS_LINUX)
-        QVulkanInstance vulkanInst;
-        vulkanInst.setLayers({ "VK_LAYER_KHRONOS_validation" });
-        vulkanInst.setExtensions(QRhiVulkanInitParams::preferredInstanceExtensions());
-        window.setSurfaceType(QSurface::VulkanSurface);
-        if (!vulkanInst.create()) {
-            qWarning("Failed to create Vulkan instance, switching to OpenGL");
-            window.setSurfaceType(QSurface::OpenGLSurface);
-        }
-        window.setVulkanInstance(&vulkanInst);
-    #else
-        window.setSurfaceType(QSurface::OpenGLSurface);
-    #endif
-
-    window.setTitle("videoplayer");
-    window.resize(900, 600);
-    window.show();
+    // 使用VideoWindow
+    VideoWindow videoWin(nullptr, graphicsApi);
+    QWindow* window = videoWin.window();
+    window->setTitle("videoplayer");
+    window->resize(900, 600);
+    window->show();
 
     // --- Frame generation ---
     FrameMeta meta;
@@ -141,7 +123,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Instantiate and initialize VideoRenderer
-    VideoRenderer *renderer = new VideoRenderer(&window, metaPtr);
+    VideoRenderer *renderer = new VideoRenderer(window, metaPtr);
 
     switch(graphicsApi) {
         case QRhi::Null:
@@ -167,7 +149,7 @@ int main(int argc, char *argv[]) {
     // Upload the first frame
     renderer->uploadFrame(data);
 
-    QTimer *t = new QTimer(&window);
+    QTimer *t = new QTimer(window);
     t->setInterval(0);
     QObject::connect(t, &QTimer::timeout, [&](){
         renderer->renderFrame();
