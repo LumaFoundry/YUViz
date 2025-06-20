@@ -21,8 +21,6 @@ VideoWindow::VideoWindow(QObject* parent, QRhi::Implementation graphicsApi)
                 m_window->setSurfaceType(QSurface::VulkanSurface);
                 break;
             case QRhi::D3D11:
-                m_window->setSurfaceType(QSurface::Direct3DSurface);
-                break;
             case QRhi::D3D12:
                 m_window->setSurfaceType(QSurface::Direct3DSurface);
                 break;

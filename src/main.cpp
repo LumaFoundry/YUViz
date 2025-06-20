@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
     graphicsApi = QRhi::D3D11;
 #elif QT_CONFIG(metal)
     graphicsApi = QRhi::Metal;
-#elif QT_CONFIG(vulkan)
+#elif QT_CONFIG(vulkan) && defined(USE_VULKAN)
     graphicsApi = QRhi::Vulkan;
 #else
     graphicsApi = QRhi::OpenGLES2;
@@ -59,9 +59,29 @@ int main(int argc, char *argv[]) {
     if (cmdLineParser.isSet(mtlOption))
         graphicsApi = QRhi::Metal;
 
+#if QT_CONFIG(vulkan) && defined(USE_VULKAN)
+    QVulkanInstance vulkanInst;
+    if (graphicsApi == QRhi::Vulkan) {
+        // possibly remove once bugs are cleared out
+        vulkanInst.setLayers({ "VK_LAYER_KHRONOS_validation" });
+        vulkanInst.setExtensions(QRhiVulkanInitParams::preferredInstanceExtensions());
+        if (!vulkanInst.create()) {
+            qWarning() << "Failed to create Vulkan instance";
+            return -1;
+        }
+    }
+#endif
+
     // use VideoWindow
     VideoWindow videoWin(nullptr, graphicsApi);
     QWindow* window = videoWin.window();
+
+#if QT_CONFIG(vulkan) && defined(USE_VULKAN)
+    if (graphicsApi == QRhi::Vulkan) {
+        window->setVulkanInstance(&vulkanInst);
+    }
+#endif
+
     window->setTitle("videoplayer");
     window->resize(900, 600);
     window->show();
