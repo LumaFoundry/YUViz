@@ -4,11 +4,10 @@
 #include "mywindow.h"
 #include "decoder/videoDecoder.h"
 #include "controller/frameController.h"
+#include "controller/videoController.h"
 #include "rendering/videoRenderer.h"
 #include <QCommandLineParser>
 #include <QCommandLineOption>
-
-#include "videoController.h"
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
@@ -64,6 +63,11 @@ int main(int argc, char *argv[]) {
         auto frameController = new FrameController(nullptr, decoder, renderer, playbackWorker, i);
 
         videoController.addFrameController(frameController);
+    }
+
+    // Start all FC - IMPORTANT: This must be done after all FCs are added !
+    for (auto* fc : videoController.getFrameControllers()) {
+        fc->start();
     }
 
     // TODO: Create and show window

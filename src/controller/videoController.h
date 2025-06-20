@@ -26,7 +26,9 @@ public:
     std::vector<FrameController*> getFrameControllers();
 
 public slots:
+    void uploadReady(bool success);
     void synchroniseFC(int64_t pts, int index);
+
 
 signals:
     void get_next_tick(int64_t pts);
@@ -34,6 +36,9 @@ signals:
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;
     std::vector<FrameController*> frame_controllers_;
+
+    // Ensure all FC have uploaded initial frame before starting timer
+    int m_readyCount = 0;
 
 };
 

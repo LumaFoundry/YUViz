@@ -26,6 +26,10 @@ public:
 
     int m_index; // Index of current FC, for VC orchestration
 
+    // For VC to receive renderer signal
+    VideoRenderer* getRenderer() const { return m_Renderer.get(); }
+    
+
 public slots:
     // Receive signals from decoder and renderer
     void onTimerTick();
