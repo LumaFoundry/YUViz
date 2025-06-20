@@ -52,23 +52,37 @@ void FrameController::start(){
     m_decodeThread.start();
     m_renderThread.start();
 
-    // Fill queue with initial frames
-    for (int i = 0; i < m_frameQueue.getSize()/2; ++i) {
-        emit requestDecode(m_frameQueue.getTailFrame());
-    }
-
-    // Initial Frame
-    FrameData* firstFrame = m_frameQueue.getHeadFrame();
-
-    // Record initial frame’s PTS as lastPTS
-    m_lastPTS = firstFrame->pts();
-
-    // Upload initial frames to buffer
-    emit requestUpload(firstFrame);
+    // Temporary connection for prefill
+    connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onPrefillCompleted, Qt::QueuedConnection);
+    
+    // Initial request to decode
+    emit requestDecode(m_frameQueue.getTailFrame());
 }
 
 
 // Slots Definitions
+
+void FrameController::onPrefillCompleted(bool success) {
+    if (!success) {
+        ErrorReporter::instance().report("Prefill error occurred", LogLevel::Error);
+        return;
+    } else {
+        if (m_prefillDecodedCount < m_frameQueue.getSize()/2) {
+            emit requestDecode(m_frameQueue.getTailFrame());
+            m_prefillDecodedCount++;
+
+        } else {
+            // Disconnect prefill signal
+            disconnect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onPrefillCompleted);
+            // Get the first frame and set lastPTS
+            FrameData* firstFrame = m_frameQueue.getHeadFrame();
+            m_lastPTS = firstFrame->pts();
+
+            // Request upload for the first frame
+            emit requestUpload(firstFrame);
+        }
+    }
+}
 
 void FrameController::onTimerTick() {
 

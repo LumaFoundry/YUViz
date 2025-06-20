@@ -36,6 +36,7 @@ public slots:
     void onFrameDecoded(bool success);
     void onFrameUploaded(bool success);
     void onFrameRendered(bool success);
+    void onPrefillCompleted(bool success);
     void onRenderError();
    
 signals:
@@ -64,5 +65,8 @@ private:
 
     // Last PTS of the frame rendered
     int64_t m_lastPTS = -1; 
+
+    // Prefill count for preloading frames
+    int m_prefillDecodedCount = 0; 
 
 };

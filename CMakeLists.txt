@@ -37,6 +37,7 @@ set(SRC
   src/frames/frameData.cpp
   src/controller/frameController.cpp
   src/controller/playBackWorker.cpp
+  src/controller/videoController.cpp
   src/rendering/videoRenderer.cpp
   src/decoder/videoDecoder.cpp
   src/utils/errorReporter.cpp

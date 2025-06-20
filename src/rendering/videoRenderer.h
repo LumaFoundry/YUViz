@@ -28,8 +28,8 @@ public:
     QRhiTexture *createTexture();
 
 public slots:
-    void uploadFrame(FrameData* frame);
-    void renderFrame();
+    virtual void uploadFrame(FrameData* frame);
+    virtual void renderFrame();
 
 signals:
     void frameUploaded(bool success);
