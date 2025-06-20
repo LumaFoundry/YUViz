@@ -10,7 +10,7 @@ class VideoWindow : public QObject
 {
     Q_OBJECT
 public:
-    explicit VideoWindow(QObject* parent = nullptr, QRhi::Implementation impl = QRhi::OpenGLES2);
+    explicit VideoWindow(QObject* parent = nullptr, QRhi::Implementation graphicsApi = QRhi::Null);
     ~VideoWindow();
 
     QWindow* window() const;
