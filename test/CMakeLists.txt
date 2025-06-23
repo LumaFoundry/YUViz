@@ -38,6 +38,8 @@ set(SRC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/decoder/videoDecoder.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/videoRenderer.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/errorReporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/videoWindow.cpp
+
 )
 
 set(TEST_SOURCES

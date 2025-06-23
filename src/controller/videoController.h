@@ -15,11 +15,20 @@
 #include "utils/errorReporter.h"
 #include "controller/playBackWorker.h"
 
+struct VideoFileInfo {
+    QString filename;
+    int width;
+    int height;
+    QRhi::Implementation graphicsApi;
+};
+
 class VideoController : public QObject {
     Q_OBJECT
 
 public:
-    VideoController(QObject *parent, std::shared_ptr<PlaybackWorker> playbackWorker);
+    VideoController(QObject *parent, 
+                    std::shared_ptr<PlaybackWorker> playbackWorker,
+                    std::vector<VideoFileInfo> videoFiles = {});
     ~VideoController();
 
     void addFrameController(FrameController* controller);
@@ -35,8 +44,9 @@ signals:
 
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;
-    std::vector<FrameController*> frame_controllers_;
+    std::vector<std::unique_ptr<FrameController>> m_frameControllers;
 
+    std::vector<std::shared_ptr<VideoWindow>> m_windowPtrs;
     // Ensure all FC have uploaded initial frame before starting timer
     int m_readyCount = 0;
 

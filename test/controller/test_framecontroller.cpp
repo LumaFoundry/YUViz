@@ -74,8 +74,8 @@ void FrameControllerTest::testFCStart() {
     });
 
     std::cout << "Creating FrameController..." << std::endl;
-    FrameController* controller = new FrameController(nullptr, decoder.get(), renderer.get(), pbw, 0);
-    
+    FrameController* controller = new FrameController(nullptr, std::move(decoder), std::move(renderer), pbw, nullptr, 0);
+
     //TODO: For some reason signals sent from mock objects cannot trigger slots in FC
 
     // connect(decoder, &MockDecoder::frameLoaded, controller, &FrameController::onFrameDecoded);

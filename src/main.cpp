@@ -13,7 +13,6 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoWindow.h"
 
-
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     QRhi::Implementation graphicsApi;
@@ -67,12 +66,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    auto decoder = std::make_unique<VideoDecoder>();
-    decoder->setFileName(yuvFilePath.toStdString());
-    decoder->setDimensions(width, height);
-    decoder->openFile();
-    std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
-
     // Check if the user specified a graphics API
     if (parser.isSet(graphicsApiOption)) {
         const QString api = parser.value(graphicsApiOption).toLower();
@@ -101,54 +94,19 @@ int main(int argc, char *argv[]) {
     //     parser.showHelp(-1);
     // }
 
+    // TODO: This can be used to handle multiple videos later
+    VideoFileInfo videoFileInfo;
+    videoFileInfo.filename = yuvFilePath;
+    videoFileInfo.width = width;
+    videoFileInfo.height = height;
+    videoFileInfo.graphicsApi = graphicsApi;
+
+    std::vector<VideoFileInfo> videoFiles;
+    videoFiles.push_back(videoFileInfo);
+
+
     auto playbackWorker = std::make_shared<PlaybackWorker>();
-    VideoController videoController(nullptr, playbackWorker);
-
-    int numVideos = 1;
-    
-    // TODO: Not a good idea to read args
-    // TODO: Move creation of classes to videoController
-
-    for (int i = 0; i < numVideos; i++) {
-        int argIndex = i * 3;
-        
-        QString yuvFilePath = args[argIndex];
-        bool ok1, ok2;
-        int width = args[argIndex + 1].toInt(&ok1);
-        int height = args[argIndex + 2].toInt(&ok2);
-
-        if (!ok1 || !ok2) {
-            QMessageBox::critical(nullptr, "Error", 
-                QString("Invalid dimensions for video: %1").arg(yuvFilePath));
-            return -1;
-        }
-
-        if (!QFile::exists(yuvFilePath)) {
-            QMessageBox::critical(nullptr, "Error", 
-                QString("YUV file does not exist: %1").arg(yuvFilePath));
-            return -1;
-        }
-
-        auto decoder = std::make_unique<VideoDecoder>();
-        decoder->setFileName(yuvFilePath.toStdString());
-        decoder->setDimensions(width, height);
-        decoder->openFile();
-        std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
-
-    //     // TODO: Move window and renderer to videoController
-        auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
-        auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
-
-        auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
-
-        videoController.addFrameController(frameController.get());
-    }
-
-
-    // Start all FC - IMPORTANT: This must be done after all FCs are added !
-    for (auto* fc : videoController.getFrameControllers()) {
-        fc->start();
-    }
+    VideoController videoController(nullptr, playbackWorker, videoFiles);
 
     // TODO: Create and show window
 

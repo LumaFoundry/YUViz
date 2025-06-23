@@ -3,6 +3,7 @@
 #include <QThread>
 #include <QElapsedTimer>
 #include <QtConcurrent>
+#include <utility>
 #include "frames/frameQueue.h"
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
@@ -10,6 +11,7 @@
 #include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
 #include "controller/playBackWorker.h"
+#include "ui/videoWindow.h"
 
 // One controller per FrameQueue
 
@@ -18,7 +20,13 @@ class FrameController : public QObject{
 
 public:
 
-    FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker, int index);
+    FrameController(QObject *parent, 
+                    std::unique_ptr<VideoDecoder> decoder, 
+                    std::unique_ptr<VideoRenderer> renderer, 
+                    std::shared_ptr<PlaybackWorker> playbackWorker,
+                    std::shared_ptr<VideoWindow> window, 
+                    int index);
+                
     ~FrameController();
 
     // Start decoder, renderer and timer threads
@@ -28,7 +36,8 @@ public:
 
     // For VC to receive renderer signal
     VideoRenderer* getRenderer() const { return m_Renderer.get(); }
-    
+
+    std::shared_ptr<VideoWindow> getWindow() const { return m_window; } 
 
 public slots:
     // Receive signals from decoder and renderer
@@ -55,6 +64,9 @@ private:
 
     // PlaybackWorker to manage timer ticks
     std::shared_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
+
+    // For display
+    std::shared_ptr<VideoWindow> m_window = nullptr;
 
     // FrameQueue to manage frames
     FrameQueue m_frameQueue;

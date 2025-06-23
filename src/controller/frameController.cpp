@@ -1,12 +1,17 @@
 #include "frameController.h"
 
-#include <utility>
-
-FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRenderer* renderer, std::shared_ptr<PlaybackWorker> playbackWorker, int index)
+FrameController::FrameController(
+        QObject *parent, 
+        std::unique_ptr<VideoDecoder> decoder, 
+        std::unique_ptr<VideoRenderer> renderer, 
+        std::shared_ptr<PlaybackWorker> playbackWorker, 
+        std::shared_ptr<VideoWindow> window, 
+        int index)
     : QObject(parent),
-        m_Decoder(std::unique_ptr<VideoDecoder>(decoder)),
-        m_Renderer(std::unique_ptr<VideoRenderer>(renderer)),
+        m_Decoder(std::move(decoder)),
+        m_Renderer(std::move(renderer)),
         m_PlaybackWorker(playbackWorker),
+        m_window(window),
         m_frameQueue(m_Decoder->getMetaData()),
         m_index(index)
 {
