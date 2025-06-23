@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QCommandLineParser>
 #include <vector>
+#include <memory>
 #include <rhi/qrhi.h>
 #include "frames/frameQueue.h"
 #include "frames/frameMeta.h"
@@ -73,8 +74,7 @@ int main(int argc, char *argv[]) {
 #endif
 
     // use VideoWindow
-    VideoWindow videoWin(nullptr, graphicsApi);
-    QWindow* window = videoWin.window();
+    VideoWindow window = VideoWindow(nullptr, graphicsApi);
 
 #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
     if (graphicsApi == QRhi::Vulkan) {
@@ -82,9 +82,9 @@ int main(int argc, char *argv[]) {
     }
 #endif
 
-    window->setTitle("videoplayer");
-    window->resize(900, 600);
-    window->show();
+    window.setTitle("videoplayer");
+    window.resize(900, 600);
+    window.show();
 
     // --- Frame generation ---
     FrameMeta meta;
@@ -143,18 +143,18 @@ int main(int argc, char *argv[]) {
     }
 
     // Instantiate and initialize VideoRenderer
-    VideoRenderer *renderer = new VideoRenderer(window, metaPtr);
+    std::unique_ptr<VideoRenderer> renderer = std::make_unique<VideoRenderer>(&window, metaPtr);
 
     renderer->initialize(graphicsApi);
 
     // Upload the first frame
     renderer->uploadFrame(data);
 
-    QTimer *t = new QTimer(window);
+    QTimer *t = new QTimer(&window);
     t->setInterval(0);
     QObject::connect(t, &QTimer::timeout, [&](){
         renderer->renderFrame();
-        t->stop();
+        // t->stop();
     });
     t->start();
 
