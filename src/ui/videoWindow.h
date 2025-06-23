@@ -1,37 +1,26 @@
 #pragma once
-
-#include <QObject>
 #include <QWindow>
-#include <QPointF>
-#include <QRectF>
 #include <rhi/qrhi.h>
 
-class VideoWindow : public QObject
+class VideoWindow : public QWindow
 {
     Q_OBJECT
 public:
-    explicit VideoWindow(QObject* parent = nullptr, QRhi::Implementation graphicsApi = QRhi::Null);
-    ~VideoWindow();
+    explicit VideoWindow(QWindow* parent = nullptr, QRhi::Implementation graphicsApi = QRhi::Null);
+    ~VideoWindow() override = default;
 
-    QWindow* window() const;
-
-    double zoomFactor() const { return m_zoomFactor; }
-    QRectF selectionRect() const { return m_selectionRect; }
-
-    void show();
-    void resize(int width, int height);
-    void setTitle(const QString& title);
-
-signals:
-    void zoomChanged(double factor);
-    void selectionFinished(const QRectF& rect);
-    void resized();
+    double zoomFactor() const;
+    QRectF selectionRect() const;
 
 private:
-    QWindow* m_window;
     double m_zoomFactor = 1.0;
     bool m_selecting = false;
     QPointF m_selectStart;
     QPointF m_selectEnd;
     QRectF m_selectionRect;
+
+    void wheelEvent(QWheelEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseReleaseEvent(QMouseEvent* event) override;
 };
