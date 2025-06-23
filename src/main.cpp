@@ -16,9 +16,6 @@
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
-
-    // Code for argument parsing and selection of graphics API taken
-    // from qtbase/examples/gui/rhiwindow/
     QRhi::Implementation graphicsApi;
 
     // Use platform-specific defaults when no command-line arguments given.
