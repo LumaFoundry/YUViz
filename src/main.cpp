@@ -137,12 +137,12 @@ int main(int argc, char *argv[]) {
         std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
 
     //     // TODO: Move window and renderer to videoController
-    //     auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
-    //     auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
+        auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
+        auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
 
-    //     auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
+        auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
 
-    //     videoController.addFrameController(frameController.get());
+        videoController.addFrameController(frameController.get());
     }
 
 
