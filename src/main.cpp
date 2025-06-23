@@ -37,6 +37,7 @@ int main(int argc, char *argv[]) {
     parser.setApplicationDescription("Visual Inspection Tool");
     parser.addVersionOption();
 
+    // TODO: Change the graphics API selection option as one option using one flag(-g)
     parser.addHelpOption();
     QCommandLineOption nullOption({ "n", "null" }, QLatin1String("Null"));
     parser.addOption(nullOption);
@@ -58,51 +59,56 @@ int main(int argc, char *argv[]) {
 
     const QStringList args = parser.positionalArguments();
 
+    // TODO: Need a better safe guard to check arguments
     // Check if we have at least one video (needs 3 arguments per video)
-    if (args.size() < 4 || args.size() % 4 != 0) {
-        parser.showHelp(-1);
-    }
+    // if (args.size() < 3 || args.size() % 4 != 0) {
+    //     parser.showHelp(-1);
+    // }
 
     auto playbackWorker = std::make_shared<PlaybackWorker>();
     VideoController videoController(nullptr, playbackWorker);
 
-    int numVideos = (args.size() - 1) / 3;
+    int numVideos = 1;
     
     // TODO: Not a good idea to read args
-    for (int i = 0; i < numVideos; i++) {
-        int argIndex = i * 3;
+    // TODO: Use flags to take argument inputs from command line (-f for file, -w for width, -h for height)
+    // TODO: Move creation of classes to videoController
+
+    // for (int i = 0; i < numVideos; i++) {
+    //     int argIndex = i * 3;
         
-        QString yuvFilePath = args[argIndex];
-        bool ok1, ok2;
-        int width = args[argIndex + 1].toInt(&ok1);
-        int height = args[argIndex + 2].toInt(&ok2);
+    //     QString yuvFilePath = args[argIndex];
+    //     bool ok1, ok2;
+    //     int width = args[argIndex + 1].toInt(&ok1);
+    //     int height = args[argIndex + 2].toInt(&ok2);
 
-        if (!ok1 || !ok2) {
-            QMessageBox::critical(nullptr, "Error", 
-                QString("Invalid dimensions for video: %1").arg(yuvFilePath));
-            return -1;
-        }
+    //     if (!ok1 || !ok2) {
+    //         QMessageBox::critical(nullptr, "Error", 
+    //             QString("Invalid dimensions for video: %1").arg(yuvFilePath));
+    //         return -1;
+    //     }
 
-        if (!QFile::exists(yuvFilePath)) {
-            QMessageBox::critical(nullptr, "Error", 
-                QString("YUV file does not exist: %1").arg(yuvFilePath));
-            return -1;
-        }
+    //     if (!QFile::exists(yuvFilePath)) {
+    //         QMessageBox::critical(nullptr, "Error", 
+    //             QString("YUV file does not exist: %1").arg(yuvFilePath));
+    //         return -1;
+    //     }
 
-        auto decoder = std::make_unique<VideoDecoder>();
-        decoder->setFileName(yuvFilePath.toStdString());
-        decoder->setDimensions(width, height);
-        decoder->openFile();
-        std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
+    //     auto decoder = std::make_unique<VideoDecoder>();
+    //     decoder->setFileName(yuvFilePath.toStdString());
+    //     decoder->setDimensions(width, height);
+    //     decoder->openFile();
+    //     std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
 
-        // TODO: Move window and renderer to videoController
-        auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
-        auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
+    //     // TODO: Move window and renderer to videoController
+    //     auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
+    //     auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
 
-        auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
+    //     auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
 
-        videoController.addFrameController(frameController.get());
-    }
+    //     videoController.addFrameController(frameController.get());
+    // }
+
 
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto* fc : videoController.getFrameControllers()) {
