@@ -36,26 +36,38 @@ int main(int argc, char *argv[]) {
 
     parser.setApplicationDescription("Visual Inspection Tool");
     parser.addVersionOption();
-
-    // TODO: Change the graphics API selection option as one option using one flag(-g)
     parser.addHelpOption();
-    QCommandLineOption nullOption({ "n", "null" }, QLatin1String("Null"));
-    parser.addOption(nullOption);
-    QCommandLineOption glOption({ "g", "opengl" }, QLatin1String("OpenGL"));
-    parser.addOption(glOption);
-    QCommandLineOption vkOption({ "v", "vulkan" }, QLatin1String("Vulkan"));
-    parser.addOption(vkOption);
-    QCommandLineOption d3d11Option({ "d", "d3d11" }, QLatin1String("Direct3D 11"));
-    parser.addOption(d3d11Option);
-    QCommandLineOption d3d12Option({ "D", "d3d12" }, QLatin1String("Direct3D 12"));
-    parser.addOption(d3d12Option);
-    QCommandLineOption mtlOption({ "m", "metal" }, QLatin1String("Metal"));
-    parser.addOption(mtlOption);
+
+    QCommandLineOption graphicsApiOption(
+        QStringList() << "g" << "graphics",
+        QLatin1String("Select the graphics API to use. Supported values: opengl, vulkan, d3d11, d3d12, metal, null."),
+        QLatin1String("api"));
+    parser.addOption(graphicsApiOption);
 
     parser.addPositionalArgument("video",
         "One or more videos with their width and height",
         "<video_name> <width> <height> [<video_name> <width> <height>...]");
     parser.process(app);
+
+    // Check if the user specified a graphics API
+    if (parser.isSet(graphicsApiOption)) {
+        const QString api = parser.value(graphicsApiOption).toLower();
+        if (api == QLatin1String("opengl")) {
+            graphicsApi = QRhi::OpenGLES2;
+        } else if (api == QLatin1String("vulkan")) {
+            graphicsApi = QRhi::Vulkan;
+        } else if (api == QLatin1String("d3d11")) {
+            graphicsApi = QRhi::D3D11;
+        } else if (api == QLatin1String("d3d12")) {
+            graphicsApi = QRhi::D3D12;
+        } else if (api == QLatin1String("metal")) {
+            graphicsApi = QRhi::Metal;
+        } else if (api == QLatin1String("null")) {
+            graphicsApi = QRhi::Null;
+        } else {
+            qWarning("Unknown graphics API '%s' specified. Falling back to the default.", qPrintable(api));
+        }
+    }
 
     const QStringList args = parser.positionalArguments();
 
