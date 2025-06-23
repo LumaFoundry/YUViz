@@ -7,7 +7,6 @@
 #include <QCommandLineParser>
 #include <QCommandLineOption>
 #include <memory>
-#include "mywindow.h"
 #include "decoder/videoDecoder.h"
 #include "controller/frameController.h"
 #include "controller/videoController.h"

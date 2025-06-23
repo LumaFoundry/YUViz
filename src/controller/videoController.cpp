@@ -19,7 +19,7 @@ void VideoController::addFrameController(FrameController* frame_controller) {
     connect(frame_controller, &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::QueuedConnection);
 
     // Connect each FC's upload signal to VC's slot
-    connect(frame_controller->getRenderer(), &VideoRenderer::frameUploaded, this, &VideoController::uploadReady, Qt::QueuedConnection);
+    connect(frame_controller->getRenderer(), &VideoRenderer::batchUploaded, this, &VideoController::uploadReady, Qt::QueuedConnection);
 }
 
 std::vector<FrameController*> VideoController::getFrameControllers() {
