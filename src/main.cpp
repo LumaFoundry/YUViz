@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
 #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
     if (graphicsApi == QRhi::Vulkan) {
-        window->setVulkanInstance(&vulkanInst);
+        window.setVulkanInstance(&vulkanInst);
     }
 #endif
 
