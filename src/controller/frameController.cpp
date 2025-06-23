@@ -24,11 +24,11 @@ FrameController::FrameController(QObject *parent, VideoDecoder* decoder, VideoRe
 
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_Renderer.get(), &VideoRenderer::uploadFrame, Qt::QueuedConnection);
-    connect(m_Renderer.get(), &VideoRenderer::frameUploaded, this, &FrameController::onFrameUploaded, Qt::QueuedConnection);
+    connect(m_Renderer.get(), &VideoRenderer::batchUploaded, this, &FrameController::onFrameUploaded, Qt::QueuedConnection);
 
     // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_Renderer.get(), &VideoRenderer::renderFrame, Qt::QueuedConnection);
-    connect(m_Renderer.get(), &VideoRenderer::frameRendered, this, &FrameController::onFrameRendered, Qt::QueuedConnection);
+    connect(m_Renderer.get(), &VideoRenderer::gpuUploaded, this, &FrameController::onFrameRendered, Qt::QueuedConnection);
     
     // Error handling for renderer
     connect(m_Renderer.get(), &VideoRenderer::errorOccurred, this, &FrameController::onRenderError, Qt::QueuedConnection);

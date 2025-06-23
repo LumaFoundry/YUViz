@@ -28,6 +28,12 @@ pkg_check_modules(FFMPEG REQUIRED
   libavformat
 )
 
+find_package(Vulkan QUIET)
+
+if(Vulkan_FOUND)
+    add_compile_definitions(USE_VULKAN)
+endif()
+
 link_directories(${FFMPEG_LIBRARY_DIRS})
 
 set(SRC
@@ -41,6 +47,7 @@ set(SRC
   src/rendering/videoRenderer.cpp
   src/decoder/videoDecoder.cpp
   src/utils/errorReporter.cpp
+  src/ui/videoWindow.cpp
 )
 
 add_executable(videoplayer ${SRC})
@@ -55,6 +62,7 @@ target_include_directories(videoplayer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src/decoder
   ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
   ${CMAKE_CURRENT_SOURCE_DIR}/src/utils
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/ui
   ${FFMPEG_INCLUDE_DIRS}
 )
 
