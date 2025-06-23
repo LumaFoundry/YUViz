@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include "controller/frameController.h"
-#include "controller/playbackWorker.h"
+#include "controller/playBackWorker.h"
 #include "frames/frameMeta.h"
 #include "frames/frameQueue.h"
 #include "rendering/videoRenderer.h"
@@ -68,9 +68,9 @@ void FrameControllerTest::testFCStart() {
         });
         
     std::cout << "Creating mock renderer..." << std::endl;
-    auto renderer = std::make_unique<MockRenderer>();
+    auto renderer = std::make_unique<MockRenderer>(nullptr, nullptr, nullptr);
     EXPECT_CALL(*renderer, uploadFrame(_)).WillRepeatedly([&](FrameData* f){
-        emit renderer->frameUploaded(true);
+        emit renderer->batchUploaded(true);
     });
 
     std::cout << "Creating FrameController..." << std::endl;

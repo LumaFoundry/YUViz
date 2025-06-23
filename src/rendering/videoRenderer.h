@@ -2,15 +2,16 @@
 
 #include <memory>
 #include <QSize>
-#include <QWindow>
 #include "rhi/qrhi.h"
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
+#include "ui/videoWindow.h"
 
 class VideoRenderer : public QObject {
     Q_OBJECT
 public:
-    VideoRenderer(QWindow* window,
+    VideoRenderer(QObject* parent, 
+                  std::shared_ptr<VideoWindow> window,
                   std::shared_ptr<FrameMeta> metaPtr);
     ~VideoRenderer();
 
@@ -28,10 +29,7 @@ signals:
 
 
 private:
-    VideoRenderer(const VideoRenderer&) = delete;
-    VideoRenderer& operator=(const VideoRenderer&) = delete;
-
-    QWindow* m_window = nullptr;
+    std::shared_ptr<VideoWindow> m_window;
     std::shared_ptr<FrameMeta> m_metaPtr;
     std::unique_ptr<QRhi> m_rhi;
     std::unique_ptr<QRhiSwapChain> m_swapChain;

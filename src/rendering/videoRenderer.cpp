@@ -1,12 +1,15 @@
 #include <QFile>
 #include "videoRenderer.h"
+#include "ui/videoWindow.h"
+
 #if QT_CONFIG(vulkan)
 #  include <QVulkanInstance>
 #endif
 
-VideoRenderer::VideoRenderer(QWindow* window,
+VideoRenderer::VideoRenderer(QObject* parent, 
+                             std::shared_ptr<VideoWindow> window,
                              std::shared_ptr<FrameMeta> metaPtr): 
-    QObject(window),
+    QObject(parent),
     m_window(window),
     m_metaPtr(metaPtr) {}
 
@@ -24,17 +27,18 @@ void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
         case QRhi::OpenGLES2: {
         #if QT_CONFIG(opengl)
             QRhiGles2InitParams glParams;
-            glParams.window = m_window;
+            glParams.window = m_window.get();
             m_rhi.reset(QRhi::create(QRhi::OpenGLES2, &glParams));
         #endif
             break;
         }
 
+        // TODO: Fix Vulkan
         case QRhi::Vulkan: {
         #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
             QRhiVulkanInitParams vulkanParams;
             vulkanParams.inst = m_window->vulkanInstance();
-            vulkanParams.window = m_window;
+            vulkanParams.window = m_window.get();
             m_rhi.reset(QRhi::create(QRhi::Vulkan, &vulkanParams));
         #endif
             break;
@@ -75,7 +79,7 @@ void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
     }
 
     m_swapChain.reset(m_rhi->newSwapChain());
-    m_swapChain->setWindow(m_window);
+    m_swapChain->setWindow(m_window.get());
     m_renderPassDesc.reset(m_swapChain->newCompatibleRenderPassDescriptor());
 
     if (!m_renderPassDesc) {
@@ -92,8 +96,8 @@ void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
         return;
     }
 
-    QObject::connect(m_window, &QWindow::widthChanged, this, [this](int){ m_swapChain->createOrResize(); });
-    QObject::connect(m_window, &QWindow::heightChanged, this, [this](int){ m_swapChain->createOrResize(); });
+    QObject::connect(m_window.get(), &QWindow::widthChanged, this, [this](int){ m_swapChain->createOrResize(); });
+    QObject::connect(m_window.get(), &QWindow::heightChanged, this, [this](int){ m_swapChain->createOrResize(); });
 
     m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
     m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));

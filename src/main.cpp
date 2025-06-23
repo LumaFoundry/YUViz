@@ -1,4 +1,4 @@
-#include <QGuiApplication>
+#include <QApplication>
 #include <QWindow>
 #include <QSurface>
 #include <QTimer>
@@ -89,18 +89,19 @@ int main(int argc, char *argv[]) {
             return -1;
         }
 
-        auto decoder = std::make_unique(VideoDecoder());
+        auto decoder = std::make_unique<VideoDecoder>();
         decoder->setFileName(yuvFilePath.toStdString());
         decoder->setDimensions(width, height);
         decoder->openFile();
+        std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
 
         // TODO: Move window and renderer to videoController
-        auto window = std::make_unique(VideoWindow(nullptr, graphicsApi));
-        auto renderer = std::make_unique(VideoRenderer(&window, decoder->getMetaData()));
+        auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
+        auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
 
-        auto frameController = new FrameController(nullptr, decoder, renderer, playbackWorker, i);
+        auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
 
-        videoController.addFrameController(frameController);
+        videoController.addFrameController(frameController.get());
     }
 
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
