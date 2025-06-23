@@ -41,10 +41,37 @@ int main(int argc, char *argv[]) {
         QLatin1String("api"));
     parser.addOption(graphicsApiOption);
 
-    parser.addPositionalArgument("video",
-        "One or more videos with their width and height",
-        "<video_name> <width> <height> [<video_name> <width> <height>...]");
+    QCommandLineOption fileOption({"f", "file"}, QLatin1String("YUV file path"), QLatin1String("file"));
+    parser.addOption(fileOption);
+    QCommandLineOption resolutionOption({"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
+    parser.addOption(resolutionOption);
     parser.process(app);
+
+    if (!parser.isSet(fileOption) || !parser.isSet(resolutionOption)) {
+        QMessageBox::critical(nullptr, "Error", "You must specify -f <file> -r <width>x<height>");
+        return -1;
+    }
+
+    QString yuvFilePath = parser.value(fileOption);
+    bool ok1, ok2;
+    int width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
+    int height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
+
+    if (!ok1 || !ok2) {
+        QMessageBox::critical(nullptr, "Error", QString("Invalid dimensions for video: %1 x %2").arg(parser.value(resolutionOption).split("x")[0]).arg(parser.value(resolutionOption).split("x")[1]));
+        return -1;
+    }
+
+    if (!QFile::exists(yuvFilePath)) {
+        QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(yuvFilePath));
+        return -1;
+    }
+
+    auto decoder = std::make_unique<VideoDecoder>();
+    decoder->setFileName(yuvFilePath.toStdString());
+    decoder->setDimensions(width, height);
+    decoder->openFile();
+    std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
 
     // Check if the user specified a graphics API
     if (parser.isSet(graphicsApiOption)) {
@@ -83,31 +110,31 @@ int main(int argc, char *argv[]) {
     // TODO: Use flags to take argument inputs from command line (-f for file, -w for width, -h for height)
     // TODO: Move creation of classes to videoController
 
-    // for (int i = 0; i < numVideos; i++) {
-    //     int argIndex = i * 3;
+    for (int i = 0; i < numVideos; i++) {
+        int argIndex = i * 3;
         
-    //     QString yuvFilePath = args[argIndex];
-    //     bool ok1, ok2;
-    //     int width = args[argIndex + 1].toInt(&ok1);
-    //     int height = args[argIndex + 2].toInt(&ok2);
+        QString yuvFilePath = args[argIndex];
+        bool ok1, ok2;
+        int width = args[argIndex + 1].toInt(&ok1);
+        int height = args[argIndex + 2].toInt(&ok2);
 
-    //     if (!ok1 || !ok2) {
-    //         QMessageBox::critical(nullptr, "Error", 
-    //             QString("Invalid dimensions for video: %1").arg(yuvFilePath));
-    //         return -1;
-    //     }
+        if (!ok1 || !ok2) {
+            QMessageBox::critical(nullptr, "Error", 
+                QString("Invalid dimensions for video: %1").arg(yuvFilePath));
+            return -1;
+        }
 
-    //     if (!QFile::exists(yuvFilePath)) {
-    //         QMessageBox::critical(nullptr, "Error", 
-    //             QString("YUV file does not exist: %1").arg(yuvFilePath));
-    //         return -1;
-    //     }
+        if (!QFile::exists(yuvFilePath)) {
+            QMessageBox::critical(nullptr, "Error", 
+                QString("YUV file does not exist: %1").arg(yuvFilePath));
+            return -1;
+        }
 
-    //     auto decoder = std::make_unique<VideoDecoder>();
-    //     decoder->setFileName(yuvFilePath.toStdString());
-    //     decoder->setDimensions(width, height);
-    //     decoder->openFile();
-    //     std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
+        auto decoder = std::make_unique<VideoDecoder>();
+        decoder->setFileName(yuvFilePath.toStdString());
+        decoder->setDimensions(width, height);
+        decoder->openFile();
+        std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
 
     //     // TODO: Move window and renderer to videoController
     //     auto windowPtr = std::make_shared<VideoWindow>(nullptr, graphicsApi);
@@ -116,7 +143,7 @@ int main(int argc, char *argv[]) {
     //     auto frameController = std::make_unique<FrameController>(nullptr, decoder.get(), renderer.get(), playbackWorker, i);
 
     //     videoController.addFrameController(frameController.get());
-    // }
+    }
 
 
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
