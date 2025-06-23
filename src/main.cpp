@@ -107,7 +107,6 @@ int main(int argc, char *argv[]) {
     int numVideos = 1;
     
     // TODO: Not a good idea to read args
-    // TODO: Use flags to take argument inputs from command line (-f for file, -w for width, -h for height)
     // TODO: Move creation of classes to videoController
 
     for (int i = 0; i < numVideos; i++) {
