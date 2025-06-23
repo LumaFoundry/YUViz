@@ -31,7 +31,7 @@ pkg_check_modules(FFMPEG REQUIRED
 find_package(Vulkan QUIET)
 
 if(Vulkan_FOUND)
-    add_compile_definitions(USE_VULKAN)
+    add_compile_definitions(VULKAN_INSTALLED)
 endif()
 
 link_directories(${FFMPEG_LIBRARY_DIRS})

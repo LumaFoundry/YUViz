@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
     graphicsApi = QRhi::D3D11;
 #elif QT_CONFIG(metal)
     graphicsApi = QRhi::Metal;
-#elif QT_CONFIG(vulkan) && defined(USE_VULKAN)
+#elif QT_CONFIG(vulkan) && defined(VULKAN_INSTALLED)
     graphicsApi = QRhi::Vulkan;
 #else
     graphicsApi = QRhi::OpenGLES2;

@@ -35,7 +35,7 @@ void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
 
         // TODO: Fix Vulkan
         case QRhi::Vulkan: {
-        #if QT_CONFIG(vulkan) && defined(USE_VULKAN)
+        #if QT_CONFIG(vulkan) && defined(VULKAN_INSTALLED)
             QRhiVulkanInitParams vulkanParams;
             vulkanParams.inst = m_window->vulkanInstance();
             vulkanParams.window = m_window.get();
