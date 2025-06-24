@@ -14,7 +14,7 @@ VideoController::VideoController(QObject *parent,
     qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
     
     // Connect with PlaybackWorker
-    connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
+    connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::AutoConnection);
     qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
 
     // Creating FC for each video
@@ -42,10 +42,10 @@ VideoController::VideoController(QObject *parent,
         qDebug() << "Created FrameController for index" << fc_index;
 
         // Connect each FC's signal to VC's slot
-        connect(frameController.get(), &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::QueuedConnection);
+        connect(frameController.get(), &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::AutoConnection);
         qDebug() << "Connected FrameController::currentDelta to VideoController::synchroniseFC";
         // Connect each FC's upload signal to VC's slot
-        connect(frameController->getRenderer(), &VideoRenderer::batchUploaded, this, &VideoController::uploadReady, Qt::QueuedConnection);
+        connect(frameController->getRenderer(), &VideoRenderer::batchUploaded, this, &VideoController::uploadReady, Qt::AutoConnection);
         qDebug() << "Connected VideoRenderer::batchUploaded to VideoController::uploadReady";
         
         m_frameControllers.push_back(std::move(frameController));

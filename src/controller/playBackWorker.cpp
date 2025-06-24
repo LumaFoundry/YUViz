@@ -84,7 +84,8 @@ void PlaybackWorker::runPlaybackLoop() {
             m_cond.wait(&m_mutex);
         }
 
-        int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - m_timer.elapsed());
+        // int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - m_timer.elapsed());
+        int64_t waitTime = 40;
         locker.unlock();
         qDebug() << "PlaybackWorker sleeping for" << waitTime << "ms";
 
