@@ -7,16 +7,16 @@ VideoController::VideoController(QObject *parent,
         : QObject(parent),
         m_playbackWorker(playbackWorker)
 {
-    qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
+    // qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
     
     // Move playback worker to a dedicated thread
     m_playbackWorker->moveToThread(&m_timerThread);
-    qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
+    // qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
     
     // Connect with PlaybackWorker
-    connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::AutoConnection);
-    qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
-
+    connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
+    // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
+    
     // Creating FC for each video
     int fc_index = 0;
     for (const auto& videoFile : videoFiles) {
@@ -25,7 +25,7 @@ VideoController::VideoController(QObject *parent,
         decoder->setFileName(videoFile.filename.toStdString());
         decoder->setDimensions(videoFile.width, videoFile.height);
         decoder->openFile();
-        qDebug() << "Decoder opened file:" << videoFile.filename;
+        // qDebug() << "Decoder opened file:" << videoFile.filename;
         
         std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
         
@@ -59,6 +59,8 @@ VideoController::VideoController(QObject *parent,
     }
     qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
 
+    m_timerThread.start();
+
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto& fc : m_frameControllers) {
         qDebug() << "Starting FrameController with index: " << fc->m_index;
@@ -69,19 +71,27 @@ VideoController::VideoController(QObject *parent,
 
 VideoController::~VideoController() {
     qDebug() << "VideoController destructor called";
+
+    if (m_playbackWorker) {
+        m_playbackWorker->stop();
+    }
+
+    m_timerThread.quit();
+    m_timerThread.wait();
+
     m_playbackWorker.reset();
 }
 
 
+
 void VideoController::uploadReady(bool success) {
-    qDebug() << "uploadReady called with success =" << success;
+    // qDebug() << "uploadReady called with success =" << success;
     if (success) {
         m_readyCount++;
         // qDebug() << "Ready count =" << m_readyCount;
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
-            m_timerThread.start();
             m_playbackWorker->start();
         }
     } else {

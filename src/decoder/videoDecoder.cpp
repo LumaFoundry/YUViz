@@ -164,7 +164,7 @@ void VideoDecoder::openFile()
 void VideoDecoder::loadFrame(FrameData* frameData)
 {
 
-    qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
+    // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
     if (!formatContext || !codecContext || !frameData) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
@@ -357,7 +357,7 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     currentFrameIndex++;
     av_packet_free(&tempPacket);
 
-    qDebug() << "VideoDecoder:: emit frameLoaded";
+    // qDebug() << "VideoDecoder:: emit frameLoaded";
     emit frameLoaded(true);
     return;
 }

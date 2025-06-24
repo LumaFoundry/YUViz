@@ -2,18 +2,32 @@
 #include <QDebug>
 #include <QThread>
 
+// void PlaybackWorker::start() {
+//     QMetaObject::invokeMethod(this, [this]() {
+//         qDebug() << "PlaybackWorker::start invoked in thread" << QThread::currentThread();
+//         m_running = true;
+//         m_playing = true;
+//         qDebug() << "PlaybackWorker state: running=" << m_running << "playing=" << m_playing;
+//         m_timer.start();
+//         m_nextWakeMs = 0;
+//         qDebug() << "PlaybackWorker timer started and nextWakeMs =" << m_nextWakeMs;
+//         runPlaybackLoop();
+//     }, Qt::QueuedConnection);
+// }
+
 void PlaybackWorker::start() {
-    QMetaObject::invokeMethod(this, [this]() {
-        qDebug() << "PlaybackWorker::start invoked in thread" << QThread::currentThread();
-        m_running = true;
-        m_playing = true;
-        qDebug() << "PlaybackWorker state: running=" << m_running << "playing=" << m_playing;
-        m_timer.start();
-        m_nextWakeMs = 0;
-        qDebug() << "PlaybackWorker timer started and nextWakeMs =" << m_nextWakeMs;
-        runPlaybackLoop();
-    }, Qt::QueuedConnection);
+    qDebug() << "PlaybackWorker::start invoked in thread" << QThread::currentThread();
+    m_running = true;
+    m_playing = true;
+    m_timer.start();
+    m_nextWakeMs = 0;
+    
+    // Schedule runPlaybackLoop() to run once, asynchronously
+    QtConcurrent::run([this](){
+        runPlaybackLoop(); 
+    });
 }
+
 
 
 void PlaybackWorker::pause() {
@@ -79,7 +93,7 @@ void PlaybackWorker::runPlaybackLoop() {
     qDebug() << "PlaybackWorker::runPlaybackLoop entered";
     while (m_running) {
         QMutexLocker locker(&m_mutex);
-        qDebug() << "Playback loop: playing=" << m_playing << " singleStep=" << m_singleStep;
+        // qDebug() << "Playback loop: playing=" << m_playing << " singleStep=" << m_singleStep;
         while (!m_playing && !m_singleStep) {
             m_cond.wait(&m_mutex);
         }
@@ -87,13 +101,15 @@ void PlaybackWorker::runPlaybackLoop() {
         int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - m_timer.elapsed());
         // int64_t waitTime = 40;
         locker.unlock();
-        qDebug() << "PlaybackWorker sleeping for" << waitTime << "ms";
+        // qDebug() << "PlaybackWorker:: nextWake for" << m_nextWakeMs << "ms";
+        // qDebug() << "PlaybackWorker:: current elapsed time =" << m_timer.elapsed() << "ms";
+        // qDebug() << "PlaybackWorker:: sleeping for" << waitTime << "ms";
 
         QThread::msleep(waitTime);
 
         // Notify tick to main thread 
         emit tick();
-        qDebug() << "PlaybackWorker tick emitted";
+        // qDebug() << "PlaybackWorker tick emitted";
 
         locker.relock();
         if (m_singleStep) m_singleStep = false;
