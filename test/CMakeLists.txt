@@ -9,6 +9,7 @@ find_package(Qt6 REQUIRED COMPONENTS
   Concurrent
   Widgets
   Test
+  ShaderTools
 )
 
 find_package(PkgConfig REQUIRED)
@@ -59,6 +60,13 @@ foreach(test_file ${TEST_SOURCES})
         ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
     )
 
+    qt6_add_shaders(${test_name} videoplayer_shaders
+      PREFIX "/shaders"
+      FILES
+        src/shaders/vertex.vert
+        src/shaders/fragment.frag
+    )
+
     target_include_directories(${test_name} PRIVATE
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/mock
@@ -74,6 +82,7 @@ foreach(test_file ${TEST_SOURCES})
         Qt6::Widgets
         Qt6::Concurrent
         Qt6::Test
+        Qt6::ShaderTools
         GTest::gtest
         GTest::gmock
         ${FFMPEG_LIBRARIES}

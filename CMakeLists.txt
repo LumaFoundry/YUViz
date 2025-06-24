@@ -18,6 +18,7 @@ find_package(Qt6 REQUIRED COMPONENTS
   Quick
   Concurrent
   Widgets
+  ShaderTools
 )
 
 find_package(PkgConfig REQUIRED)
@@ -52,6 +53,13 @@ set(SRC
 
 add_executable(videoplayer ${SRC})
 
+qt6_add_shaders(videoplayer "videoplayer_shaders"
+  PREFIX "/shaders"
+  FILES
+    src/shaders/vertex.vert
+    src/shaders/fragment.frag
+)
+
 enable_testing()
 add_subdirectory(test)
 
@@ -75,6 +83,7 @@ target_link_libraries(videoplayer PRIVATE
   Qt6::GuiPrivate
   Qt6::Widgets
   Qt6::Concurrent
+  Qt6::ShaderTools
   ${FFMPEG_LIBRARIES}
 )
 
