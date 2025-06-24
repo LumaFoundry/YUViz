@@ -20,8 +20,11 @@ VideoController::VideoController(QObject *parent,
         std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
         
         auto windowPtr = std::make_shared<VideoWindow>(nullptr, videoFile.graphicsApi);
-
+        windowPtr->resize(900, 600);
+        windowPtr->show();
+        
         auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
+        renderer->initialize(videoFile.graphicsApi);
 
         auto frameController = std::make_unique<FrameController>(nullptr, std::move(decoder), std::move(renderer), playbackWorker, windowPtr, fc_index);
 
