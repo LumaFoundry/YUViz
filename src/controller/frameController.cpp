@@ -123,9 +123,6 @@ void FrameController::onFrameUploaded(bool success) {
     if (!success) {
         // TODO: Handle upload error
         ErrorReporter::instance().report("Frame upload error occurred", LogLevel::Error);
-    }else{
-        // Increment head to indicate frame is ready for rendering
-        m_frameQueue.incrementHead();
     }
 }
 
@@ -136,6 +133,8 @@ void FrameController::onFrameRendered(bool success) {
         ErrorReporter::instance().report("Frame rendering error occurred", LogLevel::Error);
     }else{
         // Increment head to indicate frame is ready for rendering
+        m_frameQueue.incrementHead();
+        // Request upload for the next frame
         emit requestUpload(m_frameQueue.getHeadFrame());
     }
 }

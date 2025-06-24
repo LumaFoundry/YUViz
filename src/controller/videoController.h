@@ -46,6 +46,8 @@ private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
 
+    QThread m_timerThread;
+
     std::vector<std::shared_ptr<VideoWindow>> m_windowPtrs;
     // Ensure all FC have uploaded initial frame before starting timer
     int m_readyCount = 0;

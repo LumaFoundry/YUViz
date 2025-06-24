@@ -6,6 +6,10 @@ VideoController::VideoController(QObject *parent,
         : QObject(parent),
         m_playbackWorker(playbackWorker)
 {
+    
+    // Move playback worker to a dedicated thread
+    m_playbackWorker->moveToThread(&m_timerThread);
+    
     // Connect with PlaybackWorker
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
 
@@ -22,7 +26,7 @@ VideoController::VideoController(QObject *parent,
         auto windowPtr = std::make_shared<VideoWindow>(nullptr, videoFile.graphicsApi);
         windowPtr->resize(900, 600);
         windowPtr->show();
-        
+
         auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
         renderer->initialize(videoFile.graphicsApi);
 
@@ -43,6 +47,7 @@ VideoController::VideoController(QObject *parent,
 
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto& fc : m_frameControllers) {
+        qDebug() << "Starting FrameController with index: " << fc->m_index;
         fc->start();
     }
 
@@ -58,6 +63,7 @@ void VideoController::uploadReady(bool success) {
         m_readyCount++;
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
+            qDebug() << "Starting timer";
             m_playbackWorker->start();
         }
     } else {
