@@ -64,6 +64,7 @@ void VideoController::uploadReady(bool success) {
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
+            m_timerThread.start();
             m_playbackWorker->start();
         }
     } else {

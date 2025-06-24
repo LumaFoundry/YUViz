@@ -226,6 +226,7 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
 
 
 void VideoRenderer::uploadFrame(FrameData* frame) {
+    qDebug() << "Renderer::Uploading frame with PTS:" << frame->pts();
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc;
@@ -252,11 +253,14 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
     }
     m_frameBatch->uploadTexture(m_vTex.get(), vDesc);
 
+    qDebug() << "Renderer::emit batchUploaded(true)";
     emit batchUploaded(true);
+    
 }
 
 
 void VideoRenderer::renderFrame() {
+    qDebug() << "Renderer::renderining frame";
     m_rhi->beginFrame(m_swapChain.get());
     QRhiCommandBuffer* cb = m_swapChain->currentFrameCommandBuffer();
 
@@ -274,6 +278,7 @@ void VideoRenderer::renderFrame() {
         cb->resourceUpdate(m_frameBatch);
         m_frameBatch = nullptr;
     }
+    qDebug() << "Renderer::emit gpuUploaded(true)";
     emit gpuUploaded(true);
 
     cb->beginPass(m_swapChain->currentFrameRenderTarget(),
@@ -310,4 +315,5 @@ void VideoRenderer::renderFrame() {
     cb->draw(4);
     cb->endPass();
     m_rhi->endFrame(m_swapChain.get());
+    qDebug() << "Renderer::frame rendered";
 }
