@@ -3,6 +3,7 @@
 #include <QSurface>
 #include <QTimer>
 #include <QFile>
+#include <QDebug>
 #include <QMessageBox>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
@@ -15,6 +16,7 @@
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
+    qDebug() << "Application starting with arguments:" << app.arguments();
     QRhi::Implementation graphicsApi;
 
     // Use platform-specific defaults when no command-line arguments given.
@@ -45,6 +47,8 @@ int main(int argc, char *argv[]) {
     QCommandLineOption resolutionOption({"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
     parser.process(app);
+    qDebug() << "Parsed command-line options. File:" << parser.value(fileOption)
+             << "Resolution:" << parser.value(resolutionOption);
 
     if (!parser.isSet(fileOption) || !parser.isSet(resolutionOption)) {
         QMessageBox::critical(nullptr, "Error", "You must specify -f <file> -r <width>x<height>");
@@ -55,13 +59,17 @@ int main(int argc, char *argv[]) {
     bool ok1, ok2;
     int width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
     int height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
+    qDebug() << "Video file path:" << yuvFilePath
+             << "Width:" << width << "Height:" << height;
 
     if (!ok1 || !ok2) {
+        qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
         QMessageBox::critical(nullptr, "Error", QString("Invalid dimensions for video: %1 x %2").arg(parser.value(resolutionOption).split("x")[0]).arg(parser.value(resolutionOption).split("x")[1]));
         return -1;
     }
 
     if (!QFile::exists(yuvFilePath)) {
+        qWarning() << "YUV file does not exist:" << yuvFilePath;
         QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(yuvFilePath));
         return -1;
     }
@@ -85,6 +93,7 @@ int main(int argc, char *argv[]) {
             qWarning("Unknown graphics API '%s' specified. Falling back to the default.", qPrintable(api));
         }
     }
+    qDebug() << "Using graphics API enum value:" << static_cast<int>(graphicsApi);
 
     const QStringList args = parser.positionalArguments();
 
@@ -103,10 +112,14 @@ int main(int argc, char *argv[]) {
 
     std::vector<VideoFileInfo> videoFiles;
     videoFiles.push_back(videoFileInfo);
+    qDebug() << "Number of video files to play:" << videoFiles.size();
 
-
+    qDebug() << "Creating PlaybackWorker";
     auto playbackWorker = std::make_shared<PlaybackWorker>();
+    qDebug() << "PlaybackWorker created successfully";
+    qDebug() << "Creating VideoController";
     VideoController videoController(nullptr, playbackWorker, videoFiles);
+    qDebug() << "VideoController created successfully";
 
     // TODO: Create and show window
 
