@@ -36,11 +36,11 @@ public:
 
 public slots:
     void uploadReady(bool success);
-    void synchroniseFC(int64_t pts, int index);
+    void synchroniseFC(int64_t delta, int index);
 
 
 signals:
-    void get_next_tick(int64_t pts);
+    void get_next_tick(int64_t delta);
 
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;

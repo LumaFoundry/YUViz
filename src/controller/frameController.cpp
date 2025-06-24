@@ -27,11 +27,11 @@ FrameController::FrameController(
     // qDebug() << "Moved renderer to thread" << &m_renderThread;
 
     // Request & Receive timer ticks and sleep for frame processing
-    connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::AutoConnection);
+    connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::QueuedConnection);
     qDebug() << "Connected PlaybackWorker::tick to FrameController::onTimerTick";
 
     // Request & Receive signals for decoding
-    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::AutoConnection);
+    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::QueuedConnection);
     qDebug() << "Connected requestDecode to VideoDecoder::loadFrame";
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::frameLoaded to FrameController::onFrameDecoded";
@@ -88,26 +88,26 @@ void FrameController::start(){
 // Slots Definitions
 
 void FrameController::onPrefillCompleted(bool success) {
-    qDebug() << "onPrefillCompleted called for index" << m_index << "success=" << success;
+    // qDebug() << "onPrefillCompleted called for index" << m_index << "success=" << success;
     if (!success) {
         qWarning() << "Prefill error occurred for index" << m_index;
         ErrorReporter::instance().report("Prefill error occurred", LogLevel::Error);
         return;
     } else {
         if (m_prefillDecodedCount < m_frameQueue.getSize()/2) {
-            qDebug() << "Prefill decode request count =" << m_prefillDecodedCount;
+            // qDebug() << "Prefill decode request count =" << m_prefillDecodedCount;
             emit requestDecode(m_frameQueue.getTailFrame());
             m_prefillDecodedCount++;
 
         } else {
             // Disconnect prefill signal
             disconnect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onPrefillCompleted);
-            qDebug() << "Prefill signal disconnected";
+            // qDebug() << "Prefill signal disconnected";
             // Get the first frame and set lastPTS
             FrameData* firstFrame = m_frameQueue.getHeadFrame();
             m_lastPTS = firstFrame->pts();
 
-            qDebug() << "Requesting upload for first frame PTS =" << m_lastPTS;
+            // qDebug() << "Requesting upload for first frame PTS =" << m_lastPTS;
             // Request upload for the first frame
             emit requestUpload(firstFrame);
         }
@@ -117,24 +117,12 @@ void FrameController::onPrefillCompleted(bool success) {
 void FrameController::onTimerTick() {
     qDebug() << "onTimerTick for index" << m_index;
 
-    FrameData* headFrame = m_frameQueue.getHeadFrame();
     // request render frames uploaded from previous tick (and request upload next frame)
     emit requestRender();
     // request to decode next tail frame
     emit requestDecode(m_frameQueue.getTailFrame());
 
     qDebug() << "Emitted requestRender and requestDecode";
-
-    // Calculate delta time for next sleep
-    int64_t currentPTS = headFrame->pts();
-    int64_t deltaPTS = currentPTS - m_lastPTS;
-    int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
-    
-    qDebug() << "Computed deltaMs =" << deltaMs;
-    // send delta to VideoController
-    emit currentDelta(deltaMs, m_index);
-
-    m_lastPTS = currentPTS;
 }
 
 // Handle frame decoding error and increment Tail
@@ -171,8 +159,21 @@ void FrameController::onFrameRendered(bool success) {
         // Increment head to indicate frame is ready for rendering
         m_frameQueue.incrementHead();
         qDebug() << "Head frame index incremented";
+
+        FrameData* headFrame = m_frameQueue.getHeadFrame();
+        // Calculate delta time for next sleep
+        int64_t currentPTS = headFrame->pts();
+        int64_t deltaPTS = currentPTS - m_lastPTS;
+        int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
+        
+        qDebug() << "FC:: Computed deltaMs =" << deltaMs;
+        // send delta to VideoController
+        emit currentDelta(deltaMs, m_index);
+
+        m_lastPTS = currentPTS;
+
         // Request upload for the next frame
-        qDebug() << "Requesting upload for next head frame";
+        qDebug() << "FC:: Requesting upload for next head frame";
         emit requestUpload(m_frameQueue.getHeadFrame());
     }
 }

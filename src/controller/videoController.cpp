@@ -77,7 +77,7 @@ void VideoController::uploadReady(bool success) {
     qDebug() << "uploadReady called with success =" << success;
     if (success) {
         m_readyCount++;
-        qDebug() << "Ready count =" << m_readyCount;
+        // qDebug() << "Ready count =" << m_readyCount;
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
@@ -91,7 +91,7 @@ void VideoController::uploadReady(bool success) {
 }
 
 
-void VideoController::synchroniseFC(int64_t pts, int index) {
-    qDebug() << "synchroniseFC called with pts =" << pts << " index =" << index;
-    emit get_next_tick(pts);
+void VideoController::synchroniseFC(int64_t delta, int index) {
+    qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
+    emit get_next_tick(delta);
 }
