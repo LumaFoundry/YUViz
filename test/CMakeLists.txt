@@ -63,8 +63,8 @@ foreach(test_file ${TEST_SOURCES})
     qt6_add_shaders(${test_name} videoplayer_shaders
       PREFIX "/shaders"
       FILES
-        src/shaders/vertex.vert
-        src/shaders/fragment.frag
+        ${CMAKE_SOURCE_DIR}/src/shaders/vertex.vert
+        ${CMAKE_SOURCE_DIR}/src/shaders/fragment.frag
     )
 
     target_include_directories(${test_name} PRIVATE
