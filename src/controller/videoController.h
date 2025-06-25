@@ -19,6 +19,7 @@ struct VideoFileInfo {
     QString filename;
     int width;
     int height;
+    double framerate;
     QRhi::Implementation graphicsApi;
 };
 

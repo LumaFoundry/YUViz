@@ -24,6 +24,7 @@ VideoController::VideoController(QObject *parent,
         auto decoder = std::make_unique<VideoDecoder>();
         decoder->setFileName(videoFile.filename.toStdString());
         decoder->setDimensions(videoFile.width, videoFile.height);
+        decoder->setFramerate(videoFile.framerate);
         decoder->openFile();
         // qDebug() << "Decoder opened file:" << videoFile.filename;
         

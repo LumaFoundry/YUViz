@@ -41,6 +41,7 @@ void VideoDecoder::setDimensions(int width, int height)
 void VideoDecoder::setFramerate(double framerate)
 {
     m_framerate = framerate;
+    av_dict_set(&inputOptions, "framerate", std::to_string(m_framerate).c_str(), 0);
 }
 
 void VideoDecoder::setFormat(AVPixelFormat format)

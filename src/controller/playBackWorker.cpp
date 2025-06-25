@@ -27,7 +27,11 @@ void PlaybackWorker::runPlaybackLoop() {
 
         qDebug() << "[loop] waiting for" << waitTime << "ms. elapsed=" << m_timer.elapsed();
 
-        m_cond.wait(&m_mutex, waitTime);
+        if (waitTime > 0) {
+            locker.unlock();
+            QThread::msleep(waitTime);  // More precise than QWaitCondition
+            locker.relock();
+        }
 
         if (!m_running) break;
 

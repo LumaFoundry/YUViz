@@ -30,11 +30,15 @@ int main(int argc, char *argv[]) {
     graphicsApi = QRhi::OpenGLES2;
 #endif
 
+    // Set QDebug output to be off by default
+    qSetMessagePattern("");
+
     QCommandLineParser parser;
 
     parser.setApplicationDescription("Visual Inspection Tool");
     parser.addVersionOption();
     parser.addHelpOption();
+    parser.addPositionalArgument("file", "File path");
 
     QCommandLineOption graphicsApiOption(
         QStringList() << "g" << "graphics",
@@ -42,25 +46,38 @@ int main(int argc, char *argv[]) {
         QLatin1String("api"));
     parser.addOption(graphicsApiOption);
 
-    QCommandLineOption fileOption({"f", "file"}, QLatin1String("YUV file path"), QLatin1String("file"));
-    parser.addOption(fileOption);
+    QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
+    parser.addOption(debugOption);
+    QCommandLineOption framerateOption({"f", "framerate"}, QLatin1String("Framerate"), QLatin1String("framerate"));
+    parser.addOption(framerateOption);
     QCommandLineOption resolutionOption({"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
     parser.process(app);
-    qDebug() << "Parsed command-line options. File:" << parser.value(fileOption)
-             << "Resolution:" << parser.value(resolutionOption);
 
-    if (!parser.isSet(fileOption) || !parser.isSet(resolutionOption)) {
-        QMessageBox::critical(nullptr, "Error", "You must specify -f <file> -r <width>x<height>");
+    const QStringList args = parser.positionalArguments();
+    if (args.isEmpty() || !parser.isSet(resolutionOption)) {
+        QMessageBox::critical(nullptr, "Error", "You must specify <file> -r <width>x<height>");
         return -1;
     }
 
-    QString yuvFilePath = parser.value(fileOption);
+    if (parser.isSet(debugOption)) {
+        qSetMessagePattern("[%{type}] %{message}");
+    }
+
+    QString filename = args.first();
+
+    qDebug() << "Parsed command-line options. File: " << parser.value(filename)
+             << "Resolution: " << parser.value(resolutionOption)
+             << "Framerate: " << parser.value(framerateOption);
+
+
     bool ok1, ok2;
     int width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
     int height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
-    qDebug() << "Video file path:" << yuvFilePath
+    qDebug() << "Video file path:" << filename
              << "Width:" << width << "Height:" << height;
+
+    double framerate = parser.value(framerateOption).toDouble();
 
     if (!ok1 || !ok2) {
         qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
@@ -68,9 +85,9 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    if (!QFile::exists(yuvFilePath)) {
-        qWarning() << "YUV file does not exist:" << yuvFilePath;
-        QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(yuvFilePath));
+    if (!QFile::exists(filename)) {
+        qWarning() << "YUV file does not exist:" << filename;
+        QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(filename));
         return -1;
     }
 
@@ -95,8 +112,6 @@ int main(int argc, char *argv[]) {
     }
     qDebug() << "Using graphics API enum value:" << static_cast<int>(graphicsApi);
 
-    const QStringList args = parser.positionalArguments();
-
     // TODO: Need a better safe guard to check arguments
     // Check if we have at least one video (needs 3 arguments per video)
     // if (args.size() < 3 || args.size() % 4 != 0) {
@@ -105,10 +120,11 @@ int main(int argc, char *argv[]) {
 
     // TODO: This can be used to handle multiple videos later
     VideoFileInfo videoFileInfo;
-    videoFileInfo.filename = yuvFilePath;
+    videoFileInfo.filename = filename;
     videoFileInfo.width = width;
     videoFileInfo.height = height;
     videoFileInfo.graphicsApi = graphicsApi;
+    videoFileInfo.framerate = framerate;
 
     std::vector<VideoFileInfo> videoFiles;
     videoFiles.push_back(videoFileInfo);
