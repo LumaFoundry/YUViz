@@ -16,7 +16,6 @@ void PlaybackWorker::start() {
     });
 }
 
-
 void PlaybackWorker::runPlaybackLoop() {
     qDebug() << "PlaybackWorker::runPlaybackLoop entered";
 

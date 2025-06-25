@@ -72,10 +72,6 @@ VideoController::VideoController(QObject *parent,
 VideoController::~VideoController() {
     qDebug() << "VideoController destructor called";
 
-    if (m_playbackWorker) {
-        m_playbackWorker->stop();
-    }
-
     m_timerThread.quit();
     m_timerThread.wait();
 

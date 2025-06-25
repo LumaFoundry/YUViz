@@ -17,10 +17,10 @@ public:
 public slots:
     void scheduleNext(int64_t deltaMs);
     void start();
-    void stop();
-    void pause();
-    void resume();
-    void step();
+    // void stop();
+    // void pause();
+    // void resume();
+    // void step();
 
 signals:
     void tick(); // tells FrameController to advance a frame
