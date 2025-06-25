@@ -27,11 +27,11 @@ FrameController::FrameController(
     // qDebug() << "Moved renderer to thread" << &m_renderThread;
 
     // Request & Receive timer ticks and sleep for frame processing
-    connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::QueuedConnection);
+    connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::AutoConnection);
     // qDebug() << "Connected PlaybackWorker::tick to FrameController::onTimerTick";
 
     // Request & Receive signals for decoding
-    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::QueuedConnection);
+    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::AutoConnection);
     // qDebug() << "Connected requestDecode to VideoDecoder::loadFrame";
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     // qDebug() << "Connected VideoDecoder::frameLoaded to FrameController::onFrameDecoded";

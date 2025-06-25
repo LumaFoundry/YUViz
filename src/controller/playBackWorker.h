@@ -17,6 +17,7 @@ public:
 public slots:
     void scheduleNext(int64_t deltaMs);
     void start();
+    void runPlaybackLoop();
     // void stop();
     // void pause();
     // void resume();
@@ -26,7 +27,6 @@ signals:
     void tick(); // tells FrameController to advance a frame
 
 private:
-    void runPlaybackLoop();
 
     QMutex m_mutex;
     QWaitCondition m_cond;

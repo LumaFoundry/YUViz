@@ -12,7 +12,7 @@ VideoController::VideoController(QObject *parent,
     // Move playback worker to a dedicated thread
     m_playbackWorker->moveToThread(&m_timerThread);
     // qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
-    
+    m_timerThread.start();
     // Connect with PlaybackWorker
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
     // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
@@ -60,8 +60,6 @@ VideoController::VideoController(QObject *parent,
     }
     qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
 
-    m_timerThread.start();
-
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto& fc : m_frameControllers) {
         qDebug() << "Starting FrameController with index: " << fc->m_index;
@@ -99,6 +97,6 @@ void VideoController::uploadReady(bool success) {
 
 
 void VideoController::synchroniseFC(int64_t delta, int index) {
-    qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
+    // qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
     emit get_next_tick(delta);
 }
