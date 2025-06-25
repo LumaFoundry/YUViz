@@ -60,11 +60,15 @@ foreach(test_file ${TEST_SOURCES})
         ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
     )
 
+    file(GLOB_RECURSE SHADER_FILES
+        "${CMAKE_SOURCE_DIR}/src/shaders/*.vert"
+        "${CMAKE_SOURCE_DIR}/src/shaders/*.frag"
+    )
+
     qt6_add_shaders(${test_name} videoplayer_shaders
-      PREFIX "/shaders"
-      FILES
-        ${CMAKE_SOURCE_DIR}/src/shaders/vertex.vert
-        ${CMAKE_SOURCE_DIR}/src/shaders/fragment.frag
+        PREFIX "/shaders"
+        BASE "${CMAKE_SOURCE_DIR}/src/shaders"
+        FILES ${SHADER_FILES}
     )
 
     target_include_directories(${test_name} PRIVATE

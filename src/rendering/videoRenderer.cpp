@@ -121,8 +121,8 @@ void VideoRenderer::initialize(QRhi::Implementation graphicsApi)  {
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
     Q_INIT_RESOURCE(videoplayer_shaders);
-    QByteArray vsQsb = loadShaderSource(":/shaders/src/shaders/vertex.vert.qsb");
-    QByteArray fsQsb = loadShaderSource(":/shaders/src/shaders/fragment.frag.qsb");
+    QByteArray vsQsb = loadShaderSource(":/shaders/vertex.vert.qsb");
+    QByteArray fsQsb = loadShaderSource(":/shaders/fragment.frag.qsb");
 
     if (vsQsb.isEmpty() || fsQsb.isEmpty()) {
         qWarning() << "Failed to open shader file";

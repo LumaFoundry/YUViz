@@ -53,11 +53,15 @@ set(SRC
 
 add_executable(videoplayer ${SRC})
 
+file(GLOB_RECURSE SHADER_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.frag"
+)
+
 qt6_add_shaders(videoplayer "videoplayer_shaders"
-  PREFIX "/shaders"
-  FILES
-    src/shaders/vertex.vert
-    src/shaders/fragment.frag
+    PREFIX "/shaders"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders"
+    FILES ${SHADER_FILES}
 )
 
 # enable_testing()
