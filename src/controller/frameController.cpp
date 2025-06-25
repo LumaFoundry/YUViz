@@ -115,7 +115,7 @@ void FrameController::onPrefillCompleted(bool success) {
 }
 
 void FrameController::onTimerTick() {
-    qDebug() << "onTimerTick for index" << m_index;
+    // qDebug() << "onTimerTick for index" << m_index;
 
     // request render frames uploaded from previous tick (and request upload next frame)
     emit requestRender();
