@@ -278,20 +278,46 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
             ret = avcodec_receive_frame(codecContext, tempFrame);
 
             if (ret == 0) {
-                int retFlag;
-                copyFrame(tempPacket, frameData, retFlag);
-                if (retFlag == 2)
-                    break;
+                int width = metadata.yWidth();
+                int height = metadata.yHeight();
+                uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+                int dstLinesize[4] = {width, width / 2, width / 2, 0};
+
+                SwsContext* swsCtx = sws_getContext(
+                    codecContext->width, codecContext->height, (AVPixelFormat)tempFrame->format,
+                    width, height, AV_PIX_FMT_YUV420P,
+                    SWS_BILINEAR, nullptr, nullptr, nullptr);
+
+                if (swsCtx) {
+                    sws_scale(swsCtx, (const uint8_t* const*)tempFrame->data, tempFrame->linesize, 0, tempFrame->height, dstData, dstLinesize);
+                    sws_freeContext(swsCtx);
+
+                    frameData->setPts(tempFrame->pts);
+                    currentFrameIndex++;
+                    emit frameLoaded(true);
+                } else {
+                    ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
+                    emit frameLoaded(false);
+                }
+
+                av_frame_free(&tempFrame);
+                av_packet_unref(tempPacket);
+                av_packet_free(&tempPacket);
                 return;
+            } else if (ret != AVERROR(EAGAIN)) {
+                av_frame_free(&tempFrame);
+                break;
+            } else {
+                 av_frame_free(&tempFrame);
             }
         }
+        av_packet_unref(tempPacket);
     }
     
     if (ret < 0 && ret != AVERROR_EOF) {
         ErrorReporter::instance().report("Failed to read frame", LogLevel::Error);
     }
     
-    // Clean up allocations
     av_packet_free(&tempPacket);
     emit frameLoaded(false);
     return;
@@ -318,7 +344,7 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
 
     // Prepare source pointers and line sizes
     uint8_t *srcData[4] = {nullptr};
-    int srcLinesize[4] = {0};
+    int srcLinesize[4] = {};
     av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
 
     // Prepare destination pointers and line sizes (planar YUV420P)
