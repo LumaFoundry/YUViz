@@ -26,7 +26,7 @@ void PlaybackWorker::runPlaybackLoop() {
 
         auto now = std::chrono::steady_clock::now();
         int64_t elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_timerStart).count();
-        int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - elapsedMs);
+        int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs - elapsedMs);
         
 
         // qDebug() << "[loop] received m_nextWakeMs " << m_nextWakeMs;
@@ -53,7 +53,7 @@ void PlaybackWorker::scheduleNext(int64_t deltaMs) {
     QMutexLocker locker(&m_mutex);
     auto now = std::chrono::steady_clock::now();
     m_nextWakeMs = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_timerStart).count() + deltaMs;
-
+    // m_nextWakeMS = deltaMs;
     // qDebug() << "Next wake set to" << m_nextWakeMs;
     m_cond.wakeOne();
     // qDebug() << "cond.wakeOne() called in scheduleNext";
