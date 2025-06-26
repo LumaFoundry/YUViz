@@ -42,6 +42,7 @@ public slots:
 
 signals:
     void get_next_tick(int64_t delta);
+    void startPlayback();
 
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;

@@ -64,8 +64,8 @@ qt6_add_shaders(videoplayer "videoplayer_shaders"
     FILES ${SHADER_FILES}
 )
 
-# enable_testing()
-# add_subdirectory(test)
+enable_testing()
+add_subdirectory(test)
 
 target_include_directories(videoplayer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src

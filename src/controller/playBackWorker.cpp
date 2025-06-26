@@ -49,7 +49,7 @@ void PlaybackWorker::scheduleNext(int64_t deltaMs) {
     // qDebug() << "PlaybackWorker::scheduleNext called with deltaMs=" << deltaMs;
     QMutexLocker locker(&m_mutex);
     m_nextWakeMs = m_timer.elapsed() + deltaMs;
-    qDebug() << "Next wake set to" << m_nextWakeMs;
+    // qDebug() << "Next wake set to" << m_nextWakeMs;
     m_cond.wakeOne();
     // qDebug() << "cond.wakeOne() called in scheduleNext";
 }

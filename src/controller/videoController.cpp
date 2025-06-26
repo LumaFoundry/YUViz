@@ -14,6 +14,8 @@ VideoController::VideoController(QObject *parent,
     // qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
     m_timerThread.start();
     // Connect with PlaybackWorker
+    connect(this, &VideoController::startPlayback, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
+
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
     // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
     
@@ -87,7 +89,7 @@ void VideoController::uploadReady(bool success) {
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
-            m_playbackWorker->start();
+            emit startPlayback();
         }
     } else {
         qWarning() << "uploadReady: frame upload failed";

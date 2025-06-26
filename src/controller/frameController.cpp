@@ -178,7 +178,7 @@ void FrameController::onFrameRendered(bool success) {
         int64_t deltaPTS = currentPTS - m_lastPTS;
         int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
         
-        qDebug() << "FC:: Computed deltaMs =" << deltaMs;
+        // qDebug() << "FC:: Computed deltaMs =" << deltaMs;
         // send delta to VideoController
         emit currentDelta(deltaMs, m_index);
 
