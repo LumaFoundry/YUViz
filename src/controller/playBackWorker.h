@@ -3,9 +3,10 @@
 #include <QObject>
 #include <QMutex>
 #include <QWaitCondition>
-#include <QElapsedTimer>
+#include <chrono>
 #include <QThread>
 #include <QtConcurrent>
+
 
 class PlaybackWorker : public QObject {
     Q_OBJECT
@@ -36,7 +37,7 @@ private:
 
     bool m_singleStep = false;
 
-    QElapsedTimer m_timer;
+    std::chrono::steady_clock::time_point m_timerStart;
     int64_t m_nextWakeMs = 0;
 
     int64_t m_pauseStartMs = 0;
