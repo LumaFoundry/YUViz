@@ -14,7 +14,7 @@ Window {
 
     VideoWindow {
         id: videoWindow
-        objectName: videoWindow
+        objectName: "videoWindow"
         anchors.fill: parent
     }
 }
