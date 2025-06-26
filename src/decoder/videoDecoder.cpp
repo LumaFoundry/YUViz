@@ -240,7 +240,7 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
     }
 
     av_packet_free(&tempPacket);
-    emit frameLoaded(false);
+    // emit frameLoaded(false);
     return;
 }
 
@@ -319,7 +319,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     }
     
     av_packet_free(&tempPacket);
-    emit frameLoaded(false);
+    // emit frameLoaded(false);
     return;
 }
 
@@ -379,9 +379,9 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
         };
     }
 
-    frameData->setPts(tempPacket->pts);
+    frameData->setPts(currentFrameIndex++);
     av_packet_unref(tempPacket);
-    currentFrameIndex++;
+    
     av_packet_free(&tempPacket);
 
     // qDebug() << "VideoDecoder:: emit frameLoaded";

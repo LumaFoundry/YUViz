@@ -161,8 +161,20 @@ void FrameController::onFrameRendered(bool success) {
         // qDebug() << "Head frame index incremented";
 
         FrameData* headFrame = m_frameQueue.getHeadFrame();
+
         // Calculate delta time for next sleep
         int64_t currentPTS = headFrame->pts();
+
+        if (currentPTS < 0) {
+            qWarning() << "[FC] Invalid PTS (possibly uninitialized frame); skipping";
+            return;
+        }
+
+        if (currentPTS < m_lastPTS) {
+            qWarning() << "[FC] Non-monotonic PTS: current=" << currentPTS << " last=" << m_lastPTS;
+            return;
+        }
+
         int64_t deltaPTS = currentPTS - m_lastPTS;
         int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
         

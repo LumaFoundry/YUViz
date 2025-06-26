@@ -17,8 +17,8 @@ void PlaybackWorker::start() {
 }
 
 void PlaybackWorker::runPlaybackLoop() {
-    qDebug() << "PlaybackWorker::runPlaybackLoop entered";
-    qDebug() << "runPlaybackLoop this=" << this << "thread=" << QThread::currentThread();
+    // qDebug() << "PlaybackWorker::runPlaybackLoop entered";
+    // qDebug() << "runPlaybackLoop this=" << this << "thread=" << QThread::currentThread();
 
     while (true) {
         QMutexLocker locker(&m_mutex);
@@ -26,7 +26,7 @@ void PlaybackWorker::runPlaybackLoop() {
 
         int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - m_timer.elapsed());
 
-        qDebug() << "[loop] received m_nextWakeMs " << m_nextWakeMs;
+        // qDebug() << "[loop] received m_nextWakeMs " << m_nextWakeMs;
 
         qDebug() << "[loop] waiting for" << waitTime << "ms. elapsed=" << m_timer.elapsed();
 
@@ -34,7 +34,7 @@ void PlaybackWorker::runPlaybackLoop() {
 
         if (!m_running) break;
 
-        qDebug() << "[loop] woke up, elapsed=" << m_timer.elapsed();
+        qDebug() << "[loop] woke up, elapsed=" << m_timer.elapsed() << "\n";
 
         locker.unlock();
         emit tick();
@@ -45,11 +45,19 @@ void PlaybackWorker::runPlaybackLoop() {
 }
 
 void PlaybackWorker::scheduleNext(int64_t deltaMs) {
-    qDebug() << "scheduleNext this=" << this << "thread=" << QThread::currentThread();
-    qDebug() << "PlaybackWorker::scheduleNext called with deltaMs=" << deltaMs;
+    // qDebug() << "scheduleNext this=" << this << "thread=" << QThread::currentThread();
+    // qDebug() << "PlaybackWorker::scheduleNext called with deltaMs=" << deltaMs;
     QMutexLocker locker(&m_mutex);
     m_nextWakeMs = m_timer.elapsed() + deltaMs;
     qDebug() << "Next wake set to" << m_nextWakeMs;
     m_cond.wakeOne();
     // qDebug() << "cond.wakeOne() called in scheduleNext";
+}
+
+
+void PlaybackWorker::stop() {
+    qDebug() << "PlaybackWorker::stop called";
+    QMutexLocker locker(&m_mutex);
+    m_running = false;
+    m_cond.wakeOne(); // Wake up the thread if it's waiting
 }

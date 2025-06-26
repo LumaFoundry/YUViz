@@ -18,7 +18,7 @@ public slots:
     void scheduleNext(int64_t deltaMs);
     void start();
     void runPlaybackLoop();
-    // void stop();
+    void stop();
     // void pause();
     // void resume();
     // void step();

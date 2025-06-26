@@ -36,6 +36,8 @@ FrameData* FrameQueue::getHeadFrame(){
     while (isEmpty()) {
         m_canRead.wait(&m_mutex);
     }
+
+    // qDebug() << "Queue:: Head index: " << (head % queueSize);
     return &m_queue[head % queueSize];
 }
 
@@ -55,6 +57,7 @@ FrameData* FrameQueue::getTailFrame(){
     while (isFull()){
         m_canWrite.wait(&m_mutex);
     }
+    // qDebug() << "Queue:: Tail index: " << (tail % queueSize);
     return &m_queue[tail % queueSize];
 }
 

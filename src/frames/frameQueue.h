@@ -5,6 +5,7 @@
 #include "frameMeta.h"
 #include <QMutex>
 #include <QWaitCondition>
+#include <QDebug>
 
 class FrameQueue{
 
