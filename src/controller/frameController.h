@@ -22,9 +22,8 @@ public:
 
     FrameController(QObject *parent, 
                     std::unique_ptr<VideoDecoder> decoder, 
-                    std::unique_ptr<VideoRenderer> renderer, 
                     std::shared_ptr<PlaybackWorker> playbackWorker,
-                    std::shared_ptr<VideoWindow> window, 
+                    VideoWindow* window, 
                     int index);
                 
     ~FrameController();
@@ -33,11 +32,6 @@ public:
     void start();
 
     int m_index; // Index of current FC, for VC orchestration
-
-    // For VC to receive renderer signal
-    VideoRenderer* getRenderer() const { return m_Renderer.get(); }
-
-    std::shared_ptr<VideoWindow> getWindow() const { return m_window; } 
 
 public slots:
     // Receive signals from decoder and renderer
@@ -59,14 +53,11 @@ private:
     // YUVReader to read frames from video file
     std::unique_ptr<VideoDecoder> m_Decoder = nullptr;
 
-    // VideoRenderer to render frames
-    std::unique_ptr<VideoRenderer> m_Renderer = nullptr;
-
     // PlaybackWorker to manage timer ticks
     std::shared_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
 
     // For display
-    std::shared_ptr<VideoWindow> m_window = nullptr;
+    VideoWindow* m_window = nullptr;
 
     // FrameQueue to manage frames
     FrameQueue m_frameQueue;
