@@ -7,7 +7,7 @@
 #include <QMessageBox>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <memory>
@@ -18,7 +18,7 @@
 #include "ui/videoWindow.h"
 
 int main(int argc, char *argv[]) {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
 
     QCommandLineParser parser;
