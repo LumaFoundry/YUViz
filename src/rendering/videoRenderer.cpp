@@ -192,10 +192,11 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
 
     // Draw
+    cb->setGraphicsPipeline(m_pip.get());
     QRhiCommandBuffer::VertexInput vi(m_vbuf.get(), 0);
     cb->setVertexInput(0, 1, &vi);
-    cb->setGraphicsPipeline(m_pip.get());
     cb->setShaderResources();
+    
     cb->draw(4);
     cb->endPass();
 }
