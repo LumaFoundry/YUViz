@@ -37,7 +37,6 @@ private:
 
     bool m_singleStep = false;
 
-    std::chrono::steady_clock::time_point m_timerStart;
     int64_t m_nextWakeMs = 0;
 
     int64_t m_pauseStartMs = 0;
