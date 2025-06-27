@@ -19,7 +19,7 @@ VideoController::VideoController(QObject *parent,
     connect(this, &VideoController::pausePlayback, m_playbackWorker.get(), &PlaybackWorker::pause, Qt::QueuedConnection);
     connect(this, &VideoController::resumePlayback, m_playbackWorker.get(), &PlaybackWorker::resume, Qt::QueuedConnection);
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
-    
+    connect(this, &VideoController::stepPlaybackForward, m_playbackWorker.get(), &PlaybackWorker::step, Qt::QueuedConnection);
     // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
     
     // Creating FC for each video
@@ -49,6 +49,7 @@ VideoController::VideoController(QObject *parent,
 
         // For testing - please remove later
         connect(windowPtr.get(), &VideoWindow::togglePlayPause, this, &VideoController::togglePlayPause);
+        connect(windowPtr.get(), &VideoWindow::stepForward, this, &VideoController::stepPlaybackForward);
 
         // Connect each FC's signal to VC's slot
         connect(frameController.get(), &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::AutoConnection);

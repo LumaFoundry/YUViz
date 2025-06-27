@@ -23,6 +23,17 @@ void PlaybackWorker::runPlaybackLoop() {
         QMutexLocker locker(&m_mutex);
         if (!m_running) break;
 
+        // Handle stepping
+        if (m_singleStep) {
+            m_singleStep = false;
+            locker.unlock();
+            emit tick();
+            locker.relock();
+            // return to paused state
+            m_playing = false;
+            continue;
+        }
+
         // Wait until resumed
         if (!m_playing) {
             m_cond.wait(&m_mutex);  
@@ -41,6 +52,7 @@ void PlaybackWorker::runPlaybackLoop() {
         locker.unlock();
         emit tick();
         locker.relock();
+
     }
 
     qDebug() << "PlaybackWorker::runPlaybackLoop exiting";
@@ -73,5 +85,12 @@ void PlaybackWorker::resume() {
     QMutexLocker locker(&m_mutex);
     m_playing = true;
     m_cond.wakeOne();  // Wake up from pause
+}
+
+void PlaybackWorker::step() {
+    QMutexLocker locker(&m_mutex);
+    m_singleStep = true;
+    m_playing = true;
+    m_cond.wakeOne();
 }
 

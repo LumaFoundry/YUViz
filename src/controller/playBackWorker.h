@@ -24,7 +24,7 @@ public slots:
     void stop();
     void pause();
     void resume();
-    // void step();
+    void step();
 
 signals:
     void tick(); // tells FrameController to advance a frame

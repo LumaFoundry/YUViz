@@ -15,11 +15,16 @@ public:
 
 signals:
     void togglePlayPause();
+    void stepForward();
 
 protected:
     void keyPressEvent(QKeyEvent* event) override {
         if (event->key() == Qt::Key_Space) {
             emit togglePlayPause();
+        }
+
+        if (event->key() == Qt::Key_Right) {
+            emit stepForward();
         }
     }
 

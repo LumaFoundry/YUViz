@@ -47,6 +47,7 @@ signals:
     void stopPlayback();
     void pausePlayback();
     void resumePlayback();
+    void stepPlaybackForward();
 
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;
