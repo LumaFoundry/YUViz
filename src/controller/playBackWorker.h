@@ -3,8 +3,8 @@
 #include <QObject>
 #include <QMutex>
 #include <QWaitCondition>
-#include <chrono>
 #include <QThread>
+#include <QFuture>
 #include <QtConcurrent>
 
 

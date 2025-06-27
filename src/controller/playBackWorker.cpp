@@ -1,7 +1,5 @@
 #include "playBackWorker.h"
 #include <QDebug>
-#include <QThread>
-
 
 void PlaybackWorker::start() {
     qDebug() << "PlaybackWorker::start invoked in thread" << QThread::currentThread();
@@ -10,7 +8,7 @@ void PlaybackWorker::start() {
     m_nextWakeMs = 0;
     
     // Schedule runPlaybackLoop() to run once, asynchronously
-    QtConcurrent::run([this](){
+    QFuture<void> future = QtConcurrent::run([this](){
         runPlaybackLoop(); 
     });
 }
