@@ -3,6 +3,9 @@
 #include <string>
 #include <fstream>
 #include <QObject>
+#include <QFileInfo>
+#include <iostream>
+#include <cstring>
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
 #include "utils/errorReporter.h"
@@ -49,6 +52,8 @@ private:
 	double m_framerate;
 	AVPixelFormat m_format;
 	std::string m_fileName;
+
+	int yuvTotalFrames = -1;
 
 	void closeFile();
 	

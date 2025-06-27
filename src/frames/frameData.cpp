@@ -37,3 +37,11 @@ int64_t FrameData::pts() const {
 void FrameData::setPts(int64_t pts) {
     m_pts = pts;
 }
+
+bool FrameData::isEndFrame() const {
+    return m_isEndFrame;
+}
+
+void FrameData::setEndFrame(bool isEndFrame) {
+    m_isEndFrame = isEndFrame;
+}

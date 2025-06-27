@@ -53,6 +53,7 @@ signals:
     void requestUpload(FrameData* frame);
     void requestRender();
     void currentDelta(int64_t delta, int index);
+    void endOfVideo(int index);
 
 private:
 

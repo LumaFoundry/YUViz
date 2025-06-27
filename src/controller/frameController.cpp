@@ -156,6 +156,15 @@ void FrameController::onFrameRendered(bool success) {
         // TODO: Handle rendering error
         ErrorReporter::instance().report("Frame rendering error occurred", LogLevel::Error);
     }else{
+
+        FrameData* lastFrame = m_frameQueue.getHeadFrame();
+
+        if (lastFrame->isEndFrame()) {
+            // qDebug() << "End of video reached for index" << m_index;
+            emit endOfVideo(m_index);
+            return;
+        }
+
         // Increment head to indicate frame is ready for rendering
         m_frameQueue.incrementHead();
         // qDebug() << "Head frame index incremented";

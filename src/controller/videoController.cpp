@@ -15,7 +15,7 @@ VideoController::VideoController(QObject *parent,
     m_timerThread.start();
     // Connect with PlaybackWorker
     connect(this, &VideoController::startPlayback, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
-
+    connect(this, &VideoController:: stopPlayback, m_playbackWorker.get(), &PlaybackWorker::stop, Qt::QueuedConnection);
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
     // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
     
@@ -51,6 +51,8 @@ VideoController::VideoController(QObject *parent,
         connect(frameController->getRenderer(), &VideoRenderer::batchUploaded, this, &VideoController::uploadReady, Qt::AutoConnection);
         qDebug() << "Connected VideoRenderer::batchUploaded to VideoController::uploadReady";
         
+        connect(frameController.get(), &FrameController::endOfVideo, this, &VideoController::onFCEndOfVideo, Qt::AutoConnection);
+
         m_frameControllers.push_back(std::move(frameController));
         qDebug() << "FrameController count now:" << m_frameControllers.size();
         
@@ -101,4 +103,11 @@ void VideoController::uploadReady(bool success) {
 void VideoController::synchroniseFC(int64_t delta, int index) {
     // qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
     emit get_next_tick(delta);
+}
+
+
+void VideoController::onFCEndOfVideo(int index) {
+    qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
+    // Handle end of video for specific FC
+    emit stopPlayback();
 }
