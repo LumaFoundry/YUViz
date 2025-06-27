@@ -55,7 +55,7 @@ FrameController::FrameController(
 }
 
 FrameController::~FrameController(){
-    // qDebug() << "FrameController destructor for index" << m_index;
+    qDebug() << "FrameController destructor for index" << m_index;
     // Ensure threads are stopped before destruction
     m_decodeThread.quit();
     // m_renderThread.quit();
