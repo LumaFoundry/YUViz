@@ -23,10 +23,16 @@ void PlaybackWorker::runPlaybackLoop() {
         QMutexLocker locker(&m_mutex);
         if (!m_running) break;
 
+        // Wait until resumed
+        if (!m_playing) {
+            m_cond.wait(&m_mutex);  
+            continue;
+        }
+
         // Cap waitTime with small delay to ensure loop doesn't spin too fast
         int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs);
 
-        // qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
+        qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
 
         QThread::msleep(waitTime);
 
@@ -57,3 +63,15 @@ void PlaybackWorker::stop() {
     m_running = false;
     m_cond.wakeOne(); // Wake up the thread if it's waiting
 }
+
+void PlaybackWorker::pause() {
+    QMutexLocker locker(&m_mutex);
+    m_playing = false;
+}
+
+void PlaybackWorker::resume() {
+    QMutexLocker locker(&m_mutex);
+    m_playing = true;
+    m_cond.wakeOne();  // Wake up from pause
+}
+

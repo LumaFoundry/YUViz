@@ -15,8 +15,11 @@ VideoController::VideoController(QObject *parent,
     m_timerThread.start();
     // Connect with PlaybackWorker
     connect(this, &VideoController::startPlayback, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
-    connect(this, &VideoController:: stopPlayback, m_playbackWorker.get(), &PlaybackWorker::stop, Qt::QueuedConnection);
+    connect(this, &VideoController::stopPlayback, m_playbackWorker.get(), &PlaybackWorker::stop, Qt::QueuedConnection);
+    connect(this, &VideoController::pausePlayback, m_playbackWorker.get(), &PlaybackWorker::pause, Qt::QueuedConnection);
+    connect(this, &VideoController::resumePlayback, m_playbackWorker.get(), &PlaybackWorker::resume, Qt::QueuedConnection);
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
+    
     // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
     
     // Creating FC for each video
@@ -43,6 +46,9 @@ VideoController::VideoController(QObject *parent,
 
         auto frameController = std::make_unique<FrameController>(nullptr, std::move(decoder), std::move(renderer), playbackWorker, windowPtr, fc_index);
         qDebug() << "Created FrameController for index" << fc_index;
+
+        // For testing - please remove later
+        connect(windowPtr.get(), &VideoWindow::togglePlayPause, this, &VideoController::togglePlayPause);
 
         // Connect each FC's signal to VC's slot
         connect(frameController.get(), &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::AutoConnection);
@@ -110,4 +116,14 @@ void VideoController::onFCEndOfVideo(int index) {
     qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
     // Handle end of video for specific FC
     emit stopPlayback();
+}
+
+void VideoController::togglePlayPause() {
+    if (m_playbackWorker->m_playing) {
+        qDebug() << "VideoController: Pausing playback";
+        emit pausePlayback();
+    } else {
+        qDebug() << "VideoController: Resuming playback";
+        emit resumePlayback();
+    }
 }

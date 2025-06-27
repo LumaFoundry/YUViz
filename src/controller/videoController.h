@@ -39,11 +39,14 @@ public slots:
     void uploadReady(bool success);
     void synchroniseFC(int64_t delta, int index);
     void onFCEndOfVideo(int index);
+    void togglePlayPause();
 
 signals:
     void get_next_tick(int64_t delta);
     void startPlayback();
     void stopPlayback();
+    void pausePlayback();
+    void resumePlayback();
 
 private:
     std::shared_ptr<PlaybackWorker> m_playbackWorker;

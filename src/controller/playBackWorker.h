@@ -15,13 +15,15 @@ public:
     PlaybackWorker(){};
     ~PlaybackWorker(){};
 
+    bool m_playing = false;
+
 public slots:
     void scheduleNext(int64_t deltaMs);
     void start();
     void runPlaybackLoop();
     void stop();
-    // void pause();
-    // void resume();
+    void pause();
+    void resume();
     // void step();
 
 signals:
@@ -33,7 +35,6 @@ private:
     QWaitCondition m_cond;
 
     bool m_running = false;
-    bool m_playing = false;
 
     bool m_singleStep = false;
 
