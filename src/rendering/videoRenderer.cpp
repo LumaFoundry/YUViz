@@ -169,9 +169,6 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     }
     emit batchIsEmpty();
 
-    // Begin render pass on the provided render target
-    cb->beginPass(rt, QColor(0,0,0,255), {1.0f, 0});
-
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
     float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
@@ -198,5 +195,4 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     cb->setShaderResources();
     
     cb->draw(4);
-    cb->endPass();
 }
