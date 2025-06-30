@@ -15,7 +15,14 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     connect(m_renderer, &VideoRenderer::batchIsFull, this, &VideoWindow::batchIsFull);
     connect(m_renderer, &VideoRenderer::batchIsEmpty, this, &VideoWindow::batchIsEmpty);
     connect(m_renderer, &VideoRenderer::rendererError, this, &VideoWindow::rendererError);
-    update();
+    if (window()) {
+        update();
+    } else {
+        connect(this, &QQuickItem::windowChanged, this, [=](QQuickWindow *win){
+            qDebug() << "[VideoWindow] window became available, calling update()";
+            update();
+        });
+    }
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
@@ -23,6 +30,7 @@ void VideoWindow::uploadFrame(FrameData* frame) {
 }
 
 void VideoWindow::renderFrame() {
+    qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
     update();
 }
 
@@ -43,6 +51,8 @@ void VideoWindow::rendererError() {
 }
 
 QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
+    qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
+    
     if (!m_renderer) {
         return nullptr;
     }

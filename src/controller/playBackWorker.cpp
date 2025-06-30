@@ -41,7 +41,7 @@ void PlaybackWorker::runPlaybackLoop() {
         // Cap waitTime with small delay to ensure loop doesn't spin too fast
         int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs);
 
-        qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
+        // qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
 
         QThread::msleep(waitTime);
 

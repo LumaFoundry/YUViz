@@ -164,6 +164,9 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
 }
 
 void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QRhiRenderTarget *rt) {
+    
+    qDebug() << "VideoRenderer:: renderFrame called";
+    
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
         m_initBatch = nullptr;
@@ -197,6 +200,9 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     }
     cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
 
+
+    qDebug() << "Rendering frame with viewport:" 
+           << vpX << vpY << vpW << vpH;
     // Draw
     cb->setGraphicsPipeline(m_pip.get());
     QRhiCommandBuffer::VertexInput vi(m_vbuf.get(), 0);

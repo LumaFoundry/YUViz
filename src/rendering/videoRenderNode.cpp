@@ -17,6 +17,7 @@ void VideoRenderNode::prepare() {
 }
 
 void VideoRenderNode::render(const RenderState *state) {
+    qDebug() << "VideoRenderNode::render called";
     QRhiCommandBuffer *cb = commandBuffer();
     QRect viewport = state->scissorRect();
     viewport.setY(m_window->height() - viewport.y() - viewport.height());

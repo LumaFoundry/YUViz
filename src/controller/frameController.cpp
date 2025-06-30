@@ -21,35 +21,35 @@ FrameController::FrameController(
     // Initialize decoder and renderer thread
     m_decodeThread.start();
     m_Decoder->moveToThread(&m_decodeThread);
-    qDebug() << "Moved decoder to thread" << &m_decodeThread;
+    // qDebug() << "Moved decoder to thread" << &m_decodeThread;
     // m_Renderer->moveToThread(&m_renderThread);
-    qDebug() << "Moved renderer to thread" << &m_renderThread;
+    // qDebug() << "Moved renderer to thread" << &m_renderThread;
 
     // Request & Receive timer ticks and sleep for frame processing
     connect(m_PlaybackWorker.get(), &PlaybackWorker::tick, this, &FrameController::onTimerTick, Qt::AutoConnection);
-    qDebug() << "Connected PlaybackWorker::tick to FrameController::onTimerTick";
+    // qDebug() << "Connected PlaybackWorker::tick to FrameController::onTimerTick";
 
     // Request & Receive signals for decoding
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrame, Qt::AutoConnection);
-    qDebug() << "Connected requestDecode to VideoDecoder::loadFrame";
+    // qDebug() << "Connected requestDecode to VideoDecoder::loadFrame";
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
-    qDebug() << "Connected VideoDecoder::frameLoaded to FrameController::onFrameDecoded";
+    // qDebug() << "Connected VideoDecoder::frameLoaded to FrameController::onFrameDecoded";
 
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
-    qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
+    // qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
     connect(m_window, &VideoWindow::batchUploaded, this, &FrameController::onFrameUploaded, Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
+    // qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
 
     // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::AutoConnection);
-    qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
+    // qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
     connect(m_window, &VideoWindow::gpuUploaded, this, &FrameController::onFrameRendered, Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
+    // qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
     
     // Error handling for renderer
     connect(m_window, &VideoWindow::errorOccurred, this, &FrameController::onRenderError, Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::errorOccurred to FrameController::onRenderError";
+    // qDebug() << "Connected VideoRenderer::errorOccurred to FrameController::onRenderError";
 
 }
 
@@ -86,14 +86,14 @@ void FrameController::start(){
 // Slots Definitions
 
 void FrameController::onPrefillCompleted(bool success) {
-    qDebug() << "onPrefillCompleted called for index" << m_index << "success=" << success;
+    // qDebug() << "onPrefillCompleted called for index" << m_index << "success=" << success;
     if (!success) {
         qWarning() << "Prefill error occurred for index" << m_index;
         ErrorReporter::instance().report("Prefill error occurred", LogLevel::Error);
         return;
     } else {
         if (m_prefillDecodedCount < m_frameQueue.getSize()/2) {
-            qDebug() << "Prefill decode request count =" << m_prefillDecodedCount;
+            // qDebug() << "Prefill decode request count =" << m_prefillDecodedCount;
             emit requestDecode(m_frameQueue.getTailFrame());
             m_prefillDecodedCount++;
 
@@ -124,14 +124,14 @@ void FrameController::onTimerTick() {
 
 // Handle frame decoding error and increment Tail
 void FrameController:: onFrameDecoded(bool success){
-    qDebug() << "onFrameDecoded called for index" << m_index << "success=" << success;
+    // qDebug() << "onFrameDecoded called for index" << m_index << "success=" << success;
     if (!success){
         qWarning() << "Decoding error for index" << m_index;
         // TODO: What to do if decoding fails?
         ErrorReporter::instance().report("Decoding error occurred", LogLevel::Error);
     }else{
         m_frameQueue.incrementTail();
-        qDebug() << "Tail frame index incremented";
+        // qDebug() << "Tail frame index incremented";
     }
     
 }
