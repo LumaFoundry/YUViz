@@ -7,11 +7,11 @@ VideoController::VideoController(QObject *parent,
         : QObject(parent),
         m_playbackWorker(playbackWorker)
 {
-    // qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
+    qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
     
     // Move playback worker to a dedicated thread
     m_playbackWorker->moveToThread(&m_timerThread);
-    // qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
+    qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
     m_timerThread.start();
     // Connect with PlaybackWorker
     connect(this, &VideoController::startPlayback, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
@@ -20,7 +20,7 @@ VideoController::VideoController(QObject *parent,
     connect(this, &VideoController::resumePlayback, m_playbackWorker.get(), &PlaybackWorker::resume, Qt::QueuedConnection);
     connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
     connect(this, &VideoController::stepPlaybackForward, m_playbackWorker.get(), &PlaybackWorker::step, Qt::QueuedConnection);
-    // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
+    qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
     
     // Creating FC for each video
     int fc_index = 0;
@@ -92,10 +92,10 @@ VideoController::~VideoController() {
 
 
 void VideoController::uploadReady(bool success) {
-    // qDebug() << "uploadReady called with success =" << success;
+    qDebug() << "uploadReady called with success =" << success;
     if (success) {
         m_readyCount++;
-        // qDebug() << "Ready count =" << m_readyCount;
+        qDebug() << "Ready count =" << m_readyCount;
         if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
@@ -109,7 +109,7 @@ void VideoController::uploadReady(bool success) {
 
 
 void VideoController::synchroniseFC(int64_t delta, int index) {
-    // qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
+    qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
     emit get_next_tick(delta);
 }
 

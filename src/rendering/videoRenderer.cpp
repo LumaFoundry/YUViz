@@ -11,6 +11,15 @@ VideoRenderer::~VideoRenderer() = default;
 void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_rhi = rhi;
 
+    if (m_rhi) {
+        qDebug() << m_rhi->backendName() << m_rhi->driverInfo();
+    }
+    else {
+        qWarning() << "Failed to initialize RHI";
+        emit rendererError();
+        return;
+    }
+
     // Create YUV textures
     m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
     m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
@@ -166,8 +175,8 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
         m_frameBatch = nullptr;
+        emit batchIsEmpty();
     }
-    emit batchIsEmpty();
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();

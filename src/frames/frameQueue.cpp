@@ -30,14 +30,16 @@ bool FrameQueue::isFull() const {
 
 // Prevent renderer / decoder from modifying pointers when the other is accessing
 FrameData* FrameQueue::getHeadFrame(){
+    qDebug() << "FrameQueue: getHeadFrame";
     QMutexLocker locker(&m_mutex);
 
     // Wait until there is frame to read
     while (isEmpty()) {
+        qDebug() << "FrameQueue: is empty";
         m_canRead.wait(&m_mutex);
     }
 
-    // qDebug() << "Queue:: Head index: " << (head % queueSize);
+    qDebug() << "Queue:: Head index: " << (head % queueSize);
     return &m_queue[head % queueSize];
 }
 
