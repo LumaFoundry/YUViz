@@ -14,6 +14,7 @@
 #include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
 #include "controller/playBackWorker.h"
+#include "ui/videoWindow.h"
 
 struct VideoFileInfo {
     QString filename;
@@ -21,6 +22,7 @@ struct VideoFileInfo {
     int height;
     double framerate;
     QRhi::Implementation graphicsApi;
+    VideoWindow* windowPtr;
 };
 
 class VideoController : public QObject {
@@ -55,7 +57,7 @@ private:
 
     QThread m_timerThread;
 
-    std::vector<std::shared_ptr<VideoWindow>> m_windowPtrs;
+    std::vector<VideoWindow*> m_windowPtrs;
     // Ensure all FC have uploaded initial frame before starting timer
     int m_readyCount = 0;
 

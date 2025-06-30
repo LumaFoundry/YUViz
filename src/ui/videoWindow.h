@@ -1,42 +1,34 @@
 #pragma once
-#include <QWindow>
-#include <QKeyEvent>
-#include <rhi/qrhi.h>
 
-class VideoWindow : public QWindow
-{
+#include <QQuickItem>
+#include <memory>
+#include "frames/frameData.h"
+#include "rendering/videoRenderer.h"
+
+class VideoWindow : public QQuickItem {
     Q_OBJECT
 public:
-    explicit VideoWindow(QWindow* parent = nullptr, QRhi::Implementation graphicsApi = QRhi::Null);
-    ~VideoWindow() override = default;
+    explicit VideoWindow(QQuickItem *parent = nullptr);
+    void initialize(std::shared_ptr<FrameMeta> metaPtr);
 
-    double zoomFactor() const;
-    QRectF selectionRect() const;
+public slots:
+    void uploadFrame(FrameData* frame);
+    void renderFrame();
+    void setColorParams(AVColorSpace space, AVColorRange range);
+    void batchIsFull();
+    void batchIsEmpty();
+    void rendererError();
 
 signals:
-    void togglePlayPause();
-    void stepForward();
+    void batchUploaded(bool success);
+    void gpuUploaded(bool success);
+    void errorOccurred();
 
 protected:
-    void keyPressEvent(QKeyEvent* event) override {
-        if (event->key() == Qt::Key_Space) {
-            emit togglePlayPause();
-        }
-
-        if (event->key() == Qt::Key_Right) {
-            emit stepForward();
-        }
-    }
+    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
 
 private:
-    double m_zoomFactor = 1.0;
-    bool m_selecting = false;
-    QPointF m_selectStart;
-    QPointF m_selectEnd;
-    QRectF m_selectionRect;
+    VideoRenderer *m_renderer = nullptr;
 
-    void wheelEvent(QWheelEvent* event) override;
-    void mousePressEvent(QMouseEvent* event) override;
-    void mouseMoveEvent(QMouseEvent* event) override;
-    void mouseReleaseEvent(QMouseEvent* event) override;
+
 };

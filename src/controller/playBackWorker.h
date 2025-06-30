@@ -7,7 +7,6 @@
 #include <QFuture>
 #include <QtConcurrent>
 
-
 class PlaybackWorker : public QObject {
     Q_OBJECT
 

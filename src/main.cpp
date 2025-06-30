@@ -7,6 +7,9 @@
 #include <QMessageBox>
 #include <QCommandLineParser>
 #include <QCommandLineOption>
+#include <QApplication>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
 #include <memory>
 #include "decoder/videoDecoder.h"
 #include "controller/frameController.h"
@@ -17,34 +20,15 @@
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
-    QRhi::Implementation graphicsApi;
-
-    // Use platform-specific defaults when no command-line arguments given.
-#if defined(Q_OS_WIN)
-    graphicsApi = QRhi::D3D11;
-#elif QT_CONFIG(metal)
-    graphicsApi = QRhi::Metal;
-#elif QT_CONFIG(vulkan) && defined(VULKAN_INSTALLED)
-    graphicsApi = QRhi::Vulkan;
-#else
-    graphicsApi = QRhi::OpenGLES2;
-#endif
 
     // Set QDebug output to be off by default
     qSetMessagePattern("");
 
     QCommandLineParser parser;
-
     parser.setApplicationDescription("Visual Inspection Tool");
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("file", "File path");
-
-    QCommandLineOption graphicsApiOption(
-        QStringList() << "g" << "graphics",
-        QLatin1String("Select the graphics API to use. Supported values: opengl, vulkan, d3d11, d3d12, metal, null."),
-        QLatin1String("api"));
-    parser.addOption(graphicsApiOption);
 
     QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
     parser.addOption(debugOption);
@@ -54,28 +38,24 @@ int main(int argc, char *argv[]) {
     parser.addOption(resolutionOption);
     parser.process(app);
 
-    const QStringList args = parser.positionalArguments();
-    if (args.isEmpty() || !parser.isSet(resolutionOption)) {
-        QMessageBox::critical(nullptr, "Error", "You must specify <file> -r <width>x<height>");
-        return -1;
-    }
-
     if (parser.isSet(debugOption)) {
         qSetMessagePattern("[%{type}] %{message}");
     }
 
+    const QStringList args = parser.positionalArguments();
+    if (args.isEmpty()) {
+        QMessageBox::critical(nullptr, "Error", "You must specify <file> -r <width>x<height>");
+        return -1;
+    }
+
     QString filename = args.first();
-
-    qDebug() << "Parsed command-line options. File: " << parser.value(filename)
-             << "Resolution: " << parser.value(resolutionOption)
-             << "Framerate: " << parser.value(framerateOption);
-
 
     bool ok1, ok2;
     int width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
     int height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
     qDebug() << "Video file path:" << filename
-             << "Width:" << width << "Height:" << height;
+             << "Width:" << width << "Height:" << height
+             << "Framerate: " << parser.value(framerateOption);
 
     double framerate = parser.value(framerateOption).toDouble();
 
@@ -91,26 +71,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // Check if the user specified a graphics API
-    if (parser.isSet(graphicsApiOption)) {
-        const QString api = parser.value(graphicsApiOption).toLower();
-        if (api == QLatin1String("opengl")) {
-            graphicsApi = QRhi::OpenGLES2;
-        } else if (api == QLatin1String("vulkan")) {
-            graphicsApi = QRhi::Vulkan;
-        } else if (api == QLatin1String("d3d11")) {
-            graphicsApi = QRhi::D3D11;
-        } else if (api == QLatin1String("d3d12")) {
-            graphicsApi = QRhi::D3D12;
-        } else if (api == QLatin1String("metal")) {
-            graphicsApi = QRhi::Metal;
-        } else if (api == QLatin1String("null")) {
-            graphicsApi = QRhi::Null;
-        } else {
-            qWarning("Unknown graphics API '%s' specified. Falling back to the default.", qPrintable(api));
-        }
-    }
-    qDebug() << "Using graphics API enum value:" << static_cast<int>(graphicsApi);
 
     // TODO: Need a better safe guard to check arguments
     // Check if we have at least one video (needs 3 arguments per video)
@@ -118,13 +78,27 @@ int main(int argc, char *argv[]) {
     //     parser.showHelp(-1);
     // }
 
+    // TODO: Create and show window
+    QQmlApplicationEngine engine;
+    
+    qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
+    
+    const QUrl url(QStringLiteral("qrc:/main.qml"));
+    engine.load(url);
+    if (engine.rootObjects().isEmpty()) {
+        return -1;
+    }
+
+    QObject *root = engine.rootObjects().first();
+    auto *windowPtr = root->findChild<VideoWindow*>("videoWindow");
+
     // TODO: This can be used to handle multiple videos later
     VideoFileInfo videoFileInfo;
     videoFileInfo.filename = filename;
     videoFileInfo.width = width;
     videoFileInfo.height = height;
-    videoFileInfo.graphicsApi = graphicsApi;
     videoFileInfo.framerate = framerate;
+    videoFileInfo.windowPtr = windowPtr;
 
     std::vector<VideoFileInfo> videoFiles;
     videoFiles.push_back(videoFileInfo);
@@ -136,8 +110,6 @@ int main(int argc, char *argv[]) {
     qDebug() << "Creating VideoController";
     VideoController videoController(nullptr, playbackWorker, videoFiles);
     qDebug() << "VideoController created successfully";
-
-    // TODO: Create and show window
 
     return app.exec();
 }
