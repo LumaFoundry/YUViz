@@ -15,6 +15,9 @@ public slots:
     void uploadFrame(FrameData* frame);
     void renderFrame();
     void setColorParams(AVColorSpace space, AVColorRange range);
+    void batchIsFull();
+    void batchIsEmpty();
+    void rendererError();
 
 signals:
     void batchUploaded(bool success);
@@ -27,7 +30,5 @@ protected:
 private:
     VideoRenderer *m_renderer = nullptr;
 
-    void batchIsFull();
-    void batchIsEmpty();
-    void rendererError();
+
 };
