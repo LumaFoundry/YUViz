@@ -20,6 +20,8 @@ FrameController::FrameController(
 
     // qDebug() << "FrameController constructor invoked for index" << m_index;
 
+    m_decodeThread.start();
+    // qDebug() << "Decode thread started:" << m_decodeThread.currentThreadId();
     // Initialize decoder and renderer thread
     m_Decoder->moveToThread(&m_decodeThread);
     // qDebug() << "Moved decoder to thread" << &m_decodeThread;
@@ -70,10 +72,6 @@ FrameController::~FrameController(){
 // Start the decode and render threads
 void FrameController::start(){
     // qDebug() << "FrameController::start called for index" << m_index;
-    m_decodeThread.start();
-    // qDebug() << "Decode thread started:" << m_decodeThread.currentThreadId();
-    // m_renderThread.start();
-    // qDebug() << "Render thread started:" << m_renderThread.currentThreadId();
 
     // Temporary connection for prefill
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onPrefillCompleted, Qt::AutoConnection);
