@@ -20,6 +20,8 @@ FrameController::FrameController(
 
     // qDebug() << "FrameController constructor invoked for index" << m_index;
 
+    m_decodeThread.start();
+    // qDebug() << "Decode thread started:" << m_decodeThread.currentThreadId();
     // Initialize decoder and renderer thread
     m_Decoder->moveToThread(&m_decodeThread);
     // qDebug() << "Moved decoder to thread" << &m_decodeThread;
@@ -55,7 +57,7 @@ FrameController::FrameController(
 }
 
 FrameController::~FrameController(){
-    // qDebug() << "FrameController destructor for index" << m_index;
+    qDebug() << "FrameController destructor for index" << m_index;
     // Ensure threads are stopped before destruction
     m_decodeThread.quit();
     // m_renderThread.quit();
@@ -70,10 +72,6 @@ FrameController::~FrameController(){
 // Start the decode and render threads
 void FrameController::start(){
     // qDebug() << "FrameController::start called for index" << m_index;
-    m_decodeThread.start();
-    // qDebug() << "Decode thread started:" << m_decodeThread.currentThreadId();
-    // m_renderThread.start();
-    // qDebug() << "Render thread started:" << m_renderThread.currentThreadId();
 
     // Temporary connection for prefill
     connect(m_Decoder.get(), &VideoDecoder::frameLoaded, this, &FrameController::onPrefillCompleted, Qt::AutoConnection);
@@ -156,6 +154,15 @@ void FrameController::onFrameRendered(bool success) {
         // TODO: Handle rendering error
         ErrorReporter::instance().report("Frame rendering error occurred", LogLevel::Error);
     }else{
+
+        FrameData* lastFrame = m_frameQueue.getHeadFrame();
+
+        if (lastFrame->isEndFrame()) {
+            // qDebug() << "End of video reached for index" << m_index;
+            emit endOfVideo(m_index);
+            return;
+        }
+
         // Increment head to indicate frame is ready for rendering
         m_frameQueue.incrementHead();
         // qDebug() << "Head frame index incremented";

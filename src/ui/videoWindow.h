@@ -1,5 +1,6 @@
 #pragma once
 #include <QWindow>
+#include <QKeyEvent>
 #include <rhi/qrhi.h>
 
 class VideoWindow : public QWindow
@@ -11,6 +12,21 @@ public:
 
     double zoomFactor() const;
     QRectF selectionRect() const;
+
+signals:
+    void togglePlayPause();
+    void stepForward();
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override {
+        if (event->key() == Qt::Key_Space) {
+            emit togglePlayPause();
+        }
+
+        if (event->key() == Qt::Key_Right) {
+            emit stepForward();
+        }
+    }
 
 private:
     double m_zoomFactor = 1.0;

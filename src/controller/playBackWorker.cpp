@@ -1,17 +1,14 @@
 #include "playBackWorker.h"
 #include <QDebug>
-#include <QThread>
-
 
 void PlaybackWorker::start() {
     qDebug() << "PlaybackWorker::start invoked in thread" << QThread::currentThread();
     m_running = true;
     m_playing = true;
-    m_timer.start();
     m_nextWakeMs = 0;
     
     // Schedule runPlaybackLoop() to run once, asynchronously
-    QtConcurrent::run([this](){
+    QFuture<void> future = QtConcurrent::run([this](){
         runPlaybackLoop(); 
     });
 }
@@ -24,21 +21,36 @@ void PlaybackWorker::runPlaybackLoop() {
         QMutexLocker locker(&m_mutex);
         if (!m_running) break;
 
-        int64_t waitTime = std::max<int64_t>(0, m_nextWakeMs - m_timer.elapsed());
+        // Handle stepping
+        if (m_singleStep) {
+            m_singleStep = false;
+            locker.unlock();
+            emit tick();
+            locker.relock();
+            // return to paused state
+            m_playing = false;
+            continue;
+        }
 
-        // qDebug() << "[loop] received m_nextWakeMs " << m_nextWakeMs;
+        // Wait until resumed
+        if (!m_playing) {
+            m_cond.wait(&m_mutex);  
+            continue;
+        }
 
-        qDebug() << "[loop] waiting for" << waitTime << "ms. elapsed=" << m_timer.elapsed();
+        // Cap waitTime with small delay to ensure loop doesn't spin too fast
+        int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs);
+
+        qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
 
         QThread::msleep(waitTime);
 
         if (!m_running) break;
 
-        qDebug() << "[loop] woke up, elapsed=" << m_timer.elapsed() << "\n";
-
         locker.unlock();
         emit tick();
         locker.relock();
+
     }
 
     qDebug() << "PlaybackWorker::runPlaybackLoop exiting";
@@ -48,7 +60,7 @@ void PlaybackWorker::scheduleNext(int64_t deltaMs) {
     // qDebug() << "scheduleNext this=" << this << "thread=" << QThread::currentThread();
     // qDebug() << "PlaybackWorker::scheduleNext called with deltaMs=" << deltaMs;
     QMutexLocker locker(&m_mutex);
-    m_nextWakeMs = m_timer.elapsed() + deltaMs;
+    m_nextWakeMs = deltaMs;
     // qDebug() << "Next wake set to" << m_nextWakeMs;
     m_cond.wakeOne();
     // qDebug() << "cond.wakeOne() called in scheduleNext";
@@ -61,3 +73,22 @@ void PlaybackWorker::stop() {
     m_running = false;
     m_cond.wakeOne(); // Wake up the thread if it's waiting
 }
+
+void PlaybackWorker::pause() {
+    QMutexLocker locker(&m_mutex);
+    m_playing = false;
+}
+
+void PlaybackWorker::resume() {
+    QMutexLocker locker(&m_mutex);
+    m_playing = true;
+    m_cond.wakeOne();  // Wake up from pause
+}
+
+void PlaybackWorker::step() {
+    QMutexLocker locker(&m_mutex);
+    m_singleStep = true;
+    m_playing = true;
+    m_cond.wakeOne();
+}
+

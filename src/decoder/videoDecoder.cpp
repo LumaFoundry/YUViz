@@ -1,13 +1,4 @@
 #include "videoDecoder.h"
-#include <iostream>
-#include <cstring>
-
-extern "C" {
-#include <libavutil/rational.h>
-#include <libavutil/pixfmt.h>
-#include <libavutil/pixdesc.h>
-#include <libswscale/swscale.h>
-}
 
 VideoDecoder::VideoDecoder(QObject* parent) : 
     QObject(parent),
@@ -144,7 +135,17 @@ void VideoDecoder::openFile()
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
     metadata.setFilename(m_fileName);
-    
+
+    if (isYUV(codecContext->codec_id)){
+        int ySize = m_width * m_height;
+        int uvSize = ySize / 4;
+        int frameSize = ySize + 2 * uvSize;
+
+        QFileInfo info(QString::fromStdString(m_fileName));
+        int64_t fileSize = info.size();
+        yuvTotalFrames = fileSize / frameSize;
+    }
+
     currentFrameIndex = 0;
 
     return;
@@ -380,6 +381,11 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     }
 
     frameData->setPts(currentFrameIndex++);
+
+    if (isYUV(codecContext->codec_id) && currentFrameIndex == yuvTotalFrames - 1) {
+        frameData->setEndFrame(true);
+    }
+    
     av_packet_unref(tempPacket);
     
     av_packet_free(&tempPacket);

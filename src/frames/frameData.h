@@ -18,6 +18,9 @@ public:
     uint8_t* vPtr() const;
     int64_t pts() const;
     void setPts(int64_t pts);
+    bool isEndFrame() const;
+    void setEndFrame(bool isEndFrame);
+
 
     // TODO: deal with inconsistent frame size
 
@@ -26,4 +29,5 @@ private:
     std::shared_ptr<std::vector<uint8_t>> m_bufferPtr;
     size_t m_bufferOffset;
     std::array<size_t, 3> m_planeOffset;
+    bool m_isEndFrame = false;
 };
