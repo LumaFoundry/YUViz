@@ -1,6 +1,7 @@
 #include "videoRenderNode.h"
 #include <QQuickWindow>
 #include <QRect>
+#include <QQuickItem>
 
 VideoRenderNode::VideoRenderNode(QQuickWindow *window, VideoRenderer *renderer)
     : m_window(window)
@@ -19,8 +20,8 @@ void VideoRenderNode::prepare() {
 void VideoRenderNode::render(const RenderState *state) {
     qDebug() << "VideoRenderNode::render called";
     QRhiCommandBuffer *cb = commandBuffer();
-    QRect viewport = state->scissorRect();
-    viewport.setY(m_window->height() - viewport.y() - viewport.height());
+    QSizeF itemSize = m_window->contentItem()->size();
+    QRect viewport(0, 0, int(itemSize.width()), int(itemSize.height()));
     cb->setViewport(QRhiViewport(
         viewport.x(),
         viewport.y(),

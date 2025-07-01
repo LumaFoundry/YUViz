@@ -142,6 +142,8 @@ void FrameController::onFrameUploaded(bool success) {
         qWarning() << "Frame upload error for index" << m_index;
         // TODO: Handle upload error
         ErrorReporter::instance().report("Frame upload error occurred", LogLevel::Error);
+    }else{
+        emit requestRender();
     }
 }
 

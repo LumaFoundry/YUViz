@@ -39,11 +39,22 @@ void PlaybackWorker::runPlaybackLoop() {
         }
 
         // Cap waitTime with small delay to ensure loop doesn't spin too fast
-        int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs);
+        // int64_t waitTime = std::max<int64_t>(1, m_nextWakeMs);
 
         // qDebug() << "[loop] m_nextWakeMs: " << m_nextWakeMs;
 
-        QThread::msleep(waitTime);
+        // QThread::msleep(waitTime);
+
+        if (m_nextWakeMs > 0) {
+            qDebug() << "[loop] waiting for" << m_nextWakeMs << "ms";
+            QThread::msleep(m_nextWakeMs);
+            m_nextWakeMs = 0;  // Reset after waiting
+        } else {
+            // If no time scheduled, wait for scheduleNext to be called
+            qDebug() << "[loop] no time scheduled, waiting for scheduleNext";
+            m_cond.wait(&m_mutex);
+            continue;
+        }
 
         if (!m_running) break;
 
