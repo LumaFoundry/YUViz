@@ -20,14 +20,27 @@ void VideoRenderNode::prepare() {
 void VideoRenderNode::render(const RenderState *state) {
     qDebug() << "VideoRenderNode::render called";
     QRhiCommandBuffer *cb = commandBuffer();
-    QSizeF itemSize = m_window->contentItem()->size();
-    QRect viewport(0, 0, int(itemSize.width()), int(itemSize.height()));
+
+    QSizeF logicalSize = m_window->contentItem()->size();
+    qreal dpr = m_window->devicePixelRatio();
+
+    // Calculate the physical size in pixels by scaling with the DPR.
+    int physicalWidth = static_cast<int>(logicalSize.width() * dpr);
+    int physicalHeight = static_cast<int>(logicalSize.height() * dpr);
+
+    QRect physicalViewport(0, 0, physicalWidth, physicalHeight);
     cb->setViewport(QRhiViewport(
-        viewport.x(),
-        viewport.y(),
-        viewport.width(),
-        viewport.height()
+        physicalViewport.x(),
+        physicalViewport.y(),
+        physicalViewport.width(),
+        physicalViewport.height()
     ));
-    cb->setScissor({ viewport.x(), viewport.y(), viewport.width(), viewport.height() });
-    m_renderer->renderFrame(cb, viewport, renderTarget());
+    cb->setScissor(QRhiScissor(
+        physicalViewport.x(),
+        physicalViewport.y(),
+        physicalViewport.width(),
+        physicalViewport.height()
+    ));
+
+    m_renderer->renderFrame(cb, physicalViewport, renderTarget());
 }
