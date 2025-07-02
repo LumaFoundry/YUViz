@@ -26,6 +26,8 @@ Timer::Timer(QObject* parent, std::vector<AVRational> timebase)
     saveCache();
 }
 
+Timer::~Timer() = default;
+
 void Timer::saveCache()
 {
     m_cache.pts = m_pts;
@@ -59,7 +61,7 @@ void Timer::loop()
             deltaMs = backwardNext();
             break;
         }
-        std::this_thread::sleep_until(now + std::chrono::microseconds(deltaMs));
+        std::this_thread::sleep_until(now + std::chrono::milliseconds(deltaMs));
     }
 }
 
@@ -264,10 +266,10 @@ void Timer::seek(int64_t seekMs)
         for (size_t i = 0; i < m_size; ++i)
         {
             m_pts[i] = av_rescale_q(seekMs, AVRational{1, 1000}, m_timebase[i]);
+            m_timestamp[i] = av_mul_q(AVRational{static_cast<int>(m_pts[i]), 1}, m_timebase[i]);
+            m_update[i] = true;
         }
-        backwardPts();
         AVRational next = backwardWake();
-        backwardUpdate(next);
         m_playingTimeMs = av_rescale_q(next.num, AVRational{1000, next.den}, AVRational{1, 1});
         m_wake = next;
         saveCache();
