@@ -46,6 +46,10 @@ int main(int argc, char *argv[]) {
         QLatin1String("api"));
     parser.addOption(graphicsApiOption);
 
+    int width = 1920;
+    int height = 1080;
+    double framerate = 25.0;
+
     QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
     parser.addOption(debugOption);
     QCommandLineOption framerateOption({"f", "framerate"}, QLatin1String("Framerate"), QLatin1String("framerate"));
@@ -55,13 +59,24 @@ int main(int argc, char *argv[]) {
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
-    if (args.isEmpty() || !parser.isSet(resolutionOption)) {
-        QMessageBox::critical(nullptr, "Error", "You must specify <file> -r <width>x<height>");
-        return -1;
-    }
 
     if (parser.isSet(debugOption)) {
         qSetMessagePattern("[%{type}] %{message}");
+    }
+
+    if (parser.isSet(framerateOption)) {
+        parser.value(framerateOption).toDouble();
+    }
+
+    if (parser.isSet(resolutionOption)) {
+        bool ok1, ok2;
+        width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
+        height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
+        if (!ok1 || !ok2) {
+            qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
+            QMessageBox::critical(nullptr, "Error", QString("Invalid dimensions for video: %1 x %2").arg(parser.value(resolutionOption).split("x")[0]).arg(parser.value(resolutionOption).split("x")[1]));
+            return -1;
+        }
     }
 
     QString filename = args.first();
@@ -71,19 +86,10 @@ int main(int argc, char *argv[]) {
              << "Framerate: " << parser.value(framerateOption);
 
 
-    bool ok1, ok2;
-    int width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
-    int height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
+
     qDebug() << "Video file path:" << filename
              << "Width:" << width << "Height:" << height;
 
-    double framerate = parser.value(framerateOption).toDouble();
-
-    if (!ok1 || !ok2) {
-        qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-        QMessageBox::critical(nullptr, "Error", QString("Invalid dimensions for video: %1 x %2").arg(parser.value(resolutionOption).split("x")[0]).arg(parser.value(resolutionOption).split("x")[1]));
-        return -1;
-    }
 
     if (!QFile::exists(filename)) {
         qWarning() << "YUV file does not exist:" << filename;
