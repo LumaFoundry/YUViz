@@ -38,17 +38,17 @@ FrameController::FrameController(
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
     // qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
-    connect(m_window, &VideoWindow::batchUploaded, this, &FrameController::onFrameUploaded, Qt::AutoConnection);
+    connect(m_window->m_renderer, &VideoRenderer::batchIsFull, this, &FrameController::onFrameUploaded, Qt::AutoConnection);
     // qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
 
     // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::AutoConnection);
     // qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
-    connect(m_window, &VideoWindow::gpuUploaded, this, &FrameController::onFrameRendered, Qt::AutoConnection);
+    connect(m_window->m_renderer, &VideoRenderer::batchIsEmpty, this, &FrameController::onFrameRendered, Qt::AutoConnection);
     // qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
     
     // Error handling for renderer
-    connect(m_window, &VideoWindow::errorOccurred, this, &FrameController::onRenderError, Qt::AutoConnection);
+    connect(m_window->m_renderer, &VideoRenderer::rendererError, this, &FrameController::onRenderError, Qt::AutoConnection);
     // qDebug() << "Connected VideoRenderer::errorOccurred to FrameController::onRenderError";
 
 }
@@ -116,9 +116,7 @@ void FrameController::onTimerTick() {
     qDebug() << "onTimerTick for index" << m_index;
 
     // request render frames uploaded from previous tick (and request upload next frame)
-    emit requestRender();
-    // request to decode next tail frame
-    emit requestDecode(m_frameQueue.getTailFrame());
+
     qDebug() << "Emitted requestRender and requestDecode";
 }
 
@@ -136,68 +134,59 @@ void FrameController:: onFrameDecoded(bool success){
     
 }
 
-void FrameController::onFrameUploaded(bool success) {
-    qDebug() << "onFrameUploaded for index" << m_index << "success=" << success;
-    if (!success) {
-        qWarning() << "Frame upload error for index" << m_index;
-        // TODO: Handle upload error
-        ErrorReporter::instance().report("Frame upload error occurred", LogLevel::Error);
-    }else{
-        emit requestRender();
-    }
+void FrameController::onFrameUploaded() {
+    qDebug() << "onFrameUploaded for index" << m_index ;
+
+    emit requestRender();
+
 }
 
 
-void FrameController::onFrameRendered(bool success) {
-    qDebug() << "onFrameRendered for index" << m_index << "success=" << success;
-    if (!success) {
-        qWarning() << "Frame rendering error for index" << m_index;
-        // TODO: Handle rendering error
-        ErrorReporter::instance().report("Frame rendering error occurred", LogLevel::Error);
-    }else{
+void FrameController::onFrameRendered() {
+    FrameData* lastFrame = m_frameQueue.getHeadFrame();
 
-        FrameData* lastFrame = m_frameQueue.getHeadFrame();
-
-        if (lastFrame->isEndFrame()) {
-            qDebug() << "End of video reached for index" << m_index;
-            emit endOfVideo(m_index);
-            return;
-        }
-
-        // Increment head to indicate frame is ready for rendering
-        m_frameQueue.incrementHead();
-        qDebug() << "Head frame index incremented";
-
-        qDebug() << "Try get head frame";
-        FrameData* headFrame = m_frameQueue.getHeadFrame();
-        qDebug() << headFrame;
-
-        // Calculate delta time for next sleep
-        int64_t currentPTS = headFrame->pts();
-
-        if (currentPTS < 0) {
-            qWarning() << "[FC] Invalid PTS (possibly uninitialized frame); skipping";
-            return;
-        }
-
-        if (currentPTS < m_lastPTS) {
-            qWarning() << "[FC] Non-monotonic PTS: current=" << currentPTS << " last=" << m_lastPTS;
-            return;
-        }
-
-        int64_t deltaPTS = currentPTS - m_lastPTS;
-        int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
-        
-        qDebug() << "FC:: Computed deltaMs =" << deltaMs;
-        // send delta to VideoController
-        emit currentDelta(deltaMs, m_index);
-
-        m_lastPTS = currentPTS;
-
-        // Request upload for the next frame
-        qDebug() << "FC:: Requesting upload for next head frame";
-        emit requestUpload(m_frameQueue.getHeadFrame());
+    if (lastFrame->isEndFrame()) {
+        qDebug() << "End of video reached for index" << m_index;
+        emit endOfVideo(m_index);
+        return;
     }
+
+    // Increment head to indicate frame is ready for rendering
+    m_frameQueue.incrementHead();
+    qDebug() << "Head frame index incremented";
+
+    qDebug() << "Try get head frame";
+    FrameData* headFrame = m_frameQueue.getHeadFrame();
+    qDebug() << headFrame;
+
+    // Calculate delta time for next sleep
+    int64_t currentPTS = headFrame->pts();
+
+    if (currentPTS < 0) {
+        qWarning() << "[FC] Invalid PTS (possibly uninitialized frame); skipping";
+        return;
+    }
+
+    if (currentPTS < m_lastPTS) {
+        qWarning() << "[FC] Non-monotonic PTS: current=" << currentPTS << " last=" << m_lastPTS;
+        return;
+    }
+
+    int64_t deltaPTS = currentPTS - m_lastPTS;
+    int64_t deltaMs = av_rescale_q(deltaPTS, m_frameQueue.metaPtr()->timeBase(), AVRational{1, 1000});
+    
+    qDebug() << "FC:: Computed deltaMs =" << deltaMs;
+    // send delta to VideoController
+    emit currentDelta(deltaMs, m_index);
+
+    m_lastPTS = currentPTS;
+
+    // Request upload for the next frame
+    qDebug() << "FC:: Requesting upload for next head frame";
+    emit requestUpload(m_frameQueue.getHeadFrame());
+    // request to decode next tail frame
+    emit requestDecode(m_frameQueue.getTailFrame());
+
 }
 
 void FrameController::onRenderError() {

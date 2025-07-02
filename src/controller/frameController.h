@@ -37,8 +37,8 @@ public slots:
     // Receive signals from decoder and renderer
     void onTimerTick();
     void onFrameDecoded(bool success);
-    void onFrameUploaded(bool success);
-    void onFrameRendered(bool success);
+    void onFrameUploaded();
+    void onFrameRendered();
     void onPrefillCompleted(bool success);
     void onRenderError();
    

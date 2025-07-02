@@ -12,9 +12,9 @@ VideoWindow::VideoWindow(QQuickItem *parent):
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     m_renderer = new VideoRenderer(this, metaPtr);
-    connect(m_renderer, &VideoRenderer::batchIsFull, this, &VideoWindow::batchIsFull);
-    connect(m_renderer, &VideoRenderer::batchIsEmpty, this, &VideoWindow::batchIsEmpty);
-    connect(m_renderer, &VideoRenderer::rendererError, this, &VideoWindow::rendererError);
+    // connect(m_renderer, &VideoRenderer::batchIsFull, this, &VideoWindow::batchIsFull);
+    // connect(m_renderer, &VideoRenderer::batchIsEmpty, this, &VideoWindow::batchIsEmpty);
+    // connect(m_renderer, &VideoRenderer::rendererError, this, &VideoWindow::rendererError);
     if (window()) {
         update();
     } else {

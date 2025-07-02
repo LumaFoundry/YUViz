@@ -10,6 +10,7 @@ class VideoWindow : public QQuickItem {
 public:
     explicit VideoWindow(QQuickItem *parent = nullptr);
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
+    VideoRenderer *m_renderer = nullptr;
 
 public slots:
     void uploadFrame(FrameData* frame);
@@ -27,8 +28,6 @@ signals:
 protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
 
-private:
-    VideoRenderer *m_renderer = nullptr;
 
 
 };
