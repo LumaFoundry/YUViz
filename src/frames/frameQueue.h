@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "frameData.h"
 #include "frameMeta.h"
+#include <atomic>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QDebug>
@@ -19,16 +20,13 @@ class FrameQueue{
 
         // Getter the current frame data pointer for renderer
         // Should be thread-safe - block until there is frame to read
-        FrameData* getHeadFrame();
+        FrameData* getHeadFrame(int64_t pts);
 
         // Get the next frame to be loaded for decoder
         // Should be thread-safe - block until there is space to write
-        FrameData* getTailFrame();
+        FrameData* getTailFrame(int64_t pts);
 
-        // Incrementing head and tail
-        // Should be thread-safe
-        void incrementHead();
-        void incrementTail();
+        void updateTail(int64_t pts);
 
         const int getSize() const { return queueSize; }
 
@@ -38,10 +36,12 @@ class FrameQueue{
         const int queueSize = 50;
 
         // Points to current frame
-        int64_t head = 0;
+        std::atomic<int64_t> head = 0;
 
         // Points to future un-loaded frame
-        int64_t tail = 0;
+        // access by using
+        // size_t tailVal = tail.load(std::memory_order_acquire);
+        std::atomic<int64_t> tail = 0;
 
         // Thread safety
         QMutex m_mutex;
