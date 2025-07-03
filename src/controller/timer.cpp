@@ -3,6 +3,7 @@
 #include <thread>
 #include <algorithm>
 #include <QObject>
+#include <QTimer>
 
 extern "C"
 {
@@ -48,9 +49,9 @@ void Timer::restoreCache()
 
 void Timer::loop()
 {
-    while(m_status.load() == Status(Playing))
+    if (m_status.load() == Status(Playing))
     {
-        auto now = std::chrono::steady_clock::now();
+        auto start = std::chrono::steady_clock::now();
         int64_t deltaMs = 0;
         switch (m_direction.load())
         {
@@ -61,7 +62,10 @@ void Timer::loop()
             deltaMs = backwardNext();
             break;
         }
-        std::this_thread::sleep_until(now + std::chrono::milliseconds(deltaMs));
+        auto end = std::chrono::steady_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        int64_t remainMs = (deltaMs - duration.count()) / 1000;
+        QTimer::singleShot(remainMs, this, &Timer::loop);
     }
 }
 
@@ -102,6 +106,7 @@ bool Timer::autoPause()
     if (m_wake.num == 0)
     {
         m_status = Status(Paused);
+        m_direction = Direction(Forward);
         return true;
     }
     return false;
@@ -145,7 +150,7 @@ AVRational Timer::backwardWake()
 {
     auto max = std::max_element(m_timestamp.begin(), m_timestamp.end(), 
                                 [](const AVRational& a, const AVRational& b) 
-                                {return av_cmp_q(a, b) > 0;});
+                                {return av_cmp_q(a, b) < 0;});
     return *max;
 }
 
@@ -164,14 +169,14 @@ void Timer::backwardUpdate(AVRational next)
 {
     for (size_t i = 0; i < m_size; ++i)
     {
-        if (av_cmp_q(m_timestamp[i], next) < 0)
+        if (av_cmp_q(m_timestamp[i], next) == 0)
         {
-            m_pts[i] ++;
-            m_timestamp[i] = av_mul_q(AVRational{static_cast<int>(m_pts[i]), 1}, m_timebase[i]);
+            m_update[i] = true;
         }
         else 
         {
-            m_update[i] = true;
+            m_pts[i] ++;
+            m_timestamp[i] = av_mul_q(AVRational{static_cast<int>(m_pts[i]), 1}, m_timebase[i]);
         }
     }
 }
@@ -186,7 +191,7 @@ int64_t Timer::nextDeltaMs(AVRational next, AVRational last)
     AVRational delta = av_sub_q(next, last);
     delta = absolute(delta);
     delta = av_div_q(delta, m_speed);
-    int64_t deltaTime = av_rescale_q(delta.num, AVRational{1000, delta.den}, AVRational{1, 1});
+    int64_t deltaTime = av_rescale_q(delta.num, AVRational{1000000, delta.den}, AVRational{1, 1});
     return deltaTime;
 }
 
@@ -216,6 +221,11 @@ void Timer::playForward()
         m_direction = Direction(Forward);
         restoreCache();
     };
+    if (m_status.load() == Status(Paused))
+    {
+        m_status = Status(Playing);
+        loop();
+    }
 }
 
 void Timer::playBackward()
@@ -226,6 +236,11 @@ void Timer::playBackward()
         m_direction = Direction(Backward);
         restoreCache();
     };
+    if (m_status.load() == Status(Paused))
+    {
+        m_status = Status(Playing);
+        loop();
+    }
 }
 
 void Timer::stepForward()
@@ -243,7 +258,7 @@ void Timer::stepForward()
     }
 }
 
-void Timer::stepBackwork()
+void Timer::stepBackward()
 {
     if (m_status.load() == Status(Paused) && m_wake.num > 0)
     {
@@ -258,14 +273,15 @@ void Timer::stepBackwork()
     }
 }
 
-void Timer::seek(int64_t seekMs)
+void Timer::seek(std::vector<int64_t> seekPts)
 {
     if (m_status.load() != Status(Seeking))
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+        m_status = Status(Seeking);
         for (size_t i = 0; i < m_size; ++i)
         {
-            m_pts[i] = av_rescale_q(seekMs, AVRational{1, 1000}, m_timebase[i]);
+            m_pts[i] = seekPts[i];
             m_timestamp[i] = av_mul_q(AVRational{static_cast<int>(m_pts[i]), 1}, m_timebase[i]);
             m_update[i] = true;
         }

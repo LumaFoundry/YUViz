@@ -44,9 +44,12 @@ public slots:
     void playForward();
     void playBackward();
     void stepForward();
-    void stepBackwork();
-    void seek(int64_t seekMs);
+    void stepBackward();
+    void seek(std::vector<int64_t> seekPts);
     void setSpeed(AVRational speed);
+
+private slots:
+    void loop();
 
 signals:
     void tick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
@@ -67,7 +70,6 @@ private:
 
     void saveCache();
     void restoreCache();
-    void loop();
     int64_t forwardNext();
     int64_t backwardNext();
     bool autoPause();
