@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(qt6_videoplayer_test LANGUAGES CXX)
 set(CMAKE_AUTOMOC ON)
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS
   Core
@@ -28,6 +29,18 @@ FetchContent_Declare(
     URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
 )
 FetchContent_MakeAvailable(googletest)
+
+if(TARGET gtest)
+    set_target_properties(gtest PROPERTIES 
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ""
+    )
+endif()
+if(TARGET gmock)
+    set_target_properties(gmock PROPERTIES 
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ""
+    )
+endif()
+
 
 set(SRC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/frames/frameMeta.cpp
