@@ -25,9 +25,7 @@ int FrameQueue::getEmpty(){
     size_t tailVal = tail.load(std::memory_order_acquire);
     size_t headVal = head.load(std::memory_order_acquire);
 
-
-    return (queueSize/2 - (tailVal - headVal));
-    // return (headVal + queueSize / 2 - tailVal + queueSize) % queueSize;
+    return (headVal + queueSize / 2) - tailVal;
 }
 
 // IMPORTANT: Must not call decoder when seeking / stepping
