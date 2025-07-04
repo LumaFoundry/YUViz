@@ -168,7 +168,7 @@ void VideoDecoder::openFile()
  *
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
-void VideoDecoder::loadFrame(int num_frames)
+void VideoDecoder::loadFrames(int num_frames)
 {
 
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
@@ -402,9 +402,5 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     av_packet_unref(tempPacket);
     
     av_packet_free(&tempPacket);
-
-    // qDebug() << "VideoDecoder:: emit frameLoaded";
-    emit frameLoaded(true);
-    return;
 }
 
