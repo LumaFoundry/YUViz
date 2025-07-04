@@ -1,6 +1,6 @@
 #include "videoDecoder.h"
 
-VideoDecoder::VideoDecoder(QObject* parent) : 
+VideoDecoder::VideoDecoder(QObject* parent) :
     QObject(parent),
     formatContext(nullptr),
     codecContext(nullptr),
@@ -44,6 +44,11 @@ void VideoDecoder::setFileName(const std::string& fileName)
 {
     m_fileName = fileName;
 }
+
+void VideoDecoder::setFrameQueue(FrameQueue *frameQueue) {
+    m_frameQueue = frameQueue;
+}
+
 
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
@@ -163,26 +168,39 @@ void VideoDecoder::openFile()
  *
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
-void VideoDecoder::loadFrame(FrameData* frameData)
+void VideoDecoder::loadFrame(int num_frames)
 {
 
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
-    if (!formatContext || !codecContext || !frameData) {
+    if (!formatContext || !codecContext) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
         emit frameLoaded(false);
     }
 
     // Check if this is a raw YUV format that doesn't need decoding
     bool isRawYUV = isYUV(codecContext->codec_id);
-    
-    if (isRawYUV) {
-        loadYUVFrame(frameData);
-    } else{
-        // For compressed codecs, use the standard decoding path
-        loadCompressedFrame(frameData);
-    }
+    int maxpts = 0;
 
+    for (int i = 0; i < num_frames; ++i) {
+        FrameData* frameData = m_frameQueue->getTailFrame();
+        if (!frameData) {
+            ErrorReporter::instance().report("Failed to get tail frame for raw YUV", LogLevel::Error);
+            emit frameLoaded(false);
+            continue;
+        }
+
+        if (isRawYUV) {
+            loadYUVFrame(frameData);
+        } else {
+            loadCompressedFrame(frameData);
+        }
+        if (frameData->pts() > maxpts) {
+            maxpts = frameData->pts();
+        }
+    }
+    m_frameQueue->setTail(maxpts);
+    emit frameLoaded(true);
 }
 
 FrameMeta VideoDecoder::getMetaData()
@@ -241,8 +259,6 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
     }
 
     av_packet_free(&tempPacket);
-    // emit frameLoaded(false);
-    return;
 }
 
 void VideoDecoder::loadCompressedFrame(FrameData* frameData)
@@ -295,7 +311,6 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
 
                     frameData->setPts(tempFrame->pts);
                     currentFrameIndex++;
-                    emit frameLoaded(true);
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                     emit frameLoaded(false);
@@ -320,8 +335,6 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     }
     
     av_packet_free(&tempPacket);
-    // emit frameLoaded(false);
-    return;
 }
 
 /**

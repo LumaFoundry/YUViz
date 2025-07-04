@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <iostream>
 #include <cstring>
+
+#include "frameQueue.h"
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
 #include "utils/errorReporter.h"
@@ -28,12 +30,13 @@ public:
 	void setFramerate(double framerate);
 	void setFormat(AVPixelFormat format);
 	void setFileName(const std::string& fileName);
+	void setFrameQueue(FrameQueue* frameQueue);
 
 	void openFile();
     virtual FrameMeta getMetaData();
 
 public slots:
-    virtual void loadFrame(FrameData* frame);
+    virtual void loadFrame(int num_frames);
 
 signals:
     void frameLoaded(bool success);
@@ -52,6 +55,7 @@ private:
 	double m_framerate;
 	AVPixelFormat m_format;
 	std::string m_fileName;
+	FrameQueue* m_frameQueue;
 
 	int yuvTotalFrames = -1;
 
