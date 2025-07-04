@@ -23,10 +23,14 @@ signals:
     void batchIsEmpty();
     void rendererError();
 
+public slots:
+    void setZoomFactor(float zoom);
 
 private:
     std::shared_ptr<FrameMeta> m_metaPtr;
     QRhi *m_rhi = nullptr;
+    float m_zoomFactor = 1.0f;
+    float m_lastZoomFactor = 1.0f;
     std::unique_ptr<QRhiTexture> m_yTex;
     std::unique_ptr<QRhiTexture> m_uTex;
     std::unique_ptr<QRhiTexture> m_vTex;

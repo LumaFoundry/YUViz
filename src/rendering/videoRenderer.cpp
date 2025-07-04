@@ -24,11 +24,9 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
     m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
     m_vTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
-    if (!m_yTex->create() || !m_uTex->create() || !m_vTex->create()) {
-        qWarning() << "Failed to create YUV textures";
-        emit rendererError();
-        return;
-    }
+    m_yTex->create();
+    m_uTex->create();
+    m_vTex->create();
 
     // Uniform buffer
     m_colorParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int)*4));
@@ -40,7 +38,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
 
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
-    m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float)*4));
+    m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float)*8));
     m_resizeParams->create();
 
     // Load shaders
@@ -77,11 +75,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_pip->setRenderPassDescriptor(rp);
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear,
                                       QRhiSampler::None, QRhiSampler::Repeat, QRhiSampler::Repeat));
-    if (!m_sampler->create()) {
-        qWarning() << "Failed to create sampler";
-        emit rendererError();
-        return;
-    }
+    m_sampler->create();
 
     m_resourceBindings.reset(m_rhi->newShaderResourceBindings());
     m_resourceBindings->setBindings({
@@ -98,11 +92,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     }
     
     m_pip->setShaderResourceBindings(m_resourceBindings.get());
-    if (!m_pip->create()) {
-        qWarning() << "Failed to create graphics pipeline";
-        emit rendererError();
-        return;
-    }
+    m_pip->create();
 
     // Vertex buffer
     struct V { float x,y,u,v; };
@@ -111,11 +101,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
         {1,-1,1,1}, {1,1,1,0}
     };
     m_vbuf.reset(m_rhi->newBuffer(QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer, sizeof(verts)));
-    if (!m_vbuf->create()) {
-        qWarning() << "Failed to create vertex buffer";
-        emit rendererError();
-        return;
-    }
+    m_vbuf->create();
 
     m_initBatch = m_rhi->nextResourceUpdateBatch();
     m_initBatch->uploadStaticBuffer(m_vbuf.get(), 0, sizeof(verts), verts);
@@ -189,30 +175,48 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
-    if (std::abs(windowAspect - m_windowAspect) > 1e-4f)
+    float currentZoom = m_zoomFactor;
+    if (std::abs(windowAspect - m_windowAspect) > 1e-4f || std::abs(currentZoom - m_lastZoomFactor) > 1e-4f)
     {
+        m_windowAspect = windowAspect;
+        m_lastZoomFactor = currentZoom;
+
         float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
-        float scaleX, scaleY, offsetX, offsetY;
+        float scaleX, scaleY;
+
         if (windowAspect > videoAspect) {
             // window is wider than video: height fits, width letterboxed
             scaleX = videoAspect / windowAspect;
             scaleY = 1.0f;
-            offsetX = (1.0f - scaleX) * 0.5f;
-            offsetY = 0.0f;
         } else {
             // window is taller than video: width fits, height letterboxed
             scaleX = 1.0f;
             scaleY = windowAspect / videoAspect;
-            offsetX = 0.0f;
-            offsetY = (1.0f - scaleY) * 0.5f;
         }
-        struct ResizeParams { float scaleX, scaleY, offsetX, offsetY; };
-        ResizeParams rp{ scaleX, scaleY, offsetX, offsetY };
+
+        float offsetX = 0.0f;
+        float offsetY = 0.0f;
+        
+        // Struct matching the shader's std140 layout.
+        // It requires padding to a 16-byte boundary for the struct members.
+        // vec2, vec2, float -> (8 bytes, 8 bytes, 4 bytes) -> needs padding.
+        struct ResizeParams {
+            float scaleX, scaleY;
+            float offsetX, offsetY;
+            float zoom;
+            // Pad to 32 bytes (8 floats total) to match shader buffer size
+            float padding[3];
+        };
+
+        ResizeParams rp{ scaleX, scaleY, offsetX, offsetY, currentZoom };
+        
         m_resizeParamsBatch = m_rhi->nextResourceUpdateBatch();
         m_resizeParamsBatch->updateDynamicBuffer(m_resizeParams.get(), 0, sizeof(rp), &rp);
+    }
+
+    if (m_resizeParamsBatch) {
         cb->resourceUpdate(m_resizeParamsBatch);
         m_resizeParamsBatch = nullptr;
-        m_windowAspect = windowAspect;
     }
     cb->setViewport(QRhiViewport(viewport.x(), viewport.y(), viewport.width(), viewport.height()));
 
@@ -238,5 +242,11 @@ void VideoRenderer::releaseBatch()
     if (m_frameBatch) {
         m_frameBatch->release();
         m_frameBatch = nullptr;
+    }
+}
+
+void VideoRenderer::setZoomFactor(float zoom) {
+    if (std::abs(m_zoomFactor - zoom) > 1e-4f) {
+        m_zoomFactor = zoom;
     }
 }
