@@ -30,7 +30,7 @@ public:
 	void setFramerate(double framerate);
 	void setFormat(AVPixelFormat format);
 	void setFileName(const std::string& fileName);
-	void setFrameQueue(FrameQueue* frameQueue);
+	void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
 
 	void openFile();
     virtual FrameMeta getMetaData();
@@ -39,7 +39,7 @@ public slots:
     virtual void loadFrames(int num_frames);
 
 signals:
-    void frameLoaded(bool success);
+    void framesLoaded(bool success);
 
 private:
 	AVFormatContext* formatContext;
@@ -48,14 +48,14 @@ private:
 	int videoStreamIndex;
 	
 	FrameMeta metadata;
-	int currentFrameIndex;
+	int currentFrameIndex = 0;
 	
 	int m_width;
 	int m_height;
 	double m_framerate;
 	AVPixelFormat m_format;
 	std::string m_fileName;
-	FrameQueue* m_frameQueue;
+	std::shared_ptr<FrameQueue> m_frameQueue;
 
 	int yuvTotalFrames = -1;
 

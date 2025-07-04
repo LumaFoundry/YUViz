@@ -24,7 +24,8 @@ FrameQueue::~FrameQueue() = default;
 int FrameQueue::getEmpty(){
     size_t tailVal = tail.load(std::memory_order_acquire);
     size_t headVal = head.load(std::memory_order_acquire);
-
+    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
+    qDebug() << "Queue:: empty frames: " << (headVal + queueSize / 2) - tailVal;
     return (headVal + queueSize / 2) - tailVal;
 }
 
@@ -52,6 +53,7 @@ FrameData* FrameQueue::getTailFrame(int64_t pts){
 
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts){
+    qDebug() << "Queue:: updateTail called with pts: " << pts;
     tail.store(pts, std::memory_order_release);
 }
 

@@ -11,6 +11,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <memory>
+#include "utils/videoFileInfo.h"
 #include "decoder/videoDecoder.h"
 #include "controller/frameController.h"
 #include "controller/videoController.h"
@@ -104,11 +105,8 @@ int main(int argc, char *argv[]) {
     videoFiles.push_back(videoFileInfo);
     qDebug() << "Number of video files to play:" << videoFiles.size();
 
-    qDebug() << "Creating PlaybackWorker";
-    auto playbackWorker = std::make_shared<PlaybackWorker>();
-    qDebug() << "PlaybackWorker created successfully";
     qDebug() << "Creating VideoController";
-    VideoController videoController(nullptr, playbackWorker, videoFiles);
+    VideoController videoController(nullptr, videoFiles);
     qDebug() << "VideoController created successfully";
 
     return app.exec();

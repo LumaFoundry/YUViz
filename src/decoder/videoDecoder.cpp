@@ -45,7 +45,7 @@ void VideoDecoder::setFileName(const std::string& fileName)
     m_fileName = fileName;
 }
 
-void VideoDecoder::setFrameQueue(FrameQueue *frameQueue) {
+void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
     m_frameQueue = frameQueue;
 }
 
@@ -175,7 +175,7 @@ void VideoDecoder::loadFrames(int num_frames)
 
     if (!formatContext || !codecContext) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
-        emit frameLoaded(false);
+        emit framesLoaded(false);
     }
 
     bool isRawYUV = isYUV(codecContext->codec_id);
@@ -190,9 +190,8 @@ void VideoDecoder::loadFrames(int num_frames)
         }
         maxpts = std::max(maxpts, temp_pts);
     }
-
     m_frameQueue->updateTail(maxpts);
-    emit frameLoaded(true);
+    emit framesLoaded(true);
 }
 
 FrameMeta VideoDecoder::getMetaData()
@@ -232,7 +231,7 @@ int64_t VideoDecoder::loadYUVFrame()
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
-        emit frameLoaded(false);
+        emit framesLoaded(false);
         return -1;
     }
 
@@ -241,12 +240,12 @@ int64_t VideoDecoder::loadYUVFrame()
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
             int retFlag;
-            pts = tempPacket->pts;
+            pts = currentFrameIndex;
             FrameData* frameData = m_frameQueue->getTailFrame(pts);
             copyFrame(tempPacket, frameData, retFlag);
             if (retFlag == 2)
                 break;
-            return -1;
+            return pts;
         }
     }
 
@@ -264,7 +263,7 @@ int64_t VideoDecoder::loadCompressedFrame()
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
-        emit frameLoaded(false);
+        emit framesLoaded(false);
         return -1;
     }
     
@@ -312,7 +311,7 @@ int64_t VideoDecoder::loadCompressedFrame()
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
-                    emit frameLoaded(false);
+                    emit framesLoaded(false);
                 }
 
                 av_frame_free(&tempFrame);

@@ -181,6 +181,8 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         emit batchIsEmpty();
     }
 
+    qDebug() << "VideoRenderer::init ready";
+
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
     float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
@@ -200,9 +202,6 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     }
     cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
 
-
-    qDebug() << "Rendering frame with viewport:" 
-           << vpX << vpY << vpW << vpH;
     // Draw
     cb->setGraphicsPipeline(m_pip.get());
     QRhiCommandBuffer::VertexInput vi(m_vbuf.get(), 0);

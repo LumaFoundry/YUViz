@@ -10,8 +10,14 @@
 #include "decoder/videoDecoder.h"
 #include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
+#include "utils/videoFileInfo.h"
 #include "controller/playBackWorker.h"
 #include "ui/videoWindow.h"
+
+extern "C"
+{
+#include <libavutil/rational.h>
+}
 
 // One controller per FrameQueue
 
@@ -20,10 +26,8 @@ class FrameController : public QObject{
 
 public:
 
-    FrameController(QObject *parent, 
-                    std::unique_ptr<VideoDecoder> decoder, 
-                    std::shared_ptr<PlaybackWorker> playbackWorker,
-                    VideoWindow* window, 
+    FrameController(QObject *parent,
+                    VideoFileInfo videoFileInfo,
                     int index);
                 
     ~FrameController();
@@ -31,22 +35,23 @@ public:
     // Start decoder, renderer and timer threads
     void start();
 
+    AVRational getTimeBase();
+
     int m_index; // Index of current FC, for VC orchestration
 
 public slots:
     // Receive signals from decoder and renderer
-    void onTimerTick();
+    void onTimerTick(int64_t pts);
     void onFrameDecoded(bool success);
     void onFrameUploaded();
     void onFrameRendered();
-    void onPrefillCompleted(bool success);
     void onRenderError();
    
 signals:
-    void requestDecode(FrameData* frame);
+    void ready(int index);
+    void requestDecode(int numFrames);
     void requestUpload(FrameData* frame);
-    void requestRender();
-    void currentDelta(int64_t delta, int index);
+    void requestRender(FrameData* frame);
     void endOfVideo(int index);
 
 private:
@@ -61,7 +66,9 @@ private:
     VideoWindow* m_window = nullptr;
 
     // FrameQueue to manage frames
-    FrameQueue m_frameQueue;
+    std::shared_ptr<FrameQueue> m_frameQueue;
+
+    std::shared_ptr<FrameMeta> m_frameMeta;
 
     // Thread for reading / writing frames object
     QThread m_renderThread;
@@ -70,7 +77,9 @@ private:
     // Last PTS of the frame rendered
     int64_t m_lastPTS = -1; 
 
-    // Prefill count for preloading frames
-    int m_prefillDecodedCount = 0; 
+    // Prefill flag for preloading frames
+    bool m_prefill = false;
+
+    bool m_endOfVideo = false;
 
 };
