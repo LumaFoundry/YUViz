@@ -60,8 +60,8 @@ private:
     std::vector<int64_t> m_pts;
     std::vector<bool> m_update;
     std::vector<AVRational> m_timestamp;
-    std::atomic<Status> m_status;
-    std::atomic<Direction> m_direction;
+    Status m_status;
+    Direction m_direction;
     int64_t m_playingTimeMs;
     AVRational m_speed;
     AVRational m_wake;

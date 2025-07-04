@@ -49,11 +49,11 @@ void Timer::restoreCache()
 
 void Timer::loop()
 {
-    if (m_status.load() == Status(Playing))
+    if (m_status == Status(Playing))
     {
         auto start = std::chrono::steady_clock::now();
         int64_t deltaMs = 0;
-        switch (m_direction.load())
+        switch (m_direction)
         {
         case Direction(Forward):
             deltaMs = forwardNext();
@@ -197,7 +197,7 @@ int64_t Timer::nextDeltaMs(AVRational next, AVRational last)
 
 void Timer::play()
 {
-    if (m_status.load() != Status(Playing))
+    if (m_status != Status(Playing))
     {
         m_status = Status(Playing);
         loop();
@@ -206,7 +206,7 @@ void Timer::play()
 
 void Timer::pause()
 {
-    if (m_status.load() == Status(Playing))
+    if (m_status == Status(Playing))
     {
         m_status = Status(Paused);
         restoreCache();
@@ -215,13 +215,13 @@ void Timer::pause()
 
 void Timer::playForward()
 {
-    if (m_direction.load() == Direction(Backward))
+    if (m_direction == Direction(Backward))
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_direction = Direction(Forward);
         restoreCache();
     };
-    if (m_status.load() == Status(Paused))
+    if (m_status == Status(Paused))
     {
         m_status = Status(Playing);
         loop();
@@ -230,13 +230,13 @@ void Timer::playForward()
 
 void Timer::playBackward()
 {
-    if (m_direction.load() == Direction(Forward))
+    if (m_direction == Direction(Forward))
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_direction = Direction(Backward);
         restoreCache();
     };
-    if (m_status.load() == Status(Paused))
+    if (m_status == Status(Paused))
     {
         m_status = Status(Playing);
         loop();
@@ -245,7 +245,7 @@ void Timer::playBackward()
 
 void Timer::stepForward()
 {
-    if (m_status.load() == Status(Paused))
+    if (m_status == Status(Paused))
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         forwardPts();
@@ -260,7 +260,7 @@ void Timer::stepForward()
 
 void Timer::stepBackward()
 {
-    if (m_status.load() == Status(Paused) && m_wake.num > 0)
+    if (m_status == Status(Paused) && m_wake.num > 0)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         backwardPts();
@@ -275,7 +275,7 @@ void Timer::stepBackward()
 
 void Timer::seek(std::vector<int64_t> seekPts)
 {
-    if (m_status.load() != Status(Seeking))
+    if (m_status != Status(Seeking))
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_status = Status(Seeking);
