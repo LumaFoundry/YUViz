@@ -30,23 +30,24 @@ class FrameQueue{
 
         const int getSize() const { return queueSize; }
 
+        int getEmpty();
+
+        void clear();
+
 
     private:
         // Size of the queue
         const int queueSize = 50;
 
         // Points to current frame
+        // access by using
+        // size_t headVal = head.load(std::memory_order_acquire);
         std::atomic<int64_t> head = 0;
 
         // Points to future un-loaded frame
         // access by using
         // size_t tailVal = tail.load(std::memory_order_acquire);
         std::atomic<int64_t> tail = 0;
-
-        // Thread safety
-        QMutex m_mutex;
-        QWaitCondition m_canRead;
-        QWaitCondition m_canWrite;
 
         // Frame metadata
         std::shared_ptr<FrameMeta> m_metaPtr;
@@ -56,10 +57,5 @@ class FrameQueue{
 
         // Frame data queue 
         std::vector<FrameData> m_queue;
-
-        // Indicators for whether queue is full / empty
-        // Should not be called explicitly, use getHeadFrame() and getTailFrame() instead
-        bool isFull() const;
-        bool isEmpty() const; 
 
 };
