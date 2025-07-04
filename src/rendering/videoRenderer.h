@@ -16,6 +16,7 @@ public:
     void setColorParams(AVColorSpace space, AVColorRange range);
     void uploadFrame(FrameData* frame);
     void renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QRhiRenderTarget *rt);
+    void releaseBatch();
 
 signals:
     void batchIsFull();

@@ -48,6 +48,8 @@ FrameController::FrameController(
     // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::AutoConnection);
     qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
+
+    connect(this, &FrameController::requestRelease, m_window, &VideoWindow::releaseBatch, Qt::AutoConnection);
     
     connect(m_window->m_renderer, &VideoRenderer::batchIsEmpty, this, &FrameController::onFrameRendered, Qt::AutoConnection);
     qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
@@ -106,6 +108,8 @@ void FrameController::onTimerTick(int64_t pts) {
     } else{
         qWarning() << "Cannot render frame" << pts;
     }
+
+    requestRelease();
 
     // Upload future frame if inside frameQueue
     FrameData* future = m_frameQueue->getHeadFrame(pts + 1);

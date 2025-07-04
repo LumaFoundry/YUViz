@@ -210,3 +210,19 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     
     cb->draw(4);
 }
+
+void VideoRenderer::releaseBatch()
+{
+    if (m_initBatch) {
+        m_initBatch->release();
+        m_initBatch = nullptr;
+    }
+    if (m_colorParamsBatch) {
+        m_colorParamsBatch->release();
+        m_colorParamsBatch = nullptr;
+    }
+    if (m_frameBatch) {
+        m_frameBatch->release();
+        m_frameBatch = nullptr;
+    }
+}

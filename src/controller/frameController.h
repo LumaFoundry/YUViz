@@ -52,6 +52,7 @@ signals:
     void requestDecode(int numFrames);
     void requestUpload(FrameData* frame);
     void requestRender(FrameData* frame);
+    void requestRelease();
     void endOfVideo(int index);
 
 private:

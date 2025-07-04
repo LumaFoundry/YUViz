@@ -38,6 +38,10 @@ void VideoWindow::setColorParams(AVColorSpace space, AVColorRange range) {
     m_renderer->setColorParams(space, range);
 }
 
+void VideoWindow::releaseBatch() {
+    m_renderer->releaseBatch();
+}
+
 void VideoWindow::batchIsFull() {
     emit batchUploaded(true);
 }
