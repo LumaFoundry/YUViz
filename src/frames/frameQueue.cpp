@@ -1,9 +1,8 @@
 #include "frameQueue.h"
 
-FrameQueue::FrameQueue(FrameMeta meta)
+FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta) : m_metaPtr(meta)
 {
-    m_metaPtr = std::make_shared<FrameMeta>(meta);
-    
+   
     int ySize = m_metaPtr->ySize();
     int uvSize = m_metaPtr->uvSize();
     size_t frameSize = ySize + uvSize * 2;
@@ -26,7 +25,9 @@ int FrameQueue::getEmpty(){
     size_t tailVal = tail.load(std::memory_order_acquire);
     size_t headVal = head.load(std::memory_order_acquire);
 
-    return (headVal + queueSize / 2 - tailVal + queueSize) % queueSize;
+
+    return (queueSize/2 - (tailVal - headVal));
+    // return (headVal + queueSize / 2 - tailVal + queueSize) % queueSize;
 }
 
 // IMPORTANT: Must not call decoder when seeking / stepping
@@ -46,9 +47,8 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
 
 FrameData* FrameQueue::getTailFrame(int64_t pts){
-    size_t tailVal = tail.load(std::memory_order_acquire);
-    // qDebug() << "Queue:: Tail index: " << (tailVal % queueSize);
-    return &m_queue[tailVal % queueSize];
+    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    return &m_queue[pts % queueSize];
 }
 
 

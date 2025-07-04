@@ -12,7 +12,7 @@ class FrameQueue{
 
     public:
         // Takes in FrameMeta to initialize the queue
-        FrameQueue(FrameMeta meta);
+        FrameQueue(std::shared_ptr<FrameMeta> meta);
         ~FrameQueue();
 
         // Getter for metaData
