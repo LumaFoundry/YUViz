@@ -111,5 +111,7 @@ int main(int argc, char *argv[]) {
     VideoController videoController(nullptr, playbackWorker, videoFiles);
     qDebug() << "VideoController created successfully";
 
+    engine.rootContext()->setContextProperty("videoController", &videoController);
+
     return app.exec();
 }
