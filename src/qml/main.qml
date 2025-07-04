@@ -15,6 +15,7 @@ ApplicationWindow {
         id: videoWindow
         objectName: "videoWindow"
         anchors.fill: parent
+        scale: 2.0
     }
 
     Row {

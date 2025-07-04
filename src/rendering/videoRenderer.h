@@ -16,6 +16,7 @@ public:
     void setColorParams(AVColorSpace space, AVColorRange range);
     void uploadFrame(FrameData* frame);
     void renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QRhiRenderTarget *rt);
+    void setMvpMatrix(QMatrix4x4 mvp);
 
 signals:
     void batchIsFull();
@@ -30,6 +31,7 @@ private:
     std::unique_ptr<QRhiTexture> m_uTex;
     std::unique_ptr<QRhiTexture> m_vTex;
     std::unique_ptr<QRhiBuffer> m_colorParams;
+    std::unique_ptr<QRhiBuffer> m_mvpMatrix;
     std::unique_ptr<QRhiGraphicsPipeline> m_pip;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
@@ -38,6 +40,7 @@ private:
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
     QRhiResourceUpdateBatch* m_frameBatch = nullptr;
     QRhiResourceUpdateBatch* m_colorParamsBatch = nullptr;
+    QRhiResourceUpdateBatch* m_mvpMatrixBatch = nullptr;
 
     QByteArray loadShaderSource(const QString &path);
 };

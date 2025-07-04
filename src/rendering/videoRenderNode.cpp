@@ -24,6 +24,11 @@ void VideoRenderNode::render(const RenderState *state) {
     QSizeF logicalSize = m_window->contentItem()->size();
     qreal dpr = m_window->devicePixelRatio();
 
+    const QMatrix4x4 *proj = state->projectionMatrix();
+    const QMatrix4x4 *mv = this->matrix();
+    QMatrix4x4 mvp = (*proj) * (*mv);
+    m_renderer->setMvpMatrix(mvp);
+
     // Calculate the physical size in pixels by scaling with the DPR.
     int physicalWidth = static_cast<int>(logicalSize.width() * dpr);
     int physicalHeight = static_cast<int>(logicalSize.height() * dpr);

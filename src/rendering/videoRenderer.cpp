@@ -24,19 +24,16 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
     m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
     m_vTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
-    if (!m_yTex->create() || !m_uTex->create() || !m_vTex->create()) {
-        qWarning() << "Failed to create YUV textures";
-        emit rendererError();
-        return;
-    }
+    m_yTex->create();
+    m_uTex->create();
+    m_vTex->create();
 
     // Uniform buffer
     m_colorParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int)*4));
-    if (!m_colorParams->create()) {
-        qWarning() << "Failed to create color parameters uniform buffer";
-        emit rendererError();
-        return;
-    }
+    m_colorParams->create();
+
+    m_mvpMatrix.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(QMatrix4x4)));
+    m_mvpMatrix->create();
 
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
@@ -74,31 +71,20 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_pip->setRenderPassDescriptor(rp);
     m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear,
                                       QRhiSampler::None, QRhiSampler::Repeat, QRhiSampler::Repeat));
-    if (!m_sampler->create()) {
-        qWarning() << "Failed to create sampler";
-        emit rendererError();
-        return;
-    }
+    m_sampler->create();
 
     m_resourceBindings.reset(m_rhi->newShaderResourceBindings());
     m_resourceBindings->setBindings({
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_yTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_uTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get()),
-        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get())
+        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get()), 
+        QRhiShaderResourceBinding::uniformBuffer(0, QRhiShaderResourceBinding::VertexStage, m_mvpMatrix.get())
     });
-    if (!m_resourceBindings->create()) {
-        qWarning() << "Failed to create shader resource bindings";
-        emit rendererError();
-        return;
-    }
+    m_resourceBindings->create();
     
     m_pip->setShaderResourceBindings(m_resourceBindings.get());
-    if (!m_pip->create()) {
-        qWarning() << "Failed to create graphics pipeline";
-        emit rendererError();
-        return;
-    }
+    m_pip->create();
 
     // Vertex buffer
     struct V { float x,y,u,v; };
@@ -107,11 +93,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
         {1,-1,1,1}, {1,1,1,0}
     };
     m_vbuf.reset(m_rhi->newBuffer(QRhiBuffer::Immutable, QRhiBuffer::VertexBuffer, sizeof(verts)));
-    if (!m_vbuf->create()) {
-        qWarning() << "Failed to create vertex buffer";
-        emit rendererError();
-        return;
-    }
+    m_vbuf->create();
 
     m_initBatch = m_rhi->nextResourceUpdateBatch();
     m_initBatch->uploadStaticBuffer(m_vbuf.get(), 0, sizeof(verts), verts);
@@ -130,6 +112,11 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
     ColorParams cp = { space, range, {0,0} };
     m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
     m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
+}
+
+void VideoRenderer::setMvpMatrix(QMatrix4x4 mvp) {
+    m_mvpMatrixBatch = m_rhi->nextResourceUpdateBatch();
+    m_mvpMatrixBatch->updateDynamicBuffer(m_mvpMatrix.get(), 0, sizeof(QMatrix4x4), mvp.constData());
 }
 
 
@@ -174,6 +161,10 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     if (m_colorParamsBatch) {
         cb->resourceUpdate(m_colorParamsBatch);
         m_colorParamsBatch = nullptr;
+    }
+    if (m_mvpMatrixBatch) {
+        cb->resourceUpdate(m_mvpMatrixBatch);
+        m_mvpMatrixBatch = nullptr;
     }
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
