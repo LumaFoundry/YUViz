@@ -178,28 +178,20 @@ void VideoDecoder::loadFrame(int num_frames)
         emit frameLoaded(false);
     }
 
-    // Check if this is a raw YUV format that doesn't need decoding
     bool isRawYUV = isYUV(codecContext->codec_id);
-    int maxpts = 0;
+    int64_t maxpts = -1;
 
     for (int i = 0; i < num_frames; ++i) {
-        FrameData* frameData = m_frameQueue->getTailFrame();
-        if (!frameData) {
-            ErrorReporter::instance().report("Failed to get tail frame for raw YUV", LogLevel::Error);
-            emit frameLoaded(false);
-            continue;
-        }
-
+        int64_t temp_pts;
         if (isRawYUV) {
-            loadYUVFrame(frameData);
+             temp_pts = loadYUVFrame();
         } else {
-            loadCompressedFrame(frameData);
+             temp_pts = loadCompressedFrame();
         }
-        if (frameData->pts() > maxpts) {
-            maxpts = frameData->pts();
-        }
+        maxpts = std::max(maxpts, temp_pts);
     }
-    m_frameQueue->setTail(maxpts);
+
+    m_frameQueue->updateTail(maxpts);
     emit frameLoaded(true);
 }
 
@@ -235,22 +227,26 @@ bool VideoDecoder::isYUV(AVCodecID codecId)
     }
 }
 
-void VideoDecoder::loadYUVFrame(FrameData* frameData)
+int64_t VideoDecoder::loadYUVFrame()
 {
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit frameLoaded(false);
-        return;
+        return -1;
     }
+
     int ret;
+    int64_t pts = -1;
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
             int retFlag;
+            pts = tempPacket->pts;
+            FrameData* frameData = m_frameQueue->getTailFrame(pts);
             copyFrame(tempPacket, frameData, retFlag);
             if (retFlag == 2)
                 break;
-            return;
+            return -1;
         }
     }
 
@@ -259,20 +255,21 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
     }
 
     av_packet_free(&tempPacket);
+    return pts;
 }
 
-void VideoDecoder::loadCompressedFrame(FrameData* frameData)
+int64_t VideoDecoder::loadCompressedFrame()
 {
     // Allocate packet for decoding operation
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit frameLoaded(false);
-        return;
+        return -1;
     }
     
     int ret;
-    
+    int64_t pts = -1;
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
@@ -293,6 +290,8 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
             }
             
             ret = avcodec_receive_frame(codecContext, tempFrame);
+            pts = tempFrame->pts;
+            FrameData* frameData = m_frameQueue->getTailFrame(pts);
 
             if (ret == 0) {
                 int width = metadata.yWidth();
@@ -319,7 +318,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
                 av_packet_free(&tempPacket);
-                return;
+                return -1;
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -335,6 +334,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     }
     
     av_packet_free(&tempPacket);
+    return pts;
 }
 
 /**

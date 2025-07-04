@@ -62,8 +62,8 @@ private:
 	void closeFile();
 	
 	bool isYUV(AVCodecID codecId);
-    void loadYUVFrame(FrameData *frameData);
+    int64_t loadYUVFrame();
     void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
-    void loadCompressedFrame(FrameData* frameData);
+    int64_t loadCompressedFrame();
 
 };
