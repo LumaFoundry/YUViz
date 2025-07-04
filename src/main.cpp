@@ -133,5 +133,7 @@ int main(int argc, char *argv[]) {
 
     videoController.start();
 
+    engine.rootContext()->setContextProperty("videoController", &videoController);
+
     return app.exec();
 }

@@ -1,9 +1,8 @@
-import QtQuick 6.0
 import QtQuick.Window 6.0
-import QtMultimedia 6.5
+import QtQuick.Controls 6.0
 import Window 1.0
 
-Window {
+ApplicationWindow {
     title: "videoplayer"
     width: 800
     height: 600
@@ -68,5 +67,20 @@ Window {
         id: videoWindow
         objectName: "videoWindow"
         anchors.fill: parent
+    }
+
+    Row {
+        id: controls
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: 20
+        spacing: 10
+
+        Button {
+            text: "Play/Pause"
+            onClicked: {
+                videoController.togglePlayPause()
+            }
+        }
     }
 }

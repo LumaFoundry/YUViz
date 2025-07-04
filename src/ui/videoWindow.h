@@ -1,12 +1,14 @@
 #pragma once
 
 #include <QQuickItem>
+#include <QtQml/qqml.h>
 #include <memory>
 #include "frames/frameData.h"
 #include "rendering/videoRenderer.h"
 
 class VideoWindow : public QQuickItem {
     Q_OBJECT
+    QML_ELEMENT
 public:
     explicit VideoWindow(QQuickItem *parent = nullptr);
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
