@@ -8,10 +8,8 @@
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
 #include "decoder/videoDecoder.h"
-#include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
 #include "utils/videoFileInfo.h"
-#include "controller/playBackWorker.h"
 #include "ui/videoWindow.h"
 
 extern "C"
@@ -34,6 +32,7 @@ public:
 
     // Start decoder, renderer and timer threads
     void start();
+    void onTimerTick(int64_t pts);
 
     AVRational getTimeBase();
 
@@ -41,7 +40,6 @@ public:
 
 public slots:
     // Receive signals from decoder and renderer
-    void onTimerTick(int64_t pts);
     void onFrameDecoded(bool success);
     void onFrameUploaded();
     void onFrameRendered();
@@ -60,9 +58,6 @@ private:
     // YUVReader to read frames from video file
     std::unique_ptr<VideoDecoder> m_Decoder = nullptr;
 
-    // PlaybackWorker to manage timer ticks
-    std::shared_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
-
     // For display
     VideoWindow* m_window = nullptr;
 
@@ -71,8 +66,7 @@ private:
 
     std::shared_ptr<FrameMeta> m_frameMeta;
 
-    // Thread for reading / writing frames object
-    QThread m_renderThread;
+    // Thread for writing frames object
     QThread m_decodeThread;
 
     // Last PTS of the frame rendered

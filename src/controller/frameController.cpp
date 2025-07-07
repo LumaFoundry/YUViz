@@ -65,9 +65,7 @@ FrameController::~FrameController(){
     qDebug() << "FrameController destructor for index" << m_index;
     // Ensure threads are stopped before destruction
     m_decodeThread.quit();
-    // m_renderThread.quit();
     m_decodeThread.wait();
-    // m_renderThread.wait();
 
     // Clear unique pointers
     m_Decoder.reset();
@@ -109,7 +107,7 @@ void FrameController::onTimerTick(int64_t pts) {
         qWarning() << "Cannot render frame" << pts;
     }
 
-    requestRelease();
+    emit requestRelease();
 
     // Upload future frame if inside frameQueue
     FrameData* future = m_frameQueue->getHeadFrame(pts + 1);

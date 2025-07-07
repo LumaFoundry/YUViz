@@ -22,9 +22,6 @@ VideoController::VideoController(QObject *parent,
         connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
         qDebug() << "Connected FrameController::ready to VideoController::onReady";
 
-        connect(frameController.get(), &FrameController::onTimerTick, this, &VideoController::tickFC, Qt::AutoConnection);
-        qDebug() << "Connected FrameController::onTimerTick to VideoController::tickFC";
-
         connect(frameController.get(), &FrameController::endOfVideo, this, &VideoController::onFCEndOfVideo, Qt::AutoConnection);
         qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
 
@@ -40,6 +37,7 @@ VideoController::VideoController(QObject *parent,
     qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
     m_timer = std::make_unique<Timer>(nullptr, timeBases);
     m_timer->moveToThread(&m_timerThread);
+    qDebug() << "Move timer to thread" << &m_timerThread;
 
     // Connect with timer
     connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::AutoConnection);
@@ -53,13 +51,6 @@ VideoController::VideoController(QObject *parent,
 
     // Start timer thread
     m_timerThread.start();
-
-    // Start all FC - IMPORTANT: This must be done after all FCs are added !
-    for (auto& fc : m_frameControllers) {
-        qDebug() << "Starting FrameController with index: " << fc->m_index;
-        fc->start();
-    }
-
 }
 
 VideoController::~VideoController() {
@@ -71,8 +62,14 @@ VideoController::~VideoController() {
 
     m_timerThread.quit();
     m_timerThread.wait();
+}
 
-    m_playbackWorker.reset();
+void VideoController::start(){
+    // Start all FC - IMPORTANT: This must be done after all FCs are added !
+    for (auto& fc : m_frameControllers) {
+        qDebug() << "Starting FrameController with index: " << fc->m_index;
+        fc->start();
+    }
 }
 
 
@@ -114,12 +111,3 @@ void VideoController::onFCEndOfVideo(int index) {
     }
 }
 
-void VideoController::togglePlayPause() {
-    if (m_playbackWorker->m_playing) {
-        qDebug() << "VideoController: Pausing playback";
-        emit pauseTimer();
-    } else {
-        qDebug() << "VideoController: Resuming playback";
-        emit playTimer();
-    }
-}

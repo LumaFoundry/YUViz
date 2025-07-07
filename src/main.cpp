@@ -109,5 +109,8 @@ int main(int argc, char *argv[]) {
     VideoController videoController(nullptr, videoFiles);
     qDebug() << "VideoController created successfully";
 
+
+    videoController.start();
+
     return app.exec();
 }
