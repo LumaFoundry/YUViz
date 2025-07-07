@@ -82,5 +82,16 @@ ApplicationWindow {
                 videoController.togglePlayPause()
             }
         }
+
+        Slider {
+            id: zoomSlider
+            width: 200
+            from: 1.0
+            to: 5.0 // Max zoom level of 5x
+            value: 1.0
+            onValueChanged: {
+                videoWindow.setZoom(value)
+            }
+        }
     }
 }

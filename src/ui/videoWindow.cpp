@@ -66,3 +66,10 @@ QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     }
     return node;
 }
+
+void VideoWindow::setZoom(qreal zoom) {
+    if (m_renderer) {
+        m_renderer->setZoomFactor(static_cast<float>(zoom));
+        update();
+    }
+}

@@ -22,6 +22,7 @@ public slots:
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
+    void setZoom(qreal zoom);
 
 signals:
     void batchUploaded(bool success);
