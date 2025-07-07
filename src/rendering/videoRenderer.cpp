@@ -40,6 +40,9 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
 
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
+    m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float)*4));
+    m_resizeParams->create();
+
     // Load shaders
     Q_INIT_RESOURCE(videoplayer_shaders);
     QByteArray vsQsb = loadShaderSource(":/shaders/vertex.vert.qsb");
@@ -85,7 +88,8 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
         QRhiShaderResourceBinding::sampledTexture(1, QRhiShaderResourceBinding::FragmentStage, m_yTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(2, QRhiShaderResourceBinding::FragmentStage, m_uTex.get(), m_sampler.get()),
         QRhiShaderResourceBinding::sampledTexture(3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get()),
-        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get())
+        QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get()), 
+        QRhiShaderResourceBinding::uniformBuffer(5, QRhiShaderResourceBinding::VertexStage, m_resizeParams.get())
     });
     if (!m_resourceBindings->create()) {
         qWarning() << "Failed to create shader resource bindings";
@@ -185,22 +189,32 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
-    float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
-    int vpX, vpY, vpW, vpH;
-    if (windowAspect > videoAspect) {
-        // window is wider than video: height fits, width letterboxed
-        vpH = viewport.height();
-        vpW = int(videoAspect * vpH + 0.5f);
-        vpX = viewport.x() + (viewport.width() - vpW) / 2;
-        vpY = viewport.y();
-    } else {
-        // window is taller than video: width fits, height letterboxed
-        vpW = viewport.width();
-        vpH = int(vpW / videoAspect + 0.5f);
-        vpX = viewport.x();
-        vpY = viewport.y() + (viewport.height() - vpH) / 2;
+    if (std::abs(windowAspect - m_windowAspect) > 1e-4f)
+    {
+        float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
+        float scaleX, scaleY, offsetX, offsetY;
+        if (windowAspect > videoAspect) {
+            // window is wider than video: height fits, width letterboxed
+            scaleX = videoAspect / windowAspect;
+            scaleY = 1.0f;
+            offsetX = (1.0f - scaleX) * 0.5f;
+            offsetY = 0.0f;
+        } else {
+            // window is taller than video: width fits, height letterboxed
+            scaleX = 1.0f;
+            scaleY = windowAspect / videoAspect;
+            offsetX = 0.0f;
+            offsetY = (1.0f - scaleY) * 0.5f;
+        }
+        struct ResizeParams { float scaleX, scaleY, offsetX, offsetY; };
+        ResizeParams rp{ scaleX, scaleY, offsetX, offsetY };
+        m_resizeParamsBatch = m_rhi->nextResourceUpdateBatch();
+        m_resizeParamsBatch->updateDynamicBuffer(m_resizeParams.get(), 0, sizeof(rp), &rp);
+        cb->resourceUpdate(m_resizeParamsBatch);
+        m_resizeParamsBatch = nullptr;
+        m_windowAspect = windowAspect;
     }
-    cb->setViewport(QRhiViewport(vpX, vpY, vpW, vpH));
+    cb->setViewport(QRhiViewport(viewport.x(), viewport.y(), viewport.width(), viewport.height()));
 
     // Draw
     cb->setGraphicsPipeline(m_pip.get());

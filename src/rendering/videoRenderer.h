@@ -31,14 +31,17 @@ private:
     std::unique_ptr<QRhiTexture> m_uTex;
     std::unique_ptr<QRhiTexture> m_vTex;
     std::unique_ptr<QRhiBuffer> m_colorParams;
+    std::unique_ptr<QRhiBuffer> m_resizeParams;
     std::unique_ptr<QRhiGraphicsPipeline> m_pip;
     std::unique_ptr<QRhiSampler> m_sampler;
     std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
     std::unique_ptr<QRhiBuffer> m_vbuf;
+    float m_windowAspect = 0;
     
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
     QRhiResourceUpdateBatch* m_frameBatch = nullptr;
     QRhiResourceUpdateBatch* m_colorParamsBatch = nullptr;
+    QRhiResourceUpdateBatch* m_resizeParamsBatch = nullptr;
 
     QByteArray loadShaderSource(const QString &path);
 };
