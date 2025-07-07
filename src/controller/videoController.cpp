@@ -111,3 +111,12 @@ void VideoController::onFCEndOfVideo(int index) {
     }
 }
 
+
+// Interface slots / signals
+void VideoController::play(){
+    emit playTimer();
+}
+
+void VideoController::pause(){
+    emit pauseTimer();
+}

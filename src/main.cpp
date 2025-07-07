@@ -108,7 +108,7 @@ int main(int argc, char *argv[]) {
     qDebug() << "Creating VideoController";
     VideoController videoController(nullptr, videoFiles);
     qDebug() << "VideoController created successfully";
-
+    engine.rootContext()->setContextProperty("videoController", &videoController);
 
     videoController.start();
 

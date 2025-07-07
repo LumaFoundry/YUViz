@@ -30,6 +30,9 @@ public slots:
     void onReady(int index);
     void onFCEndOfVideo(int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
+    void play();
+    void pause();
+
 
 signals:
     void playTimer();

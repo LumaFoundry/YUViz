@@ -11,6 +11,32 @@ Window {
     visible: true
 
     property real scaleFactor: 1.0
+    property bool resizing: false
+
+    Timer {
+        id: resizeDebounce
+        interval: 100
+        repeat: false
+        onTriggered: {
+            resizing = false
+            videoController.play()
+        }
+    }
+
+    onWidthChanged: {
+        if (!resizing) {
+            resizing = true
+            videoController.pause()
+        }
+        resizeDebounce.restart()
+    }
+    onHeightChanged: {
+        if (!resizing) {
+            resizing = true
+            videoController.pause()
+        }
+        resizeDebounce.restart()
+    }
 
     VideoWindow {
         id: videoWindow
