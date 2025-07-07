@@ -73,7 +73,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
     m_pip->setDepthTest(false);
     m_pip->setDepthWrite(false);
     m_pip->setRenderPassDescriptor(rp);
-    m_sampler.reset(m_rhi->newSampler(QRhiSampler::Linear, QRhiSampler::Linear,
+    m_sampler.reset(m_rhi->newSampler(QRhiSampler::Nearest, QRhiSampler::Nearest,
                                       QRhiSampler::None, QRhiSampler::Repeat, QRhiSampler::Repeat));
     m_sampler->create();
 
