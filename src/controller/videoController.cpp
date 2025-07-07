@@ -49,6 +49,12 @@ VideoController::VideoController(QObject *parent,
     connect(this, &VideoController::pauseTimer, m_timer.get(), &Timer::pause, Qt::AutoConnection);
     qDebug() << "Connected VideoController::pauseTimer to Timer::pause";
 
+    connect(this, &VideoController::stepForwardTimer, m_timer.get(), &Timer::stepForward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::stepForwardTimer to Timer::stepForward";
+
+    connect(this, &VideoController::stepBackwardTimer, m_timer.get(), &Timer::stepBackward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::stepBackwardTimer to Timer::stepBackward";
+
     // Start timer thread
     m_timerThread.start();
 }
@@ -119,4 +125,32 @@ void VideoController::play(){
 
 void VideoController::pause(){
     emit pauseTimer();
+}
+
+void VideoController::stepForward() {
+    if(m_timer->getStatus() == Status::Playing){
+        qDebug() << "VideoController: Step forward requested while playing, pausing first";
+        emit pauseTimer();
+    }
+    qDebug() << "VideoController: Step forward requested";
+    emit stepForwardTimer();
+}
+
+void VideoController::stepBackward() {
+    if(m_timer->getStatus() == Status::Playing){
+        qDebug() << "VideoController: Step backward requested while playing, pausing first";
+        emit pauseTimer();
+    }
+    qDebug() << "VideoController: Step backward requested";
+    emit stepBackwardTimer();
+}
+
+void VideoController::togglePlayPause() {
+    if (m_timer->getStatus() == Status::Playing) {
+        qDebug() << "VideoController: Pausing playback";
+        emit pauseTimer();
+    } else {
+        qDebug() << "VideoController: Resuming playback";
+        emit playTimer();
+    }
 }

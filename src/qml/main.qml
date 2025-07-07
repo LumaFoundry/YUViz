@@ -38,6 +38,32 @@ Window {
         resizeDebounce.restart()
     }
 
+    // Top-level key listener
+    Item {
+        id: keyHandler
+        anchors.fill: parent
+        focus: true
+        Keys.onPressed: (event) => {
+            if (event.key === Qt.Key_Space) {
+                console.log("Space key pressed");
+                videoController.togglePlayPause()
+                event.accepted = true
+            }
+
+            if (event.key == Qt.Key_Right) {
+                console.log("Right arrow key pressed");
+                videoController.stepForward()
+                event.accepted = true
+            }
+
+            if (event.key == Qt.Key_Left) {
+                console.log("Left arrow key pressed");
+                videoController.stepBackward()
+                event.accepted = true
+            }
+        }
+    }
+
     VideoWindow {
         id: videoWindow
         objectName: "videoWindow"
