@@ -29,6 +29,11 @@ Timer::Timer(QObject* parent, std::vector<AVRational> timebase)
 
 Timer::~Timer() = default;
 
+Status Timer::getStatus() const
+{
+    return m_status;
+}
+
 void Timer::saveCache()
 {
     m_cache.pts = m_pts;

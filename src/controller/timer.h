@@ -37,6 +37,7 @@ class Timer : public QObject
 public:
     Timer(QObject* parent, std::vector<AVRational> timebase);
     ~Timer();
+    Status getStatus() const;
 
 public slots:
     void play();
