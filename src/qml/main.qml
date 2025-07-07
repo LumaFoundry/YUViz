@@ -9,6 +9,9 @@ ApplicationWindow {
     color: "black"
     visible: true
 
+    property real currentZoom: 1.0
+    property real minZoom: 1.0
+    property real maxZoom: 1000.0
     property real scaleFactor: 1.0
     property bool resizing: false
 
@@ -63,10 +66,49 @@ ApplicationWindow {
         }
     }
 
-    VideoWindow {
-        id: videoWindow
-        objectName: "videoWindow"
+    PinchArea {
         anchors.fill: parent
+        pinch.target: videoWindow
+
+        property real initialZoom: 1.0
+
+        onPinchStarted: {
+            initialZoom = currentZoom
+        }
+
+        onPinchUpdated: {
+            let newZoom = initialZoom * pinch.scale;
+
+            currentZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
+            videoWindow.setZoom(currentZoom);
+        }
+
+        VideoWindow {
+            id: videoWindow
+            objectName: "videoWindow"
+            anchors.fill: parent
+
+            WheelHandler {
+                id: wheelHandler
+                acceptedModifiers: Qt.ControlModifier
+
+                property real lastRotation: wheelHandler.rotation
+
+                onRotationChanged: {
+                    let delta = wheelHandler.rotation - wheelHandler.lastRotation;
+
+                    if (delta !== 0) {
+                        let zoomStep = delta > 0 ? 0.1 : -0.1;
+                        let newZoom = currentZoom + zoomStep;
+
+                        currentZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
+                        videoWindow.setZoom(currentZoom);
+                    }
+
+                    wheelHandler.lastRotation = wheelHandler.rotation;
+                }
+            }
+        }
     }
 
     Row {
@@ -80,17 +122,6 @@ ApplicationWindow {
             text: "Play/Pause"
             onClicked: {
                 videoController.togglePlayPause()
-            }
-        }
-
-        Slider {
-            id: zoomSlider
-            width: 200
-            from: 1.0
-            to: 5.0 // Max zoom level of 5x
-            value: 1.0
-            onValueChanged: {
-                videoWindow.setZoom(value)
             }
         }
     }
