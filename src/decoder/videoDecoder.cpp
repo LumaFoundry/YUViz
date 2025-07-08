@@ -1,6 +1,6 @@
 #include "videoDecoder.h"
 
-VideoDecoder::VideoDecoder(QObject* parent) : 
+VideoDecoder::VideoDecoder(QObject* parent) :
     QObject(parent),
     formatContext(nullptr),
     codecContext(nullptr),
@@ -44,6 +44,11 @@ void VideoDecoder::setFileName(const std::string& fileName)
 {
     m_fileName = fileName;
 }
+
+void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
+    m_frameQueue = frameQueue;
+}
+
 
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
@@ -163,26 +168,31 @@ void VideoDecoder::openFile()
  *
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
-void VideoDecoder::loadFrame(FrameData* frameData)
+void VideoDecoder::loadFrames(int num_frames)
 {
 
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
-    if (!formatContext || !codecContext || !frameData) {
+    if (!formatContext || !codecContext) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
-        emit frameLoaded(false);
+        emit framesLoaded(false);
     }
 
-    // Check if this is a raw YUV format that doesn't need decoding
     bool isRawYUV = isYUV(codecContext->codec_id);
-    
-    if (isRawYUV) {
-        loadYUVFrame(frameData);
-    } else{
-        // For compressed codecs, use the standard decoding path
-        loadCompressedFrame(frameData);
-    }
+    int64_t maxpts = -1;
 
+    for (int i = 0; i < num_frames; ++i) {
+        int64_t temp_pts;
+        if (isRawYUV) {
+            temp_pts = loadYUVFrame();
+        } else {
+            temp_pts = loadCompressedFrame();
+            qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
+        }
+        maxpts = std::max(maxpts, temp_pts);
+    }
+    m_frameQueue->updateTail(maxpts);
+    emit framesLoaded(true);
 }
 
 FrameMeta VideoDecoder::getMetaData()
@@ -217,22 +227,26 @@ bool VideoDecoder::isYUV(AVCodecID codecId)
     }
 }
 
-void VideoDecoder::loadYUVFrame(FrameData* frameData)
+int64_t VideoDecoder::loadYUVFrame()
 {
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
-        emit frameLoaded(false);
-        return;
+        emit framesLoaded(false);
+        return -1;
     }
+
     int ret;
+    int64_t pts = -1;
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
             int retFlag;
+            pts = currentFrameIndex;
+            FrameData* frameData = m_frameQueue->getTailFrame(pts);
             copyFrame(tempPacket, frameData, retFlag);
             if (retFlag == 2)
                 break;
-            return;
+            return pts;
         }
     }
 
@@ -241,22 +255,21 @@ void VideoDecoder::loadYUVFrame(FrameData* frameData)
     }
 
     av_packet_free(&tempPacket);
-    // emit frameLoaded(false);
-    return;
+    return pts;
 }
 
-void VideoDecoder::loadCompressedFrame(FrameData* frameData)
+int64_t VideoDecoder::loadCompressedFrame()
 {
     // Allocate packet for decoding operation
     AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
-        emit frameLoaded(false);
-        return;
+        emit framesLoaded(false);
+        return -1;
     }
     
     int ret;
-    
+    int64_t pts = -1;
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
@@ -277,6 +290,9 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
             }
             
             ret = avcodec_receive_frame(codecContext, tempFrame);
+            pts = tempFrame->pts;
+            qDebug() << "VideoDecoder:: pts from avcodec: " << pts;
+            FrameData* frameData = m_frameQueue->getTailFrame(pts);
 
             if (ret == 0) {
                 int width = metadata.yWidth();
@@ -295,16 +311,15 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
 
                     frameData->setPts(tempFrame->pts);
                     currentFrameIndex++;
-                    emit frameLoaded(true);
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
-                    emit frameLoaded(false);
+                    emit framesLoaded(false);
                 }
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
                 av_packet_free(&tempPacket);
-                return;
+                return pts;
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -320,8 +335,7 @@ void VideoDecoder::loadCompressedFrame(FrameData* frameData)
     }
     
     av_packet_free(&tempPacket);
-    // emit frameLoaded(false);
-    return;
+    return -1;
 }
 
 /**
@@ -389,9 +403,5 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     av_packet_unref(tempPacket);
     
     av_packet_free(&tempPacket);
-
-    // qDebug() << "VideoDecoder:: emit frameLoaded";
-    emit frameLoaded(true);
-    return;
 }
 

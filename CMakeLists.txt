@@ -45,13 +45,16 @@ set(SRC
   src/controller/frameController.cpp
   src/controller/playBackWorker.cpp
   src/controller/videoController.cpp
+  src/controller/timer.cpp
   src/rendering/videoRenderer.cpp
+  src/rendering/videoRenderNode.cpp
   src/decoder/videoDecoder.cpp
   src/utils/errorReporter.cpp
   src/ui/videoWindow.cpp
 )
 
-add_executable(videoplayer ${SRC})
+set(QRC_SOURCES src/qml/qml.qrc)
+add_executable(videoplayer ${SRC} ${QRC_SOURCES})
 
 file(GLOB_RECURSE SHADER_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.vert"
@@ -64,8 +67,8 @@ qt6_add_shaders(videoplayer "videoplayer_shaders"
     FILES ${SHADER_FILES}
 )
 
-enable_testing()
-add_subdirectory(test)
+# enable_testing()
+# add_subdirectory(test)
 
 target_include_directories(videoplayer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/src

@@ -6,6 +6,8 @@
 #include <QFileInfo>
 #include <iostream>
 #include <cstring>
+
+#include "frameQueue.h"
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
 #include "utils/errorReporter.h"
@@ -28,15 +30,16 @@ public:
 	void setFramerate(double framerate);
 	void setFormat(AVPixelFormat format);
 	void setFileName(const std::string& fileName);
+	void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
 
 	void openFile();
     virtual FrameMeta getMetaData();
 
 public slots:
-    virtual void loadFrame(FrameData* frame);
+    virtual void loadFrames(int num_frames);
 
 signals:
-    void frameLoaded(bool success);
+    void framesLoaded(bool success);
 
 private:
 	AVFormatContext* formatContext;
@@ -45,21 +48,22 @@ private:
 	int videoStreamIndex;
 	
 	FrameMeta metadata;
-	int currentFrameIndex;
+	int currentFrameIndex = 0;
 	
 	int m_width;
 	int m_height;
 	double m_framerate;
 	AVPixelFormat m_format;
 	std::string m_fileName;
+	std::shared_ptr<FrameQueue> m_frameQueue;
 
 	int yuvTotalFrames = -1;
 
 	void closeFile();
 	
 	bool isYUV(AVCodecID codecId);
-    void loadYUVFrame(FrameData *frameData);
+    int64_t loadYUVFrame();
     void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
-    void loadCompressedFrame(FrameData* frameData);
+    int64_t loadCompressedFrame();
 
 };

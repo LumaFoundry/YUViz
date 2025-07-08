@@ -1,15 +1,15 @@
 #include "frameQueue.h"
 
-FrameQueue::FrameQueue(FrameMeta meta)
+FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta) : m_metaPtr(meta)
 {
-    m_metaPtr = std::make_shared<FrameMeta>(meta);
-    
+   
     int ySize = m_metaPtr->ySize();
     int uvSize = m_metaPtr->uvSize();
     size_t frameSize = ySize + uvSize * 2;
     size_t bufferSize = frameSize * queueSize;
 
-    m_bufferPtr = std::make_shared<std::vector<uint8_t>>(bufferSize);
+    m_bufferPtr = std::make_shared<std::vector<uint8_t>>();
+    m_bufferPtr->reserve(bufferSize);
 
     // Allocate frame data queue
     m_queue.reserve(queueSize);
@@ -20,54 +20,52 @@ FrameQueue::FrameQueue(FrameMeta meta)
 
 FrameQueue::~FrameQueue() = default;
 
-bool FrameQueue::isEmpty() const {
-    return head >= tail;
-}
-
-bool FrameQueue::isFull() const {
-    return tail - head > queueSize / 2;
-}
-
 // Prevent renderer / decoder from modifying pointers when the other is accessing
-FrameData* FrameQueue::getHeadFrame(){
-    QMutexLocker locker(&m_mutex);
 
-    // Wait until there is frame to read
-    while (isEmpty()) {
-        m_canRead.wait(&m_mutex);
+int FrameQueue::getEmpty(){
+    size_t tailVal = tail.load(std::memory_order_acquire);
+    size_t headVal = head.load(std::memory_order_acquire);
+    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
+    qDebug() << "Queue:: empty frames: " << (headVal + queueSize / 2) - tailVal;
+    return (headVal + queueSize / 2) - tailVal;
+}
+
+// IMPORTANT: Must not call decoder when seeking / stepping
+FrameData* FrameQueue::getHeadFrame(int64_t pts) {
+
+    FrameData* target = &m_queue[pts % queueSize];
+
+    // Check if target is loaded in queue
+    if (target->pts() == pts) {
+        // Update head if frame is in queue
+        head.store(pts, std::memory_order_release);
+        return target;
     }
 
-    // qDebug() << "Queue:: Head index: " << (head % queueSize);
-    return &m_queue[head % queueSize];
-}
-
-// IMPORTANT: Needs to be called after each frame is rendered
-void FrameQueue::incrementHead(){
-    QMutexLocker locker(&m_mutex);
-    head += 1;
-    // Notify decoder it is okay to write
-    m_canWrite.wakeOne();
+    return nullptr;
 }
 
 
-FrameData* FrameQueue::getTailFrame(){
-    QMutexLocker locker(&m_mutex);
+FrameData* FrameQueue::getTailFrame(int64_t pts){
+    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    return &m_queue[pts % queueSize];
+}
 
-    // Wait until there is space to write
-    while (isFull()){
-        m_canWrite.wait(&m_mutex);
+
+// IMPORTANT: Needs to be called after done decoding
+void FrameQueue::updateTail(int64_t pts){
+    qDebug() << "Queue:: updateTail called with pts: " << pts;
+    if (pts > tail.load())
+    {
+        tail.store(pts, std::memory_order_release);
     }
-    // qDebug() << "Queue:: Tail index: " << (tail % queueSize);
-    return &m_queue[tail % queueSize];
-}
-
-// IMPORTANT: Needs to be called after each frame is loaded
-void FrameQueue::incrementTail(){
-    QMutexLocker locker(&m_mutex);
-    tail += 1;
-    // Notify renderer it is okay to read
-    m_canRead.wakeOne();
 }
 
 
-
+void FrameQueue::clear(){
+    head.store(0, std::memory_order_release);
+    tail.store(0, std::memory_order_release);
+    
+    // We don't need to actually clear the queue as it just gets overwritten
+    // We could in theory set all pts to -1, but that's unnecessary
+}

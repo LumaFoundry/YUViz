@@ -3,6 +3,7 @@
 #include <cstdint>
 #include "frameData.h"
 #include "frameMeta.h"
+#include <atomic>
 #include <QMutex>
 #include <QWaitCondition>
 #include <QDebug>
@@ -11,7 +12,7 @@ class FrameQueue{
 
     public:
         // Takes in FrameMeta to initialize the queue
-        FrameQueue(FrameMeta meta);
+        FrameQueue(std::shared_ptr<FrameMeta> meta);
         ~FrameQueue();
 
         // Getter for metaData
@@ -19,18 +20,19 @@ class FrameQueue{
 
         // Getter the current frame data pointer for renderer
         // Should be thread-safe - block until there is frame to read
-        FrameData* getHeadFrame();
+        FrameData* getHeadFrame(int64_t pts);
 
         // Get the next frame to be loaded for decoder
         // Should be thread-safe - block until there is space to write
-        FrameData* getTailFrame();
+        FrameData* getTailFrame(int64_t pts);
 
-        // Incrementing head and tail
-        // Should be thread-safe
-        void incrementHead();
-        void incrementTail();
+        void updateTail(int64_t pts);
 
         const int getSize() const { return queueSize; }
+
+        int getEmpty();
+
+        void clear();
 
 
     private:
@@ -38,15 +40,14 @@ class FrameQueue{
         const int queueSize = 50;
 
         // Points to current frame
-        int64_t head = 0;
+        // access by using
+        // size_t headVal = head.load(std::memory_order_acquire);
+        std::atomic<int64_t> head = 0;
 
         // Points to future un-loaded frame
-        int64_t tail = 0;
-
-        // Thread safety
-        QMutex m_mutex;
-        QWaitCondition m_canRead;
-        QWaitCondition m_canWrite;
+        // access by using
+        // size_t tailVal = tail.load(std::memory_order_acquire);
+        std::atomic<int64_t> tail = 0;
 
         // Frame metadata
         std::shared_ptr<FrameMeta> m_metaPtr;
@@ -56,10 +57,5 @@ class FrameQueue{
 
         // Frame data queue 
         std::vector<FrameData> m_queue;
-
-        // Indicators for whether queue is full / empty
-        // Should not be called explicitly, use getHeadFrame() and getTailFrame() instead
-        bool isFull() const;
-        bool isEmpty() const; 
 
 };

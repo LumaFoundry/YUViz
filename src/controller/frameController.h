@@ -8,10 +8,14 @@
 #include "frames/frameMeta.h"
 #include "frames/frameData.h"
 #include "decoder/videoDecoder.h"
-#include "rendering/videoRenderer.h"
 #include "utils/errorReporter.h"
-#include "controller/playBackWorker.h"
+#include "utils/videoFileInfo.h"
 #include "ui/videoWindow.h"
+
+extern "C"
+{
+#include <libavutil/rational.h>
+}
 
 // One controller per FrameQueue
 
@@ -20,39 +24,33 @@ class FrameController : public QObject{
 
 public:
 
-    FrameController(QObject *parent, 
-                    std::unique_ptr<VideoDecoder> decoder, 
-                    std::unique_ptr<VideoRenderer> renderer, 
-                    std::shared_ptr<PlaybackWorker> playbackWorker,
-                    std::shared_ptr<VideoWindow> window, 
+    FrameController(QObject *parent,
+                    VideoFileInfo videoFileInfo,
                     int index);
                 
     ~FrameController();
 
     // Start decoder, renderer and timer threads
     void start();
+    void onTimerTick(int64_t pts);
+
+    AVRational getTimeBase();
 
     int m_index; // Index of current FC, for VC orchestration
 
-    // For VC to receive renderer signal
-    VideoRenderer* getRenderer() const { return m_Renderer.get(); }
-
-    std::shared_ptr<VideoWindow> getWindow() const { return m_window; } 
-
 public slots:
     // Receive signals from decoder and renderer
-    void onTimerTick();
     void onFrameDecoded(bool success);
-    void onFrameUploaded(bool success);
-    void onFrameRendered(bool success);
-    void onPrefillCompleted(bool success);
+    void onFrameUploaded();
+    void onFrameRendered();
     void onRenderError();
    
 signals:
-    void requestDecode(FrameData* frame);
+    void ready(int index);
+    void requestDecode(int numFrames);
     void requestUpload(FrameData* frame);
-    void requestRender();
-    void currentDelta(int64_t delta, int index);
+    void requestRender(FrameData* frame);
+    void requestRelease();
     void endOfVideo(int index);
 
 private:
@@ -60,26 +58,23 @@ private:
     // YUVReader to read frames from video file
     std::unique_ptr<VideoDecoder> m_Decoder = nullptr;
 
-    // VideoRenderer to render frames
-    std::unique_ptr<VideoRenderer> m_Renderer = nullptr;
-
-    // PlaybackWorker to manage timer ticks
-    std::shared_ptr<PlaybackWorker> m_PlaybackWorker = nullptr;
-
     // For display
-    std::shared_ptr<VideoWindow> m_window = nullptr;
+    VideoWindow* m_window = nullptr;
 
     // FrameQueue to manage frames
-    FrameQueue m_frameQueue;
+    std::shared_ptr<FrameQueue> m_frameQueue;
 
-    // Thread for reading / writing frames object
-    QThread m_renderThread;
+    std::shared_ptr<FrameMeta> m_frameMeta;
+
+    // Thread for writing frames object
     QThread m_decodeThread;
 
     // Last PTS of the frame rendered
     int64_t m_lastPTS = -1; 
 
-    // Prefill count for preloading frames
-    int m_prefillDecodedCount = 0; 
+    // Prefill flag for preloading frames
+    bool m_prefill = false;
+
+    bool m_endOfVideo = false;
 
 };

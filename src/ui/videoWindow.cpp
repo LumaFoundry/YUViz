@@ -1,74 +1,68 @@
 #include "videoWindow.h"
-#include <QSurface>
-#include <QDebug>
-#include <QWheelEvent>
-#include <QMouseEvent>
+#include "frames/frameData.h"
+#include "rendering/videoRenderer.h"
+#include "rendering/videoRenderNode.h"
+#include "frames/frameMeta.h"
 
-VideoWindow::VideoWindow(QWindow* parent, QRhi::Implementation graphicsApi)
-    : QWindow(parent)
+VideoWindow::VideoWindow(QQuickItem *parent):
+    QQuickItem(parent)
 {
-    switch (graphicsApi) {
-            case QRhi::Null:
-                break;
-            case QRhi::OpenGLES2:
-                setSurfaceType(QSurface::OpenGLSurface);
-                break;
-            case QRhi::Vulkan:
-                setSurfaceType(QSurface::VulkanSurface);
-                break;
-            case QRhi::D3D11:
-            case QRhi::D3D12:
-                setSurfaceType(QSurface::Direct3DSurface);
-                break;
-            case QRhi::Metal:
-                setSurfaceType(QSurface::MetalSurface);
-                break;
-        }
+    setFlag(ItemHasContents, true);
 }
 
-double VideoWindow::zoomFactor() const {
-    return m_zoomFactor;
-}
-
-QRectF VideoWindow::selectionRect() const {
-    return m_selectionRect;
-}
-
-void VideoWindow::wheelEvent(QWheelEvent* event) {
-    double factor = (event->angleDelta().y() > 0) ? 1.25 : 0.8;
-    m_zoomFactor *= factor;
-    if (m_zoomFactor < 1.0) m_zoomFactor = 1.0;
-    if (m_zoomFactor > 512.0) m_zoomFactor = 512.0;
-    qDebug() << "Zoom factor:" << m_zoomFactor;
-    requestUpdate();
-}
-
-void VideoWindow::mousePressEvent(QMouseEvent* event) {
-    if (event->button() == Qt::LeftButton) {
-        m_selecting = true;
-        m_selectStart = event->position();
-        m_selectEnd = m_selectStart;
-        m_selectionRect = QRectF();
-        qDebug() << "Start select:" << m_selectStart;
-        requestUpdate();
+void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
+    m_renderer = new VideoRenderer(this, metaPtr);
+    // connect(m_renderer, &VideoRenderer::batchIsFull, this, &VideoWindow::batchIsFull);
+    // connect(m_renderer, &VideoRenderer::batchIsEmpty, this, &VideoWindow::batchIsEmpty);
+    // connect(m_renderer, &VideoRenderer::rendererError, this, &VideoWindow::rendererError);
+    if (window()) {
+        update();
+    } else {
+        connect(this, &QQuickItem::windowChanged, this, [=](QQuickWindow *win){
+            qDebug() << "[VideoWindow] window became available, calling update()";
+            update();
+        });
     }
 }
 
-void VideoWindow::mouseMoveEvent(QMouseEvent* event) {
-    if (m_selecting) {
-        m_selectEnd = event->position();
-        m_selectionRect = QRectF(m_selectStart, m_selectEnd).normalized();
-        qDebug() << "Selecting:" << m_selectionRect;
-        requestUpdate();
-    }
+void VideoWindow::uploadFrame(FrameData* frame) {
+    m_renderer->uploadFrame(frame);
 }
 
-void VideoWindow::mouseReleaseEvent(QMouseEvent* event) {
-    if (m_selecting && event->button() == Qt::LeftButton) {
-        m_selecting = false;
-        m_selectEnd = event->position();
-        m_selectionRect = QRectF(m_selectStart, m_selectEnd).normalized();
-        qDebug() << "Selection finished:" << m_selectionRect;
-        requestUpdate();
+void VideoWindow::renderFrame() {
+    qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
+    update();
+}
+
+void VideoWindow::setColorParams(AVColorSpace space, AVColorRange range) {
+    m_renderer->setColorParams(space, range);
+}
+
+void VideoWindow::releaseBatch() {
+    m_renderer->releaseBatch();
+}
+
+void VideoWindow::batchIsFull() {
+    emit batchUploaded(true);
+}
+
+void VideoWindow::batchIsEmpty() {
+    emit gpuUploaded(true);
+}
+
+void VideoWindow::rendererError() {
+    emit errorOccurred();
+}
+
+QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
+    qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
+    
+    if (!m_renderer) {
+        return nullptr;
     }
+    VideoRenderNode *node = static_cast<VideoRenderNode *>(oldNode);
+    if (!node) {
+        node = new VideoRenderNode(window(), m_renderer);
+    }
+    return node;
 }

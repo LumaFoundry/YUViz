@@ -2,133 +2,155 @@
 #include <QDebug>
 
 VideoController::VideoController(QObject *parent, 
-        std::shared_ptr<PlaybackWorker> playbackWorker,
-        std::vector<VideoFileInfo> videoFiles)
-        : QObject(parent),
-        m_playbackWorker(playbackWorker)
+                                 std::vector<VideoFileInfo> videoFiles)
+        : QObject(parent)
 {
-    // qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
-    
-    // Move playback worker to a dedicated thread
-    m_playbackWorker->moveToThread(&m_timerThread);
-    // qDebug() << "Moved PlaybackWorker to thread" << &m_timerThread;
-    m_timerThread.start();
-    // Connect with PlaybackWorker
-    connect(this, &VideoController::startPlayback, m_playbackWorker.get(), &PlaybackWorker::start, Qt::QueuedConnection);
-    connect(this, &VideoController::stopPlayback, m_playbackWorker.get(), &PlaybackWorker::stop, Qt::QueuedConnection);
-    connect(this, &VideoController::pausePlayback, m_playbackWorker.get(), &PlaybackWorker::pause, Qt::QueuedConnection);
-    connect(this, &VideoController::resumePlayback, m_playbackWorker.get(), &PlaybackWorker::resume, Qt::QueuedConnection);
-    connect(this, &VideoController::get_next_tick, m_playbackWorker.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
-    connect(this, &VideoController::stepPlaybackForward, m_playbackWorker.get(), &PlaybackWorker::step, Qt::QueuedConnection);
-    // qDebug() << "Connected get_next_tick to PlaybackWorker::scheduleNext";
-    
+    qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
+
+    std::vector<AVRational> timeBases;
+
     // Creating FC for each video
     int fc_index = 0;
     for (const auto& videoFile : videoFiles) {
         qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << fc_index;
-        auto decoder = std::make_unique<VideoDecoder>();
-        decoder->setFileName(videoFile.filename.toStdString());
-        decoder->setDimensions(videoFile.width, videoFile.height);
-        decoder->setFramerate(videoFile.framerate);
-        decoder->openFile();
-        // qDebug() << "Decoder opened file:" << videoFile.filename;
-        
-        std::shared_ptr<FrameMeta> metaPtr = std::make_shared<FrameMeta>(decoder->getMetaData());
-        
-        auto windowPtr = std::make_shared<VideoWindow>(nullptr, videoFile.graphicsApi);
-        windowPtr->resize(900, 600);
-        windowPtr->show();
-        qDebug() << "Created and showed VideoWindow for index" << fc_index << "API" << static_cast<int>(videoFile.graphicsApi);
 
-        auto renderer = std::make_unique<VideoRenderer>(nullptr, windowPtr, metaPtr);
-        renderer->initialize(videoFile.graphicsApi);
-        qDebug() << "Renderer initialized for index" << fc_index;
-
-        auto frameController = std::make_unique<FrameController>(nullptr, std::move(decoder), std::move(renderer), playbackWorker, windowPtr, fc_index);
+        // qDebug() << "Decoder opened file:" << videoFile.filename;    
+        auto frameController = std::make_unique<FrameController>(nullptr, videoFile, fc_index);
         qDebug() << "Created FrameController for index" << fc_index;
 
-        // For testing - please remove later
-        connect(windowPtr.get(), &VideoWindow::togglePlayPause, this, &VideoController::togglePlayPause);
-        connect(windowPtr.get(), &VideoWindow::stepForward, this, &VideoController::stepPlaybackForward);
-
-        // Connect each FC's signal to VC's slot
-        connect(frameController.get(), &FrameController::currentDelta, this, &VideoController::synchroniseFC, Qt::AutoConnection);
-        qDebug() << "Connected FrameController::currentDelta to VideoController::synchroniseFC";
         // Connect each FC's upload signal to VC's slot
-        connect(frameController->getRenderer(), &VideoRenderer::batchUploaded, this, &VideoController::uploadReady, Qt::AutoConnection);
-        qDebug() << "Connected VideoRenderer::batchUploaded to VideoController::uploadReady";
-        
+        connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
+        qDebug() << "Connected FrameController::ready to VideoController::onReady";
+
         connect(frameController.get(), &FrameController::endOfVideo, this, &VideoController::onFCEndOfVideo, Qt::AutoConnection);
+        qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
+
+        timeBases.push_back(frameController->getTimeBase());
 
         m_frameControllers.push_back(std::move(frameController));
         qDebug() << "FrameController count now:" << m_frameControllers.size();
-        
-        // For unify event and control to windows
-        m_windowPtrs.push_back(windowPtr);
-        qDebug() << "WindowPtrs count now:" << m_windowPtrs.size();
 
+        
         fc_index++;
     }
+
     qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
+    m_timer = std::make_unique<Timer>(nullptr, timeBases);
+    m_timer->moveToThread(&m_timerThread);
+    qDebug() << "Move timer to thread" << &m_timerThread;
 
-    // Start all FC - IMPORTANT: This must be done after all FCs are added !
-    for (auto& fc : m_frameControllers) {
-        qDebug() << "Starting FrameController with index: " << fc->m_index;
-        fc->start();
-    }
+    // Connect with timer
+    connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::AutoConnection);
+    qDebug() << "Connected Timer::tick to VideoController::onTick";
 
+    connect(this, &VideoController::playTimer, m_timer.get(), &Timer::play, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::playTimer to Timer::play";
+
+    connect(this, &VideoController::pauseTimer, m_timer.get(), &Timer::pause, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::pauseTimer to Timer::pause";
+
+    connect(this, &VideoController::stepForwardTimer, m_timer.get(), &Timer::stepForward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::stepForwardTimer to Timer::stepForward";
+
+    connect(this, &VideoController::stepBackwardTimer, m_timer.get(), &Timer::stepBackward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::stepBackwardTimer to Timer::stepBackward";
+
+    // Start timer thread
+    m_timerThread.start();
 }
 
 VideoController::~VideoController() {
     qDebug() << "VideoController destructor called";
 
-    emit stopPlayback();
+    emit stopTimer();
 
     m_frameControllers.clear();
 
     m_timerThread.quit();
     m_timerThread.wait();
+}
 
-    m_playbackWorker.reset();
+void VideoController::start(){
+    // Start all FC - IMPORTANT: This must be done after all FCs are added !
+    for (auto& fc : m_frameControllers) {
+        qDebug() << "Starting FrameController with index: " << fc->m_index;
+        fc->start();
+    }
 }
 
 
+void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
+    qDebug() << "VideoController: onTick called";
 
-void VideoController::uploadReady(bool success) {
-    // qDebug() << "uploadReady called with success =" << success;
-    if (success) {
-        m_readyCount++;
-        // qDebug() << "Ready count =" << m_readyCount;
-        if (m_readyCount == m_frameControllers.size()) {
+    for (size_t i = 0; i < m_frameControllers.size(); ++i) {
+        if (update[i]) {
+            emit m_frameControllers[i]->onTimerTick(pts[i]);
+            qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
+        }
+    }
+}
+
+
+void VideoController::onReady(int index) {
+    m_readyCount++;
+    qDebug() << "Ready count =" << m_readyCount;
+    if (m_readyCount == m_frameControllers.size()) {
             // All frame controllers are ready, start playback
             qDebug() << "Starting timer";
-            emit startPlayback();
-        }
-    } else {
-        qWarning() << "uploadReady: frame upload failed";
+            emit playTimer();
+    }else {
+        qWarning() << "onReady: frame upload failed";
         ErrorReporter::instance().report("Frame upload failed");
     }
 }
 
 
-void VideoController::synchroniseFC(int64_t delta, int index) {
-    // qDebug() << "VC:: synchroniseFC called with delta =" << delta << " index =" << index;
-    emit get_next_tick(delta);
-}
-
 
 void VideoController::onFCEndOfVideo(int index) {
     qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
     // Handle end of video for specific FC
-    emit stopPlayback();
+    m_endCount++;
+
+    if (m_endCount == m_frameControllers.size()) {
+        qDebug() << "All FrameControllers reached end of video, stopping playback";
+        emit pauseTimer();
+    }
+}
+
+
+// Interface slots / signals
+void VideoController::play(){
+    emit playTimer();
+}
+
+void VideoController::pause(){
+    emit pauseTimer();
+}
+
+void VideoController::stepForward() {
+    if(m_timer->getStatus() == Status::Playing){
+        qDebug() << "VideoController: Step forward requested while playing, pausing first";
+        emit pauseTimer();
+    }
+    qDebug() << "VideoController: Step forward requested";
+    emit stepForwardTimer();
+}
+
+void VideoController::stepBackward() {
+    if(m_timer->getStatus() == Status::Playing){
+        qDebug() << "VideoController: Step backward requested while playing, pausing first";
+        emit pauseTimer();
+    }
+    qDebug() << "VideoController: Step backward requested";
+    emit stepBackwardTimer();
 }
 
 void VideoController::togglePlayPause() {
-    if (m_playbackWorker->m_playing) {
+    if (m_timer->getStatus() == Status::Playing) {
         qDebug() << "VideoController: Pausing playback";
-        emit pausePlayback();
+        emit pauseTimer();
     } else {
         qDebug() << "VideoController: Resuming playback";
-        emit resumePlayback();
+        emit playTimer();
     }
 }
