@@ -424,7 +424,7 @@ int VideoDecoder::getTotalFrames()
         return static_cast<int>(videoStream->nb_frames);
     }
 
-    return -1
+    return -1;
 }
 
 int64_t VideoDecoder::getDurationMs()
@@ -441,7 +441,7 @@ int64_t VideoDecoder::getDurationMs()
     return -1;
 }
 
-void VideoDecoder::seek(nt64_t timestamp)
+void VideoDecoder::seek(int64_t timestamp)
 {
     if (!formatContext || !codecContext || videoStreamIndex < 0) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
@@ -461,4 +461,6 @@ void VideoDecoder::seek(nt64_t timestamp)
     qDebug() << "Frame queue cleared after seek";
     
     loadFrames(25);
+
+    emit frameSeeked(timestamp);
 }
