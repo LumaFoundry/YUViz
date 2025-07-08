@@ -38,6 +38,8 @@ public:
     void setColorRange(AVColorRange range);
     void setColorSpace(AVColorSpace space);
     void setFilename(const std::string& filename);
+    void setDuration(int64_t msDuration);
+    void setTotalFrames(int totalFrames);
 
 private:
     int m_yWidth;
@@ -50,4 +52,6 @@ private:
     AVColorRange m_colorRange;
     AVColorSpace m_colorSpace;
     std::string m_filename;
+    int64_t m_durationMs;
+    int m_totalFrames;
 };

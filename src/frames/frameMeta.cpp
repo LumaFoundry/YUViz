@@ -93,3 +93,11 @@ void FrameMeta::setColorSpace(AVColorSpace space) {
 void FrameMeta::setFilename(const std::string& filename) {
     m_filename = filename;
 }
+
+void FrameMeta::setDuration(int64_t msDuration) {
+    m_durationMs = msDuration;
+}
+
+void FrameMeta::setTotalFrames(int totalFrames) {
+    m_totalFrames = totalFrames;
+}
