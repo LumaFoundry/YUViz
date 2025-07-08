@@ -54,16 +54,16 @@ void Timer::restoreCache()
 
 void Timer::loop()
 {
-    if (m_status == Status(Playing))
+    if (m_status == Status::Playing)
     {
         auto start = std::chrono::steady_clock::now();
         int64_t deltaMs = 0;
         switch (m_direction)
         {
-        case Direction(Forward):
+        case Direction::Forward:
             deltaMs = forwardNext();
             break;
-        case Direction(Backward):
+        case Direction::Backward:
             deltaMs = backwardNext();
             break;
         }
@@ -110,8 +110,8 @@ bool Timer::autoPause()
 {
     if (m_wake.num == 0)
     {
-        m_status = Status(Paused);
-        m_direction = Direction(Forward);
+        m_status = Status::Paused;
+        m_direction = Direction::Forward;
         return true;
     }
     return false;
@@ -202,55 +202,55 @@ int64_t Timer::nextDeltaMs(AVRational next, AVRational last)
 
 void Timer::play()
 {
-    if (m_status != Status(Playing))
+    if (m_status != Status::Playing)
     {
-        m_status = Status(Playing);
+        m_status = Status::Playing;
         loop();
     }
 }
 
 void Timer::pause()
 {
-    if (m_status == Status(Playing))
+    if (m_status == Status::Playing)
     {
-        m_status = Status(Paused);
+        m_status = Status::Paused;
         restoreCache();
     }
 }
 
 void Timer::playForward()
 {
-    if (m_direction == Direction(Backward))
+    if (m_direction == Direction::Backward)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_direction = Direction(Forward);
+        m_direction = Direction::Forward;
         restoreCache();
     };
-    if (m_status == Status(Paused))
+    if (m_status == Status::Paused)
     {
-        m_status = Status(Playing);
+        m_status = Status::Playing;
         loop();
     }
 }
 
 void Timer::playBackward()
 {
-    if (m_direction == Direction(Forward))
+    if (m_direction == Direction::Forward)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_direction = Direction(Backward);
+        m_direction = Direction::Backward;
         restoreCache();
     };
-    if (m_status == Status(Paused))
+    if (m_status == Status::Paused)
     {
-        m_status = Status(Playing);
+        m_status = Status::Playing;
         loop();
     }
 }
 
 void Timer::stepForward()
 {
-    if (m_status == Status(Paused))
+    if (m_status == Status::Paused)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         forwardPts();
@@ -265,7 +265,7 @@ void Timer::stepForward()
 
 void Timer::stepBackward()
 {
-    if (m_status == Status(Paused) && m_wake.num > 0)
+    if (m_status == Status::Paused && m_wake.num > 0)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         backwardPts();
@@ -280,10 +280,10 @@ void Timer::stepBackward()
 
 void Timer::seek(std::vector<int64_t> seekPts)
 {
-    if (m_status != Status(Seeking))
+    if (m_status != Status::Seeking)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        m_status = Status(Seeking);
+        m_status = Status::Seeking;
         for (size_t i = 0; i < m_size; ++i)
         {
             m_pts[i] = seekPts[i];
