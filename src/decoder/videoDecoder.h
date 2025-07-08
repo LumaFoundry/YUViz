@@ -35,8 +35,11 @@ public:
 	void openFile();
     virtual FrameMeta getMetaData();
 
+	int getTotalFrames();
+
 public slots:
     virtual void loadFrames(int num_frames);
+	void seek(int64_t timestamp);
 
 signals:
     void framesLoaded(bool success);
