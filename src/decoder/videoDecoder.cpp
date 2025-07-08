@@ -140,6 +140,9 @@ void VideoDecoder::openFile()
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
     metadata.setFilename(m_fileName);
+    metadata.setDuration(getDurationMs());
+    metadata.setTotalFrames(getTotalFrames());
+
 
     if (isYUV(codecContext->codec_id)){
         int ySize = m_width * m_height;
@@ -405,3 +408,57 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     av_packet_free(&tempPacket);
 }
 
+int VideoDecoder::getTotalFrames()
+{
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
+    }
+
+    if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
+        return yuvTotalFrames;
+    }
+
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+
+    if (videoStream->nb_frames > 0) {
+        return static_cast<int>(videoStream->nb_frames);
+    }
+
+    return -1
+}
+
+int64_t VideoDecoder::getDurationMs()
+{
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
+    }
+
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+    if (videoStream->duration != AV_NOPTS_VALUE) {
+        return av_rescale_q(videoStream->duration, videoStream->time_base, AVRational{1, 1000});
+    }
+
+    return -1;
+}
+
+void VideoDecoder::seek(nt64_t timestamp)
+{
+    if (!formatContext || !codecContext || videoStreamIndex < 0) {
+        ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
+        return;
+    }
+
+    int ret = av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD);
+    
+    if (ret < 0) {
+        ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(timestamp), LogLevel::Error);
+        return;
+    }
+
+    avcodec_flush_buffers(codecContext);
+
+    m_frameQueue->clear();
+    qDebug() << "Frame queue cleared after seek";
+    
+    loadFrames(25);
+}
