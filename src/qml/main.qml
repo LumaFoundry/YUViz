@@ -10,7 +10,6 @@ ApplicationWindow {
     color: "black"
     visible: true
 
-    property real currentZoom: 1.0
     property real minZoom: 1.0
     property real maxZoom: 1000.0
     property real scaleFactor: 1.0
@@ -67,7 +66,6 @@ ApplicationWindow {
         }
     }
 
-    property real scaleFactor: 1.0
     property bool isCtrlPressed: false
     property bool isSelecting: false
     property point selectionStart: Qt.point(0, 0)
@@ -78,17 +76,18 @@ ApplicationWindow {
         anchors.fill: parent
         pinch.target: videoWindow
 
-        property real initialZoom: 1.0
+        property real lastPinchScale: 1.0
 
         onPinchStarted: {
-            initialZoom = currentZoom
+            lastPinchScale = 1.0
         }
 
         onPinchUpdated: {
-            let newZoom = initialZoom * pinch.scale;
-
-            currentZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
-            videoWindow.setZoom(currentZoom);
+            let factor = pinch.scale / lastPinchScale
+            if (factor !== 1.0) {
+                videoWindow.zoomAt(factor, pinch.center)
+            }
+            lastPinchScale = pinch.scale
         }
 
         Item {
@@ -123,11 +122,8 @@ ApplicationWindow {
                     let delta = wheelHandler.rotation - wheelHandler.lastRotation;
 
                     if (delta !== 0) {
-                        let zoomStep = delta > 0 ? 0.1 : -0.1;
-                        let newZoom = currentZoom + zoomStep;
-
-                        currentZoom = Math.max(minZoom, Math.min(newZoom, maxZoom));
-                        videoWindow.setZoom(currentZoom);
+                        let factor = delta > 0 ? 1.2 : (1.0 / 1.2);
+                        videoWindow.zoomAt(factor, wheelHandler.point.position)
                     }
 
                     wheelHandler.lastRotation = wheelHandler.rotation;
@@ -229,7 +225,6 @@ ApplicationWindow {
             text: "Reset View"
             onClicked: {
                 videoWindow.resetZoom()
-                zoomSlider.value = 1.0
                 selectionStart = Qt.point(0, 0)
                 selectionEnd = Qt.point(0, 0)
                 isSelecting = false

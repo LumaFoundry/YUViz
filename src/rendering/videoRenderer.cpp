@@ -38,7 +38,7 @@ void VideoRenderer::initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp) {
 
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
-    m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float)*8));
+    m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float)*4));
     m_resizeParams->create();
 
     // Load shaders
@@ -175,11 +175,10 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
-    float currentZoom = m_zoomFactor;
-    if (std::abs(windowAspect - m_windowAspect) > 1e-4f || std::abs(currentZoom - m_lastZoomFactor) > 1e-4f  || m_hasSelection)
+
+    if (std::abs(windowAspect - m_windowAspect) > 1e-4f)
     {
         m_windowAspect = windowAspect;
-        m_lastZoomFactor = currentZoom;
 
         float videoAspect = float(m_metaPtr->yWidth()) / m_metaPtr->yHeight();
         float scaleX, scaleY;
@@ -197,13 +196,12 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         float offsetX = 0.0f;
         float offsetY = 0.0f;
 
-        if (m_hasSelection) {
-
+        if (m_hasSelection && m_selectionRect.isValid()) {
             float selectionZoomX = 1.0f / m_selectionRect.width();
             float selectionZoomY = 1.0f / m_selectionRect.height();
             float selectionZoom = qMin(selectionZoomX, selectionZoomY);
 
-            selectionZoom = qMin(selectionZoom, 10.0f);
+            selectionZoom = qMin(selectionZoom, 1000.0f);
             scaleX *= selectionZoom;
             scaleY *= selectionZoom;
 
@@ -220,12 +218,9 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         struct ResizeParams {
             float scaleX, scaleY;
             float offsetX, offsetY;
-            float zoom;
-            // Pad to 32 bytes (8 floats total) to match shader buffer size
-            float padding[3];
         };
 
-        ResizeParams rp{ scaleX, scaleY, offsetX, offsetY, currentZoom };
+        ResizeParams rp{ scaleX, scaleY, offsetX, offsetY };
         
         m_resizeParamsBatch = m_rhi->nextResourceUpdateBatch();
         m_resizeParamsBatch->updateDynamicBuffer(m_resizeParams.get(), 0, sizeof(rp), &rp);
@@ -262,17 +257,8 @@ void VideoRenderer::releaseBatch()
     }
 }
 
-void VideoRenderer::setZoomFactor(float zoom) {
-    if (std::abs(m_zoomFactor - zoom) > 1e-4f) {
-        m_zoomFactor = zoom;
-    }
-}
-
 void VideoRenderer::setZoomAndOffset(const QRectF &selectionRect) {
     m_selectionRect = selectionRect;
     m_hasSelection = !selectionRect.isNull();
-
-
     m_windowAspect = 0.0f;  
-    m_lastZoomFactor = -1.0f;  
 }

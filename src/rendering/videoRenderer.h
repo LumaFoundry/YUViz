@@ -25,14 +25,11 @@ signals:
     void rendererError();
 
 public slots:
-    void setZoomFactor(float zoom);
     void setZoomAndOffset(const QRectF &selectionRect);
 
 private:
     std::shared_ptr<FrameMeta> m_metaPtr;
     QRhi *m_rhi = nullptr;
-    float m_zoomFactor = 1.0f;
-    float m_lastZoomFactor = 1.0f;
     QRectF m_selectionRect;
     bool m_hasSelection = false;
     std::unique_ptr<QRhiTexture> m_yTex;

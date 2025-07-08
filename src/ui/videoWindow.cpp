@@ -4,6 +4,7 @@
 #include "rendering/videoRenderNode.h"
 #include "frames/frameMeta.h"
 #include <QMouseEvent>
+#include <QtMath>
 
 VideoWindow::VideoWindow(QQuickItem *parent):
     QQuickItem(parent)
@@ -70,11 +71,60 @@ QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     return node;
 }
 
-void VideoWindow::setZoom(qreal zoom) {
-    if (m_renderer) {
-        m_renderer->setZoomFactor(static_cast<float>(zoom));
-        update();
+void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
+    if (!m_renderer) return;
+
+    const QRectF itemRect = boundingRect();
+    if (itemRect.isEmpty()) return;
+
+    const QRectF currentRect = (m_isZoomed && !m_currentZoomRect.isNull()) ? m_currentZoomRect : QRectF(0, 0, 1, 1);
+
+    // Calculate the new view dimensions
+    qreal newWidth = currentRect.width() / factor;
+    qreal newHeight = currentRect.height() / factor;
+
+    // If zooming out past the original view, just reset.
+    if (factor < 1.0 && (newWidth > 1.0 || newHeight > 1.0)) {
+        resetZoom();
+        return;
     }
+
+    // Limit zoom-in
+    constexpr qreal maxZoomFactor = 1000.0;
+    if (factor > 1.0 && (newWidth < 1.0 / maxZoomFactor || newHeight < 1.0 / maxZoomFactor)) {
+        return;
+    }
+
+    // Normalize the cursor position to [0, 1] relative to the window
+    const QPointF normCenter(
+        qBound(0.0, centerPoint.x() / itemRect.width(), 1.0),
+        qBound(0.0, centerPoint.y() / itemRect.height(), 1.0)
+    );
+
+    // Calculate the new top-left corner to keep the point under the cursor stationary
+    const qreal newX = currentRect.x() + normCenter.x() * currentRect.width() * (1.0 - 1.0 / factor);
+    const qreal newY = currentRect.y() + normCenter.y() * currentRect.height() * (1.0 - 1.0 / factor);
+
+    QRectF newZoomRect(newX, newY, newWidth, newHeight);
+
+    // Clamp the new rectangle to the bounds of the video
+    if (newZoomRect.x() < 0.0) newZoomRect.setX(0.0);
+    if (newZoomRect.y() < 0.0) newZoomRect.setY(0.0);
+    if (newZoomRect.right() > 1.0) newZoomRect.setX(1.0 - newZoomRect.width());
+    if (newZoomRect.bottom() > 1.0) newZoomRect.setY(1.0 - newZoomRect.height());
+
+    m_currentZoomRect = newZoomRect;
+
+    if (qFuzzyCompare(m_currentZoomRect.width(), 1.0) && qFuzzyCompare(m_currentZoomRect.height(), 1.0)) {
+        m_currentZoomRect.setRect(0,0,1,1);
+        m_isZoomed = false;
+    } else {
+        m_isZoomed = true;
+    }
+    
+    m_renderer->setZoomAndOffset(m_currentZoomRect);
+    emit zoomChanged();
+    update();
 }
 
 void VideoWindow::setSelectionRect(const QRectF &rect) {
@@ -98,7 +148,7 @@ void VideoWindow::clearSelection() {
 void VideoWindow::resetZoom() {
     // Reset zoom state, restore to full screen display
     m_isZoomed = false;
-    m_currentZoomRect = QRectF();
+    m_currentZoomRect = QRectF(0,0,1,1);
 
     // Clear selection state
     m_selectionRect = QRectF();
@@ -107,7 +157,7 @@ void VideoWindow::resetZoom() {
 
     // Reset renderer zoom parameters
     if (m_renderer) {
-        m_renderer->setZoomAndOffset(QRectF(0, 0, 1, 1));
+        m_renderer->setZoomAndOffset(m_currentZoomRect);
     }
 
     emit selectionChanged(QRectF());

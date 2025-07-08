@@ -28,7 +28,7 @@ public slots:
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
-    void setZoom(qreal zoom);
+    void zoomAt(qreal factor, const QPointF &centerPoint);
     void setSelectionRect(const QRectF &rect);
     void clearSelection();
     void zoomToSelection();
