@@ -42,6 +42,7 @@ qreal VideoWindow::getAspectRatio() const
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
+    qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->uploadFrame(frame);
 }
 

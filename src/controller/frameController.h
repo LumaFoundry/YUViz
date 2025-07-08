@@ -34,9 +34,14 @@ public:
     void start();
     void onTimerTick(int64_t pts);
 
+    void onSeek(int64_t pts);
+
     AVRational getTimeBase();
 
     int m_index; // Index of current FC, for VC orchestration
+
+    int totalFrames();
+    int64_t getDuration();
 
 public slots:
     // Receive signals from decoder and renderer
@@ -44,6 +49,7 @@ public slots:
     void onFrameUploaded();
     void onFrameRendered();
     void onRenderError();
+    void onFrameSeeked(int64_t pts);
    
 signals:
     void ready(int index);
@@ -52,6 +58,7 @@ signals:
     void requestRender(FrameData* frame);
     void requestRelease();
     void endOfVideo(int index);
+    void requestSeek(int64_t pts);
 
 private:
 
@@ -76,5 +83,7 @@ private:
     bool m_prefill = false;
 
     bool m_endOfVideo = false;
+
+    int64_t m_seeking = -1;
 
 };

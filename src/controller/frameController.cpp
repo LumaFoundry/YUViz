@@ -38,6 +38,12 @@ FrameController::FrameController(
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
 
+    connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
+    qDebug() << "Connected requestSeek to VideoDecoder::seek";
+
+    connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
+    qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
+
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
     qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
@@ -142,6 +148,7 @@ void FrameController:: onFrameDecoded(bool success){
         // Assume first frame has pts 0 and upload to buffer
         requestUpload(m_frameQueue->getHeadFrame(0));
     }
+
 }
 
 void FrameController::onFrameUploaded() {
@@ -149,6 +156,12 @@ void FrameController::onFrameUploaded() {
     if (m_prefill){
         m_prefill = false;
         emit ready(m_index);
+    }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::requesting render after seeked frame uploaded";
+        emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
+        m_seeking = -1;
     }
 
 }
@@ -162,8 +175,38 @@ void FrameController::onFrameRendered() {
     }
 }
 
+void FrameController::onSeek(int64_t pts) {
+    // Check if frameQueue has the frame
+    FrameData* frame = m_frameQueue->getHeadFrame(pts);
+    m_seeking = pts;
+
+    if (!frame){
+        qDebug() << "Frame not found in queue, requesting decode for seek pts" << pts;
+        emit requestSeek(pts);
+    }else{
+        qDebug() << "Frame found in queue, requesting upload for seek pts" << pts;
+        emit requestUpload(frame);
+    }
+}
+
+
+void FrameController::onFrameSeeked(int64_t pts) {
+    qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
+    
+    requestUpload(m_frameQueue->getHeadFrame(pts));
+}
+
+
 void FrameController::onRenderError() {
     qWarning() << "onRenderError for index" << m_index;
     // TODO: Handle rendering error
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
+}
+
+int FrameController::totalFrames() {
+    return m_frameMeta->totalFrames();
+}
+
+int64_t FrameController::getDuration(){
+    return m_frameMeta->duration();
 }
