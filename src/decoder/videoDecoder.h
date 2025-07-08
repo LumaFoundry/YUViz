@@ -35,14 +35,16 @@ public:
 	void openFile();
     virtual FrameMeta getMetaData();
 
+	int64_t getDurationMs();
 	int getTotalFrames();
 
 public slots:
     virtual void loadFrames(int num_frames);
-	void seek(int64_t timestamp);
+	virtual void seek(int64_t timestamp);
 
 signals:
     void framesLoaded(bool success);
+	void frameSeeked(int64_t pts);
 
 private:
 	AVFormatContext* formatContext;
