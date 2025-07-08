@@ -176,7 +176,7 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
     float currentZoom = m_zoomFactor;
-    if (std::abs(windowAspect - m_windowAspect) > 1e-4f || std::abs(currentZoom - m_lastZoomFactor) > 1e-4f)
+    if (std::abs(windowAspect - m_windowAspect) > 1e-4f || std::abs(currentZoom - m_lastZoomFactor) > 1e-4f  || m_hasSelection)
     {
         m_windowAspect = windowAspect;
         m_lastZoomFactor = currentZoom;
@@ -196,6 +196,23 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
 
         float offsetX = 0.0f;
         float offsetY = 0.0f;
+
+        if (m_hasSelection) {
+
+            float selectionZoomX = 1.0f / m_selectionRect.width();
+            float selectionZoomY = 1.0f / m_selectionRect.height();
+            float selectionZoom = qMin(selectionZoomX, selectionZoomY);
+
+            selectionZoom = qMin(selectionZoom, 10.0f);
+            scaleX *= selectionZoom;
+            scaleY *= selectionZoom;
+
+            float selectionCenterX = m_selectionRect.x() + m_selectionRect.width() * 0.5f;
+            float selectionCenterY = m_selectionRect.y() + m_selectionRect.height() * 0.5f;
+
+            offsetX = -(selectionCenterX - 0.5f) * 2.0f * scaleX;
+            offsetY = (selectionCenterY - 0.5f) * 2.0f * scaleY;
+        }
         
         // Struct matching the shader's std140 layout.
         // It requires padding to a 16-byte boundary for the struct members.
@@ -249,4 +266,13 @@ void VideoRenderer::setZoomFactor(float zoom) {
     if (std::abs(m_zoomFactor - zoom) > 1e-4f) {
         m_zoomFactor = zoom;
     }
+}
+
+void VideoRenderer::setZoomAndOffset(const QRectF &selectionRect) {
+    m_selectionRect = selectionRect;
+    m_hasSelection = !selectionRect.isNull();
+
+
+    m_windowAspect = 0.0f;  
+    m_lastZoomFactor = -1.0f;  
 }

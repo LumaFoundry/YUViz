@@ -14,6 +14,6 @@ layout(std140, binding = 5) uniform ResizeParams {
 void main() {
     vec2 zoomed_position = position * u_zoom;
 
-    gl_Position = vec4(zoomed_position * u_scale, 0.0, 1.0);
+    gl_Position = vec4(zoomed_position * u_scale + u_offset, 0.0, 1.0);
     v_texCoord = texCoord;
 }
