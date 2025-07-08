@@ -43,12 +43,16 @@ public:
     int totalFrames();
     int64_t getDuration();
 
+    int totalFrames();
+    int64_t getDuration();
+
 public slots:
     // Receive signals from decoder and renderer
     void onFrameDecoded(bool success);
     void onFrameUploaded();
     void onFrameRendered();
     void onRenderError();
+    void onFrameSeeked(int64_t pts);
     void onFrameSeeked(int64_t pts);
    
 signals:
@@ -83,6 +87,8 @@ private:
     bool m_prefill = false;
 
     bool m_endOfVideo = false;
+
+    int64_t m_seeking = -1;
 
     int64_t m_seeking = -1;
 

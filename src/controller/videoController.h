@@ -44,6 +44,7 @@ public slots:
     void stepForward();
     void stepBackward();
     void seekTo(double timeMs);
+    void seekTo(double timeMs);
 
 
 signals:

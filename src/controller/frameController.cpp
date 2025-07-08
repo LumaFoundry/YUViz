@@ -47,6 +47,12 @@ FrameController::FrameController(
     connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
 
+    connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
+    qDebug() << "Connected requestSeek to VideoDecoder::seek";
+
+    connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
+    qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
+
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
     qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
@@ -161,6 +167,7 @@ void FrameController:: onFrameDecoded(bool success){
         requestUpload(m_frameQueue->getHeadFrame(0));
     }
 
+
 }
 
 void FrameController::onFrameUploaded() {
@@ -173,6 +180,7 @@ void FrameController::onFrameUploaded() {
     if (m_seeking != -1){
         qDebug() << "FrameController::requesting render after seeked frame uploaded";
         emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
+        m_seeking = -1;
     }
 
 }
@@ -224,6 +232,13 @@ void FrameController::onRenderError() {
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
 }
 
+int FrameController::totalFrames() {
+    return m_frameMeta->totalFrames();
+}
+
+int64_t FrameController::getDuration(){
+    return m_frameMeta->duration();
+}
 int FrameController::totalFrames() {
     return m_frameMeta->totalFrames();
 }

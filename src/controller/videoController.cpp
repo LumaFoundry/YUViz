@@ -30,6 +30,9 @@ VideoController::VideoController(QObject *parent,
         // Get the max duration from all FC (in theory they should all be the same)
         m_duration = m_duration > frameController->getDuration() ? m_duration : frameController->getDuration();
 
+        // Get the max duration from all FC (in theory they should all be the same)
+        m_duration = m_duration > frameController->getDuration() ? m_duration : frameController->getDuration();
+
         m_frameControllers.push_back(std::move(frameController));
         qDebug() << "FrameController count now:" << m_frameControllers.size();
 
@@ -174,6 +177,9 @@ void VideoController::stepBackward() {
 }
 
 void VideoController::togglePlayPause() {
+
+    qDebug() << "VideoController:: togglePlayPause called";
+
 
     qDebug() << "VideoController:: togglePlayPause called";
 

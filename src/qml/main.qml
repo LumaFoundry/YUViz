@@ -45,6 +45,7 @@ ApplicationWindow {
         resizeDebounce.restart()
     }
     
+    
     onHeightChanged: {
         if (!resizing) {
             resizing = true
