@@ -184,9 +184,10 @@ void VideoDecoder::loadFrames(int num_frames)
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
         if (isRawYUV) {
-             temp_pts = loadYUVFrame();
+            temp_pts = loadYUVFrame();
         } else {
-             temp_pts = loadCompressedFrame();
+            temp_pts = loadCompressedFrame();
+            qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
         maxpts = std::max(maxpts, temp_pts);
     }
@@ -290,6 +291,7 @@ int64_t VideoDecoder::loadCompressedFrame()
             
             ret = avcodec_receive_frame(codecContext, tempFrame);
             pts = tempFrame->pts;
+            qDebug() << "VideoDecoder:: pts from avcodec: " << pts;
             FrameData* frameData = m_frameQueue->getTailFrame(pts);
 
             if (ret == 0) {
@@ -317,7 +319,7 @@ int64_t VideoDecoder::loadCompressedFrame()
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
                 av_packet_free(&tempPacket);
-                return -1;
+                return pts;
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -333,7 +335,7 @@ int64_t VideoDecoder::loadCompressedFrame()
     }
     
     av_packet_free(&tempPacket);
-    return pts;
+    return -1;
 }
 
 /**
