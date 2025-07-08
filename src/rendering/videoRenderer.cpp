@@ -138,6 +138,13 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
 
 
 void VideoRenderer::uploadFrame(FrameData* frame) {
+
+    if (!frame) {
+        qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
+        emit rendererError();
+        return;
+    }
+
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc;

@@ -460,6 +460,7 @@ void VideoDecoder::seek(int64_t timestamp)
     m_frameQueue->clear();
     qDebug() << "Frame queue cleared after seek";
     
+    currentFrameIndex = timestamp;
     loadFrames(25);
 
     emit frameSeeked(timestamp);

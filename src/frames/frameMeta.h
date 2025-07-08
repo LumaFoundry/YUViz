@@ -20,6 +20,8 @@ public:
     int uvHeight() const;
     int ySize() const;
     int uvSize() const;
+    int totalFrames() const;
+    int64_t duration() const;
 
     AVPixelFormat format() const;
     AVRational timeBase() const;

@@ -20,11 +20,19 @@
 class VideoController : public QObject {
     Q_OBJECT
 
+    Q_PROPERTY(qint64 duration READ duration CONSTANT)
+
+    Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
+
 public:
     VideoController(QObject *parent, 
                     std::vector<VideoFileInfo> videoFiles = {});
     ~VideoController();
     void start();
+
+    qint64 duration() const;
+
+    double currentTimeMs() const { return m_currentTimeMs; }
 
 public slots:
     void onReady(int index);
@@ -35,6 +43,7 @@ public slots:
     void pause();
     void stepForward();
     void stepBackward();
+    void seekTo(double timeMs);
 
 
 signals:
@@ -44,6 +53,8 @@ signals:
     void stepForwardTimer();
     void stepBackwardTimer();
     void tickFC(int64_t pts);
+    void seekTimer(std::vector<int64_t> seekPts);
+    void currentTimeMsChanged();
 
 private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
@@ -56,6 +67,10 @@ private:
     int m_readyCount = 0;
 
     int m_endCount = 0;
+
+    int64_t m_duration = 0;
+
+    int64_t m_currentTimeMs = 0;
 
 };
 

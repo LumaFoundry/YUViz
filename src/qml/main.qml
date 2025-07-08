@@ -1,5 +1,6 @@
 import QtQuick 6.0
 import QtQuick.Window 6.0
+import QtQuick.Controls 6.0
 import QtMultimedia 6.5
 import Window 1.0
 
@@ -30,6 +31,7 @@ Window {
         }
         resizeDebounce.restart()
     }
+    
     onHeightChanged: {
         if (!resizing) {
             resizing = true
@@ -68,5 +70,43 @@ Window {
         id: videoWindow
         objectName: "videoWindow"
         anchors.fill: parent
+    }
+
+    Row {
+        id: controls
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.margins: 20
+        spacing: 10
+
+        Slider {
+            id: timeSlider
+            width: parent.width
+            from: 0.0
+            to: videoController.duration
+            value: dragging ? value : videoController.currentTimeMs
+            
+            property bool dragging: false
+
+            onPressedChanged: {
+
+                dragging = pressed;
+
+                if (!pressed) {
+                    keyHandler.forceActiveFocus()
+                }
+            }
+
+            onValueChanged: {
+                if(dragging){
+                    videoController.seekTo(value),
+                    console.log("Slider value changed to: " + value);
+                }
+
+            }
+        }
     }
 }
