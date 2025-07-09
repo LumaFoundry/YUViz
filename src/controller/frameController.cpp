@@ -187,13 +187,9 @@ void FrameController::onSeek(int64_t pts) {
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
     m_seeking = pts;
 
-    if (!frame){
-        qDebug() << "Frame not found in queue, requesting decode for seek pts" << pts;
-        emit requestSeek(pts);
-    }else{
-        qDebug() << "Frame found in queue, requesting upload for seek pts" << pts;
-        emit requestUpload(frame);
-    }
+    emit requestSeek(pts);
+
+    // TODO: implement smart seek to check if frame is in frame Queue
 
     qDebug() << "\n";
 }
