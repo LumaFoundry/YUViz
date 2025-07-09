@@ -12,8 +12,13 @@ ApplicationWindow {
 
     property real minZoom: 1.0
     property real maxZoom: 1000.0
-    property real scaleFactor: 1.0
-    property bool resizing: false
+
+    property bool isCtrlPressed: false
+    property bool isSelecting: false
+    property point selectionStart: Qt.point(0, 0)
+    property point selectionEnd: Qt.point(0, 0)
+    property bool isProcessingSelection: false
+    property bool isMouseDown: false
 
     Timer {
         id: resizeDebounce
@@ -63,15 +68,20 @@ ApplicationWindow {
                 videoController.stepBackward()
                 event.accepted = true
             }
+
+            if (event.key === Qt.Key_Control) {
+                isCtrlPressed = true
+                event.accepted = true
+            }
+        }
+
+        Keys.onReleased: (event) => {
+            if (event.key === Qt.Key_Control) {
+                isCtrlPressed = false
+                event.accepted = true
+            }
         }
     }
-
-    property bool isCtrlPressed: false
-    property bool isSelecting: false
-    property point selectionStart: Qt.point(0, 0)
-    property point selectionEnd: Qt.point(0, 0)
-    property bool isProcessingSelection: false
-    property bool isMouseDown: false
 
     PinchArea {
         anchors.fill: parent
@@ -89,23 +99,6 @@ ApplicationWindow {
                 videoWindow.zoomAt(factor, pinch.center)
             }
             lastPinchScale = pinch.scale
-        }
-
-        Item {
-            anchors.fill: parent
-            focus: true
-            
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_Control) {
-                    isCtrlPressed = true
-                }
-            }
-            
-            Keys.onReleased: function(event) {
-                if (event.key === Qt.Key_Control) {
-                    isCtrlPressed = false
-                }
-            }
         }
 
         VideoWindow {
@@ -129,7 +122,6 @@ ApplicationWindow {
                 }
 
                 onPointChanged: {
-                    // When the handler is active, calculate the delta and pan
                     if (active) {
                         var currentPosition = point.position
                         var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y)
@@ -166,11 +158,9 @@ ApplicationWindow {
                 acceptedButtons: Qt.LeftButton
                 hoverEnabled: true // Needed for cursor shape changes
                 
-                // Change cursor to give user feedback
                 cursorShape: {
                     if (isCtrlPressed) return Qt.CrossCursor
                     if (videoWindow.isZoomed) {
-                        // If the left button is down, show a closed hand, otherwise an open one
                         return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     }
                     return Qt.ArrowCursor
@@ -183,8 +173,7 @@ ApplicationWindow {
                         isSelecting = true
                         selectionStart = Qt.point(mouse.x, mouse.y)
                         selectionEnd = selectionStart
-                    }
-                    else {
+                    } else {
                         mouse.accepted = false
                     }
                 }
