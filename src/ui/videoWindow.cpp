@@ -72,7 +72,7 @@ void VideoWindow::rendererError() {
 }
 
 QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
+    // qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
     
     if (!m_renderer) {
         return nullptr;
