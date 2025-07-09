@@ -196,10 +196,17 @@ void FrameController::onFrameRendered() {
     if (m_seeking != -1){
         qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
+        return;
+    }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::Seeked frame is rendered";
+        m_seeking = -1; // Reset seeking after rendering
     }
 }
 
 void FrameController::onSeek(int64_t pts) {
+    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
@@ -218,6 +225,11 @@ void FrameController::onSeek(int64_t pts) {
 void FrameController::onFrameSeeked(int64_t pts) {
     qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
     
+    FrameData* frameSeeked = m_frameQueue->getHeadFrame(pts);
+    if(!frameSeeked){
+        qDebug() << "Frame is not seeked";
+    }
+    requestUpload(frameSeeked);
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(pts);
     if(!frameSeeked){
         qDebug() << "Frame is not seeked";
