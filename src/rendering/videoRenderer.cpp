@@ -197,24 +197,19 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         float offsetY = 0.0f;
 
         if (m_hasSelection && m_selectionRect.isValid()) {
-            float selectionZoomX = 1.0f / m_selectionRect.width();
-            float selectionZoomY = 1.0f / m_selectionRect.height();
-            float selectionZoom = qMin(selectionZoomX, selectionZoomY);
-
-            selectionZoom = qMin(selectionZoom, 1000.0f);
-            scaleX *= selectionZoom;
-            scaleY *= selectionZoom;
+            // Apply zoom based on the selection rectangle's dimensions without forcing a uniform aspect ratio.
+            scaleX /= m_selectionRect.width();
+            scaleY /= m_selectionRect.height();
 
             float selectionCenterX = m_selectionRect.x() + m_selectionRect.width() * 0.5f;
             float selectionCenterY = m_selectionRect.y() + m_selectionRect.height() * 0.5f;
-
+            
+            // Calculate offset to center the selected region
             offsetX = -(selectionCenterX - 0.5f) * 2.0f * scaleX;
             offsetY = (selectionCenterY - 0.5f) * 2.0f * scaleY;
         }
         
         // Struct matching the shader's std140 layout.
-        // It requires padding to a 16-byte boundary for the struct members.
-        // vec2, vec2, float -> (8 bytes, 8 bytes, 4 bytes) -> needs padding.
         struct ResizeParams {
             float scaleX, scaleY;
             float offsetX, offsetY;
