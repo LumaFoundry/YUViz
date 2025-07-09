@@ -174,6 +174,10 @@ void VideoDecoder::openFile()
 void VideoDecoder::loadFrames(int num_frames)
 {
 
+    if (num_frames == 0){
+        emit framesLoaded(true);
+        return;
+    }
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
     if (!formatContext || !codecContext) {
@@ -457,11 +461,14 @@ void VideoDecoder::seek(int64_t timestamp)
 
     avcodec_flush_buffers(codecContext);
 
-    m_frameQueue->clear();
-    qDebug() << "Frame queue cleared after seek";
+    // m_frameQueue->clear();
+    // qDebug() << "Frame queue cleared after seek";
     
     currentFrameIndex = timestamp;
+
+    qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
     loadFrames(25);
+    qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
 
     emit frameSeeked(timestamp);
 }

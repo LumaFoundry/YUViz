@@ -162,15 +162,7 @@ void FrameController::onFrameUploaded() {
 
     if (m_seeking != -1){
         qDebug() << "FrameController::requesting render after seeked frame uploaded";
-        FrameData* target = m_frameQueue->getHeadFrame(m_seeking);
-        if (target->isEndFrame()){
-            qDebug() << "End frame reached after seek for index" << m_index;
-            m_endOfVideo = true;
-        }else{
-            m_endOfVideo = false;
-        }
-        emit requestRender(target);
-        m_seeking = -1;
+        emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
     }
 
 }
@@ -180,10 +172,17 @@ void FrameController::onFrameRendered() {
     if (m_endOfVideo) {
         qDebug() << "FrameController::End of frame is rendered for index " << m_index;
         emit endOfVideo(m_index);
+        return;
+    }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::Seeked frame is rendered";
+        m_seeking = -1; // Reset seeking after rendering
     }
 }
 
 void FrameController::onSeek(int64_t pts) {
+    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
     m_seeking = pts;
@@ -196,20 +195,18 @@ void FrameController::onSeek(int64_t pts) {
         emit requestUpload(frame);
     }
 
-    if (!m_endOfVideo){
-        // Request to decode more frames if needed
-        int frameToFill = m_frameQueue->getEmpty();
-        qDebug() << "Frames to fill in queue:" << frameToFill;
-        requestDecode(frameToFill);
-    }
-
+    qDebug() << "\n";
 }
 
 
 void FrameController::onFrameSeeked(int64_t pts) {
     qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
     
-    requestUpload(m_frameQueue->getHeadFrame(pts));
+    FrameData* frameSeeked = m_frameQueue->getHeadFrame(pts);
+    if(!frameSeeked){
+        qDebug() << "Frame is not seeked";
+    }
+    requestUpload(frameSeeked);
 }
 
 

@@ -317,11 +317,11 @@ ApplicationWindow {
                     }
                 }
 
-                onValueChanged: {
-                    if(dragging){
-                        videoController.seekTo(value),
-                        console.log("Slider value changed to: " + value);
-                    }
+            onValueChanged: {
+                if(dragging){
+                    videoController.seekTo(value);
+                    console.log("Slider value changed to: " + value);
+                }
 
                 }
             }
