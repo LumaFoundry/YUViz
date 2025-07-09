@@ -112,6 +112,35 @@ ApplicationWindow {
             objectName: "videoWindow"
             anchors.fill: parent
 
+            PointHandler {
+                id: pointHandler
+                acceptedButtons: Qt.LeftButton
+                // Enable this handler only when zoomed and NOT doing a selection drag
+                enabled: videoWindow.isZoomed && !isCtrlPressed
+
+                property point lastPosition: Qt.point(0, 0)
+
+                onActiveChanged: {
+                    if (active) {
+                        lastPosition = point.position
+                    }
+                }
+
+                onPointChanged: {
+                    // When the handler is active, calculate the delta and pan
+                    if (active) {
+                        var currentPosition = point.position
+                        var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y)
+
+                        if (delta.x !== 0 || delta.y !== 0) {
+                            videoWindow.pan(delta)
+                        }
+
+                        lastPosition = currentPosition
+                    }
+                }
+            }
+            
             WheelHandler {
                 id: wheelHandler
                 acceptedModifiers: Qt.ControlModifier
@@ -133,6 +162,17 @@ ApplicationWindow {
             MouseArea {
                 anchors.fill: parent
                 acceptedButtons: Qt.LeftButton
+                hoverEnabled: true // Needed for cursor shape changes
+                
+                // Change cursor to give user feedback
+                cursorShape: {
+                    if (isCtrlPressed) return Qt.CrossCursor
+                    if (videoWindow.isZoomed) {
+                        // If the left button is down, show a closed hand, otherwise an open one
+                        return (pressedButtons & Qt.LeftButton) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                    }
+                    return Qt.ArrowCursor
+                }
                 
                 onPressed: function(mouse) {
                     if (isCtrlPressed) {
@@ -141,6 +181,9 @@ ApplicationWindow {
                         isSelecting = true
                         selectionStart = Qt.point(mouse.x, mouse.y)
                         selectionEnd = selectionStart
+                    }
+                    else {
+                        mouse.accepted = false
                     }
                 }
                 
@@ -175,7 +218,6 @@ ApplicationWindow {
                         selectionStart = Qt.point(0, 0)
                         selectionEnd = Qt.point(0, 0)
                         selectionCanvas.requestPaint()
-                        
                     }
                 }
             }
