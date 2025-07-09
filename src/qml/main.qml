@@ -102,7 +102,7 @@ Window {
 
             onValueChanged: {
                 if(dragging){
-                    videoController.seekTo(value),
+                    videoController.seekTo(value);
                     console.log("Slider value changed to: " + value);
                 }
 

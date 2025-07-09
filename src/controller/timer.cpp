@@ -295,6 +295,8 @@ void Timer::seek(std::vector<int64_t> seekPts)
         m_wake = next;
         saveCache();
     }
+
+    m_status = Status(Paused);
 }
 
 void Timer::setSpeed(AVRational speed)
