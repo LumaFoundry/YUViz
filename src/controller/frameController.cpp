@@ -98,19 +98,13 @@ void FrameController::start(){
 
 // Slots Definitions
 void FrameController::onTimerTick(int64_t pts) {
-    qDebug() << "\nonTimerTick for index" << m_index;
+    qDebug() << "\nonTimerTick with pts" << pts << " for index" << m_index;
 
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if(target){
-        requestRender(target);
         qDebug() << "Requested render for frame with PTS" << pts;
-        if (target->isEndFrame()){
-            qDebug() << "End frame reached for index" << m_index;
-            m_endOfVideo = true;
-        }else{
-            m_endOfVideo = false;
-        }
+        requestRender(target);
     }else{
         qWarning() << "Cannot render frame" << pts;
     }
@@ -120,6 +114,13 @@ void FrameController::onTimerTick(int64_t pts) {
     // Upload future frame if inside frameQueue
     FrameData* future = m_frameQueue->getHeadFrame(pts + 1);
     if(future){
+        if (future->isEndFrame()){
+            qDebug() << "End frame = True set by " << future->pts();
+            m_endOfVideo = true;
+        }else if (m_endOfVideo){
+            qDebug() << "End frame = False set by " << future->pts();
+            m_endOfVideo = false;
+        }
         requestUpload(future);
         qDebug() << "Requested upload for frame with PTS" << (pts + 1);
     }else{

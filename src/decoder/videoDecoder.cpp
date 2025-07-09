@@ -401,12 +401,20 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
         };
     }
 
-    frameData->setPts(currentFrameIndex++);
+    frameData->setPts(currentFrameIndex);
 
-    if (isYUV(codecContext->codec_id) && currentFrameIndex == yuvTotalFrames - 1) {
-        frameData->setEndFrame(true);
-        m_hitEndFrame = true;
+    if (isYUV(codecContext->codec_id)) {
+        if (currentFrameIndex == yuvTotalFrames - 1) {
+            qDebug() << "VideoDecoder::" << currentFrameIndex << "is end frame";
+            frameData->setEndFrame(true);
+            m_hitEndFrame = true;
+        } else if(frameData->isEndFrame()) {
+            qDebug() << "VideoDecoder::" << currentFrameIndex << "is not end frame";
+            frameData->setEndFrame(false);
+        }
     }
+
+    currentFrameIndex++;
     
     av_packet_unref(tempPacket);
     
