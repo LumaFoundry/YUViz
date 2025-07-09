@@ -405,6 +405,7 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
 
     if (isYUV(codecContext->codec_id) && currentFrameIndex == yuvTotalFrames - 1) {
         frameData->setEndFrame(true);
+        m_hitEndFrame = true;
     }
     
     av_packet_unref(tempPacket);

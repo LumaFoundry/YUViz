@@ -71,4 +71,6 @@ private:
     void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
     int64_t loadCompressedFrame();
 
+	bool m_hitEndFrame = false;
+
 };
