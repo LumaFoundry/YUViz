@@ -33,6 +33,7 @@ public slots:
     void clearSelection();
     void zoomToSelection();
     void resetZoom();
+    void pan(const QPointF &delta);
 
 signals:
     void batchUploaded(bool success);

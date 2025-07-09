@@ -244,6 +244,38 @@ void VideoWindow::zoomToSelection() {
     qDebug() << "Zoom parameters - selection area:" << normalizedSelection;
 }
 
+void VideoWindow::pan(const QPointF &delta) {
+    if (!m_isZoomed || !m_renderer) return;
+
+    const QRectF itemRect = boundingRect();
+    if (itemRect.isEmpty()) return;
+
+    // Pixel delta to a normalized delta, scaled by the current zoom level.
+    qreal dx = (-delta.x() / itemRect.width()) * m_currentZoomRect.width();
+    qreal dy = (-delta.y() / itemRect.height()) * m_currentZoomRect.height();
+
+    // Calculate the maximum distance we can pan in any direction before hitting an edge.
+    const qreal dx_min = -m_currentZoomRect.x();
+    const qreal dx_max = 1.0 - m_currentZoomRect.right();
+    const qreal dy_min = -m_currentZoomRect.y();
+    const qreal dy_max = 1.0 - m_currentZoomRect.bottom();
+
+    // Clamp the delta to the allowed range.
+    dx = qBound(dx_min, dx, dx_max);
+    dy = qBound(dy_min, dy, dy_max);
+    
+    // Only update if there's any movement left after clamping.
+    if (qFuzzyCompare(dx, 0) && qFuzzyCompare(dy, 0)) {
+        return;
+    }
+
+    m_currentZoomRect.translate(dx, dy);    
+    m_renderer->setZoomAndOffset(m_currentZoomRect);
+    
+    emit zoomChanged();
+    update();
+}
+
 void VideoWindow::mousePressEvent(QMouseEvent *event) {
     // Mouse event handling is done by MouseArea in QML
     QQuickItem::mousePressEvent(event);
