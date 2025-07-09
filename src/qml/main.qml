@@ -71,6 +71,7 @@ ApplicationWindow {
     property point selectionStart: Qt.point(0, 0)
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
+    property bool isMouseDown: false
 
     PinchArea {
         anchors.fill: parent
@@ -121,6 +122,7 @@ ApplicationWindow {
                 property point lastPosition: Qt.point(0, 0)
 
                 onActiveChanged: {
+                    isMouseDown = active
                     if (active) {
                         lastPosition = point.position
                     }
@@ -169,7 +171,7 @@ ApplicationWindow {
                     if (isCtrlPressed) return Qt.CrossCursor
                     if (videoWindow.isZoomed) {
                         // If the left button is down, show a closed hand, otherwise an open one
-                        return (pressedButtons & Qt.LeftButton) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                        return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
                     }
                     return Qt.ArrowCursor
                 }
