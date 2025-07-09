@@ -18,7 +18,7 @@ void VideoRenderNode::prepare() {
 }
 
 void VideoRenderNode::render(const RenderState *state) {
-    qDebug() << "VideoRenderNode::render called";
+    // qDebug() << "VideoRenderNode::render called";
     QRhiCommandBuffer *cb = commandBuffer();
 
     QSizeF logicalSize = m_window->contentItem()->size();

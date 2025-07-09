@@ -176,7 +176,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
 
 void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QRhiRenderTarget *rt) {
     
-    qDebug() << "VideoRenderer:: renderFrame called";
+    // qDebug() << "VideoRenderer:: renderFrame called";
     
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
@@ -192,7 +192,7 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         emit batchIsEmpty();
     }
 
-    qDebug() << "VideoRenderer::init ready";
+    // qDebug() << "VideoRenderer::init ready";
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();

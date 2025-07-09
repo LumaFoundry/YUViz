@@ -183,7 +183,6 @@ void VideoController::seekTo(double timeMs){
 
     std::vector<int64_t> seekPts;
 
-    // Convert timeMs to PTS for each FC:
     for (auto& fc : m_frameControllers) {
         // Convert timeMs to PTS using the FC's timebase
         AVRational timebase = fc->getTimeBase();
