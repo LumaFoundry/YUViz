@@ -202,6 +202,11 @@ void VideoDecoder::loadFrames(int num_frames)
     emit framesLoaded(true);
 }
 
+void VideoDecoder::loadPreviousFrames(int num_frames) {
+    currentFrameIndex -= num_frames;
+    loadFrames(num_frames);
+}
+
 FrameMeta VideoDecoder::getMetaData()
 {
     return metadata;
