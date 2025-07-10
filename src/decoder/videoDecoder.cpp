@@ -405,11 +405,11 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
 
     if (isYUV(codecContext->codec_id)) {
         if (currentFrameIndex == yuvTotalFrames - 1) {
-            qDebug() << "VideoDecoder::" << currentFrameIndex << "is end frame";
+            // qDebug() << "VideoDecoder::" << currentFrameIndex << "is end frame";
             frameData->setEndFrame(true);
             m_hitEndFrame = true;
         } else if(frameData->isEndFrame()) {
-            qDebug() << "VideoDecoder::" << currentFrameIndex << "is not end frame";
+            // qDebug() << "VideoDecoder::" << currentFrameIndex << "is not end frame";
             frameData->setEndFrame(false);
         }
     }
@@ -469,14 +469,11 @@ void VideoDecoder::seek(int64_t timestamp)
     }
 
     avcodec_flush_buffers(codecContext);
-
-    // m_frameQueue->clear();
-    // qDebug() << "Frame queue cleared after seek";
     
     currentFrameIndex = timestamp;
 
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(25);
+    loadFrames(m_frameQueue->getSize() / 2);
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
 
     emit frameSeeked(timestamp);
