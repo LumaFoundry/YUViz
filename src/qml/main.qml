@@ -267,6 +267,7 @@ ApplicationWindow {
             text: "Play/Pause"
             onClicked: {
                 videoController.togglePlayPause()
+                keyHandler.focus = true   
             }
         }
 

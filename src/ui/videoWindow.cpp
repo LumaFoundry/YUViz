@@ -142,7 +142,6 @@ void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
 void VideoWindow::setSelectionRect(const QRectF &rect) {
     m_selectionRect = rect;
     m_hasSelection = !rect.isNull();
-    emit selectionChanged(rect);
     update();
 }
 
@@ -152,7 +151,6 @@ void VideoWindow::clearSelection() {
     m_isSelecting = false;
     m_isZoomed = false;
     m_currentZoomRect = QRectF();
-    emit selectionChanged(QRectF());
     emit zoomChanged();
     update();
 }
@@ -172,7 +170,6 @@ void VideoWindow::resetZoom() {
         m_renderer->setZoomAndOffset(m_currentZoomRect);
     }
 
-    emit selectionChanged(QRectF());
     emit zoomChanged();
     update();
 
