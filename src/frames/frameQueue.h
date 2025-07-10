@@ -30,7 +30,7 @@ class FrameQueue{
 
         const int getSize() const { return queueSize; }
 
-        int getEmpty();
+        int getEmpty(int direction);
 
         void clear();
 

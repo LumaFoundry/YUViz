@@ -22,14 +22,22 @@ FrameQueue::~FrameQueue() = default;
 
 // Prevent renderer / decoder from modifying pointers when the other is accessing
 
-int FrameQueue::getEmpty(){
+int FrameQueue::getEmpty(int direction){
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
     qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
-    qDebug() << "Queue:: empty frames: " << (headVal + queueSize / 2) - tailVal;
     
-    int empty = (headVal + queueSize / 2) - tailVal;
+    
+    int empty = 0;
 
+    if (direction == 1){
+        empty = (headVal + queueSize / 2) - tailVal;
+    }else{
+        empty = (tailVal + queueSize / 2) - headVal;
+    }
+
+    qDebug() << "Queue:: empty frames: " << empty;
+    
     if (empty < 0){
         empty = 0;
     }

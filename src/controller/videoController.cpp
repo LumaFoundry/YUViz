@@ -87,10 +87,10 @@ void VideoController::start(){
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     qDebug() << "VideoController: onTick called";
-
+    qDebug() << "Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
-            m_frameControllers[i]->onTimerTick(pts[i]);
+            m_frameControllers[i]->onTimerTick(pts[i], m_direction);
             qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
         }
     }
@@ -115,8 +115,6 @@ void VideoController::onReady(int index) {
         ErrorReporter::instance().report("Frame upload failed");
     }
 }
-
-
 
 void VideoController::onFCEndOfVideo(int index) {
     qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
@@ -145,6 +143,7 @@ void VideoController::stepForward() {
         qDebug() << "VideoController: Step forward requested while playing, pausing first";
         emit pauseTimer();
     }
+    m_direction = 1;
     qDebug() << "VideoController: Step forward requested";
     emit stepForwardTimer();
 }
@@ -154,6 +153,7 @@ void VideoController::stepBackward() {
         qDebug() << "VideoController: Step backward requested while playing, pausing first";
         emit pauseTimer();
     }
+    m_direction = -1;
     qDebug() << "VideoController: Step backward requested";
     emit stepBackwardTimer();
 }

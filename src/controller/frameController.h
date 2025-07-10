@@ -32,7 +32,7 @@ public:
 
     // Start decoder, renderer and timer threads
     void start();
-    void onTimerTick(int64_t pts);
+    void onTimerTick(int64_t pts, int direction);
 
     void onSeek(int64_t pts);
 
@@ -53,12 +53,13 @@ public slots:
    
 signals:
     void ready(int index);
-    void requestDecode(int numFrames);
+    void requestDecodeForward(int numFrames);
+    void requestDecodeBackward(int numFrames);
     void requestUpload(FrameData* frame);
     void requestRender(FrameData* frame);
     void requestRelease();
     void endOfVideo(int index);
-    void requestSeek(int64_t pts);
+    void requestSeek(int64_t pts, int loadCount);
 
 private:
 

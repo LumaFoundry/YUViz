@@ -32,8 +32,11 @@ FrameController::FrameController(
     qDebug() << "Moved decoder to thread" << &m_decodeThread;
 
     // Request & Receive signals for decoding
-    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
-    qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
+    connect(this, &FrameController::requestDecodeForward, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
+    qDebug() << "Connected requestDecodeForward to VideoDecoder::loadFrames";
+
+    connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
+    qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
 
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
@@ -92,12 +95,12 @@ void FrameController::start(){
 
     m_prefill = true;
     // Initial request to decode
-    emit requestDecode(m_frameQueue->getSize() / 2);
+    emit requestDecodeForward(m_frameQueue->getSize() / 2);
     qDebug() << "Emitting initial requestDecode for prefill";
 }
 
 // Slots Definitions
-void FrameController::onTimerTick(int64_t pts) {
+void FrameController::onTimerTick(int64_t pts, int direction) {
     qDebug() << "\nonTimerTick with pts" << pts << " for index" << m_index;
 
     // Render target frame if inside frameQueue
@@ -112,7 +115,7 @@ void FrameController::onTimerTick(int64_t pts) {
     emit requestRelease();
 
     // Upload future frame if inside frameQueue
-    FrameData* future = m_frameQueue->getHeadFrame(pts + 1);
+    FrameData* future = m_frameQueue->getHeadFrame(pts + 1 * direction);
     if(future){
         if (future->isEndFrame()){
             // qDebug() << "End frame = True set by " << future->pts();
@@ -122,16 +125,21 @@ void FrameController::onTimerTick(int64_t pts) {
             m_endOfVideo = false;
         }
         requestUpload(future);
-        qDebug() << "Requested upload for frame with PTS" << (pts + 1);
+        qDebug() << "Requested upload for frame with PTS" << (pts + 1* direction);
     }else{
-        qWarning() << "Cannot upload frame" << (pts + 1);
+        qWarning() << "Cannot upload frame" << (pts + 1* direction);
     }
 
     if (!m_endOfVideo){
         // Request to decode more frames if needed
-        int frameToFill = m_frameQueue->getEmpty();
+        int frameToFill = m_frameQueue->getEmpty(direction);
         qDebug() << "Frames to fill in queue:" << frameToFill;
-        requestDecode(frameToFill);
+
+        if(direction == 1 ){
+            requestDecodeForward(frameToFill);
+        }else{
+            requestDecodeBackward(frameToFill);
+        }
     }
 
     qDebug() << "\n";
@@ -190,7 +198,7 @@ void FrameController::onSeek(int64_t pts) {
 
     m_endOfVideo = false;
 
-    emit requestSeek(pts);
+    emit requestSeek(pts, m_frameQueue->getSize() / 2);
 
     // TODO: implement smart seek to check if frame is in frame Queue
 
