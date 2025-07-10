@@ -209,6 +209,7 @@ ApplicationWindow {
                         selectionStart = Qt.point(0, 0)
                         selectionEnd = Qt.point(0, 0)
                         selectionCanvas.requestPaint()
+                        isProcessingSelection = false
                     }
                 }
             }
@@ -263,6 +264,8 @@ ApplicationWindow {
                 isSelecting = false
                 isProcessingSelection = false
                 selectionCanvas.requestPaint()
+                // Restore keyboard focus after reset
+                keyHandler.focus = true
             }
         }
     }
