@@ -37,9 +37,11 @@ int FrameQueue::getEmpty(int direction){
     }
 
     qDebug() << "Queue:: empty frames: " << empty;
-    
+
     if (empty < 0){
         empty = 0;
+    } else if (empty > queueSize / 2){
+        empty = queueSize / 2;
     }
     return empty;
 }
@@ -47,7 +49,7 @@ int FrameQueue::getEmpty(int direction){
 // IMPORTANT: Must not call decoder when seeking / stepping
 FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
-    qDebug() << "Queue:: Tail: " << (tail.load(std::memory_order_acquire));
+    // qDebug() << "Queue:: Tail: " << (tail.load(std::memory_order_acquire));
     FrameData* target = &m_queue[pts % queueSize];
 
     // Check if target is loaded in queue
@@ -62,7 +64,7 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
 
 FrameData* FrameQueue::getTailFrame(int64_t pts){
-    qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
     return &m_queue[pts % queueSize];
 }
 
@@ -70,8 +72,9 @@ FrameData* FrameQueue::getTailFrame(int64_t pts){
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts){
     qDebug() << "Queue:: updateTail called with pts: " << pts;
-    tail.store(pts, std::memory_order_release);
-
+    if (pts > 0){
+        tail.store(pts, std::memory_order_release);
+    }
 }
 
 
