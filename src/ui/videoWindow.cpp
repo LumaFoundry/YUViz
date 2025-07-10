@@ -183,22 +183,32 @@ void VideoWindow::zoomToSelection() {
     if (itemRect.isEmpty()) return;
 
     // Strict validation of input rectangle
-    if (m_selectionRect.width() <= 0 || m_selectionRect.height() <= 0 ||
-        std::isnan(m_selectionRect.x()) || std::isnan(m_selectionRect.y()) ||
-        std::isnan(m_selectionRect.width()) || std::isnan(m_selectionRect.height())) {
-        return;
+    if (m_selectionRect.width() <= 0 || m_selectionRect.height() <= 0) return;
+
+    QRectF videoRect = itemRect;
+    qreal windowAspect = itemRect.width() / itemRect.height();
+    qreal videoAspect = getAspectRatio();
+
+    if (windowAspect > videoAspect) { // Pillarbox (bars on left/right)
+        qreal newWidth = videoAspect * itemRect.height();
+        videoRect.setX((itemRect.width() - newWidth) / 2.0);
+        videoRect.setWidth(newWidth);
+    } else { // Letterbox (bars on top/bottom)
+        qreal newHeight = itemRect.width() / videoAspect;
+        videoRect.setY((itemRect.height() - newHeight) / 2.0);
+        videoRect.setHeight(newHeight);
     }
 
-    // Simplified approach: always convert window coordinates to normalized coordinates
-    // For continuous zoom, user-drawn rectangles are limited to current display area
-    QRectF clampedRect = m_selectionRect.intersected(itemRect);
+    // Clamp the user's selection to the visible video area
+    QRectF clampedRect = m_selectionRect.intersected(videoRect);
     if (clampedRect.width() <= 1e-6 || clampedRect.height() <= 1e-6) return;
 
+    // Normalize the clamped selection relative to the video area
     QRectF normalizedSelection(
-        clampedRect.x() / itemRect.width(),
-        clampedRect.y() / itemRect.height(),
-        clampedRect.width() / itemRect.width(),
-        clampedRect.height() / itemRect.height()
+        (clampedRect.x() - videoRect.x()) / videoRect.width(),
+        (clampedRect.y() - videoRect.y()) / videoRect.height(),
+        clampedRect.width() / videoRect.width(),
+        clampedRect.height() / videoRect.height()
     );
 
     // Strict validity check
