@@ -459,11 +459,15 @@ int64_t VideoDecoder::getDurationMs()
     return -1;
 }
 
-void VideoDecoder::seek(int64_t timestamp, int num_frames = m_frameQueue->getSize() / 2)
+void VideoDecoder::seek(int64_t timestamp, int num_frames = -1)
 {
     if (!formatContext || !codecContext || videoStreamIndex < 0) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
         return;
+    }
+
+    if (num_frames == -1) {
+        num_frames = m_frameQueue->getSize() / 2;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD);
