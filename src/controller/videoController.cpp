@@ -126,6 +126,7 @@ void VideoController::onFCEndOfVideo(int index) {
     if (m_endCount == m_frameControllers.size()) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
         emit pauseTimer();
+        m_endCount = 0;
     }
 }
 

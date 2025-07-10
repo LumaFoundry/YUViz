@@ -115,10 +115,10 @@ void FrameController::onTimerTick(int64_t pts) {
     FrameData* future = m_frameQueue->getHeadFrame(pts + 1);
     if(future){
         if (future->isEndFrame()){
-            qDebug() << "End frame = True set by " << future->pts();
+            // qDebug() << "End frame = True set by " << future->pts();
             m_endOfVideo = true;
         }else if (m_endOfVideo){
-            qDebug() << "End frame = False set by " << future->pts();
+            // qDebug() << "End frame = False set by " << future->pts();
             m_endOfVideo = false;
         }
         requestUpload(future);
@@ -187,6 +187,8 @@ void FrameController::onSeek(int64_t pts) {
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
     m_seeking = pts;
+
+    m_endOfVideo = false;
 
     emit requestSeek(pts);
 
