@@ -459,7 +459,7 @@ int64_t VideoDecoder::getDurationMs()
     return -1;
 }
 
-void VideoDecoder::seek(int64_t timestamp)
+void VideoDecoder::seek(int64_t timestamp, int num_frames = m_frameQueue->getSize() / 2)
 {
     if (!formatContext || !codecContext || videoStreamIndex < 0) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
@@ -478,7 +478,7 @@ void VideoDecoder::seek(int64_t timestamp)
     currentFrameIndex = timestamp;
 
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(m_frameQueue->getSize() / 2);
+    loadFrames(num_frames);
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
 
     emit frameSeeked(timestamp);
