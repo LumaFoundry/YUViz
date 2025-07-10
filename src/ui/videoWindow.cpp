@@ -29,6 +29,18 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     }
 }
 
+void VideoWindow::setAspectRatio(int width, int height)
+{
+    if (height > 0) {
+        m_videoAspectRatio = static_cast<qreal>(width) / height;
+    }
+}
+
+qreal VideoWindow::getAspectRatio() const
+{
+    return m_videoAspectRatio;
+}
+
 void VideoWindow::uploadFrame(FrameData* frame) {
     m_renderer->uploadFrame(frame);
 }

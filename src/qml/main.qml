@@ -180,7 +180,24 @@ ApplicationWindow {
                 
                 onPositionChanged: function(mouse) {
                     if (isSelecting) {
-                        selectionEnd = Qt.point(mouse.x, mouse.y)
+                        var currentPos = Qt.point(mouse.x, mouse.y)
+                        var deltaX = currentPos.x - selectionStart.x
+                        var deltaY = currentPos.y - selectionStart.y
+
+                        if (deltaX === 0 && deltaY === 0) return
+
+                        var aspectRatio = videoWindow.getAspectRatio
+
+                        var newDeltaX, newDeltaY
+                        if (Math.abs(deltaX) / aspectRatio > Math.abs(deltaY)) {
+                            newDeltaX = deltaX
+                            newDeltaY = (Math.abs(deltaX) / aspectRatio) * (deltaY < 0 ? -1 : 1)
+                        } else {
+                            newDeltaX = (Math.abs(deltaY) * aspectRatio) * (deltaX < 0 ? -1 : 1)
+                            newDeltaY = deltaY
+                        }
+
+                        selectionEnd = Qt.point(selectionStart.x + newDeltaX, selectionStart.y + newDeltaY)
                         selectionCanvas.requestPaint()
                     }
                 }
@@ -189,8 +206,6 @@ ApplicationWindow {
                     if (isSelecting) {
                         isSelecting = false
                         isProcessingSelection = true
-                        
-                        selectionEnd = Qt.point(mouse.x, mouse.y)
                         
                         // Calculate rectangle area
                         var rect = Qt.rect(

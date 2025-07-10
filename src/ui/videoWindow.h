@@ -13,12 +13,16 @@ class VideoWindow : public QQuickItem {
     QML_ELEMENT
     Q_PROPERTY(bool isZoomed READ isZoomed NOTIFY zoomChanged)
     Q_PROPERTY(QRectF currentZoomRect READ currentZoomRect NOTIFY zoomChanged)
+    Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
+
 public:
     explicit VideoWindow(QQuickItem *parent = nullptr);
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
     VideoRenderer *m_renderer = nullptr;
     bool isZoomed() const { return m_isZoomed; }
     QRectF currentZoomRect() const { return m_currentZoomRect; }
+    void setAspectRatio(int width, int height);
+    qreal getAspectRatio() const;
 
 public slots:
     void uploadFrame(FrameData* frame);
@@ -55,5 +59,6 @@ private:
     QPointF m_selectionEnd;
     bool m_isSelecting = false;
     QRectF m_currentZoomRect; 
-    bool m_isZoomed = false;   
+    bool m_isZoomed = false;
+    qreal m_videoAspectRatio = 16.0 / 9.0;
 };
