@@ -177,6 +177,7 @@ void VideoWindow::resetZoom() {
 }
 
 void VideoWindow::zoomToSelection() {
+    const qreal minNormalizedSize = 1.0/m_maxZoom;
     if (!m_renderer) return;
 
     QRectF itemRect = boundingRect();
@@ -221,10 +222,6 @@ void VideoWindow::zoomToSelection() {
         return;
     }
 
-    // Prevent excessive zoom
-    if (normalizedSelection.width() < 0.01 || normalizedSelection.height() < 0.01) {
-        return;
-    }
 
     // If currently zoomed, need to map selection area to relative coordinates within current zoom area
     if (m_isZoomed && !m_currentZoomRect.isNull()) {
@@ -240,8 +237,8 @@ void VideoWindow::zoomToSelection() {
         relativeSelection = QRectF(
             qMax(0.0, qMin(1.0, relativeSelection.x())),
             qMax(0.0, qMin(1.0, relativeSelection.y())),
-            qMax(0.01, qMin(1.0, relativeSelection.width())),
-            qMax(0.01, qMin(1.0, relativeSelection.height()))
+            qMax(minNormalizedSize, qMin(1.0, relativeSelection.width())),
+            qMax(minNormalizedSize, qMin(1.0, relativeSelection.height()))
         );
 
         // Map relative coordinates back to global coordinates

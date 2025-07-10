@@ -61,4 +61,5 @@ private:
     QRectF m_currentZoomRect; 
     bool m_isZoomed = false;
     qreal m_videoAspectRatio = 16.0 / 9.0;
+    qreal m_maxZoom = 10000.0;
 };
