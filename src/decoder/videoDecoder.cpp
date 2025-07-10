@@ -204,7 +204,7 @@ void VideoDecoder::loadFrames(int num_frames)
 
 void VideoDecoder::loadPreviousFrames(int num_frames) {
     currentFrameIndex -= num_frames;
-    loadFrames(num_frames);
+    seek(currentFrameIndex, num_frames);
 }
 
 FrameMeta VideoDecoder::getMetaData()
