@@ -203,8 +203,9 @@ void VideoDecoder::loadFrames(int num_frames)
 }
 
 void VideoDecoder::loadPreviousFrames(int num_frames) {
-    currentFrameIndex -= num_frames;
-    seek(currentFrameIndex, num_frames);
+    currentFrameIndex -= num_frames + 1;
+    seekTo(currentFrameIndex);
+    loadFrames(num_frames);
 }
 
 FrameMeta VideoDecoder::getMetaData()
@@ -459,31 +460,31 @@ int64_t VideoDecoder::getDurationMs()
     return -1;
 }
 
-void VideoDecoder::seek(int64_t timestamp, int num_frames = -1)
+void VideoDecoder::seekTo(int64_t targetPts)
 {
     if (!formatContext || !codecContext || videoStreamIndex < 0) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
         return;
     }
 
-    if (num_frames == -1) {
-        num_frames = m_frameQueue->getSize() / 2;
-    }
+    int ret = av_seek_frame(formatContext, videoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
 
-    int ret = av_seek_frame(formatContext, videoStreamIndex, timestamp, AVSEEK_FLAG_BACKWARD);
-    
     if (ret < 0) {
-        ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(timestamp), LogLevel::Error);
+        ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(targetPts), LogLevel::Error);
         return;
     }
 
     avcodec_flush_buffers(codecContext);
-    
-    currentFrameIndex = timestamp;
 
+    currentFrameIndex = targetPts;
+}
+
+
+void VideoDecoder::seek(int64_t targetPts){
+    seekTo(targetPts);
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(num_frames);
+    loadFrames(m_frameQueue->getSize() / 2);
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
+    emit frameSeeked(targetPts);
 
-    emit frameSeeked(timestamp);
 }
