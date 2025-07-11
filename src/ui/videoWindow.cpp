@@ -26,12 +26,12 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
-    qDebug() << "VideoWindow::uploadFrame called in thread";
+    // qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->uploadFrame(frame);
 }
 
 void VideoWindow::renderFrame() {
-    qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
+    // qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
     update();
 }
 
