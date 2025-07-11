@@ -345,23 +345,29 @@ ApplicationWindow {
                     }
                 }
 
-                // Speed selector combobox
-                RowLayout {
-                    spacing: 6
-                    Text { text: "Speed:"; color: "white" }
-                    ComboBox {
-                        id: speedSelector
-                        model: ["0.1x", "0.25x", "0.5x", "1.0x", "1.5x", "2.0x", "5.0x", "10.0x"]
-                        currentIndex: 3
-                        Layout.preferredWidth: 70
-                        onCurrentIndexChanged: {
-                            let speed = parseFloat(currentText.replace("x", ""));
-                            // Call VC here
-                            keyHandler.forceActiveFocus(); 
-                        }
+            // Speed selector combobox
+            RowLayout {
+                spacing: 6
+                Text { text: "Speed:"; color: "white" }
+                ComboBox {
+                    id: speedSelector
+                    model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
+                    currentIndex: 2
+                    Layout.preferredWidth: 70
+                    displayText: model[currentIndex]
+
+                    onCurrentIndexChanged: {
+                        let speed = parseFloat(model[currentIndex].replace("x", ""));
+                        videoController.setSpeed(speed);
+                        keyHandler.forceActiveFocus(); 
+                    }
+
+                    onActivated: {
+                        keyHandler.forceActiveFocus();
                     }
                 }
             }
+        }
 
             // Time Slider
 

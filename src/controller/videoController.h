@@ -47,7 +47,7 @@ public slots:
     void stepBackward();
     void seekTo(double timeMs);
     void seekTo(double timeMs);
-
+    void setSpeed(float speed);
 
 signals:
     void playTimer();
@@ -57,6 +57,7 @@ signals:
     void stepBackwardTimer();
     void tickFC(int64_t pts);
     void seekTimer(std::vector<int64_t> seekPts);
+    void setSpeedTimer(AVRational speed);
     void currentTimeMsChanged();
     void isPlayingChanged();
     void isPlayingChanged();

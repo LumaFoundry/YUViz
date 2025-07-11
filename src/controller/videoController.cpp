@@ -64,6 +64,9 @@ VideoController::VideoController(QObject *parent,
     connect(this, &VideoController::seekTimer, m_timer.get(), &Timer::seek, Qt::AutoConnection);
     qDebug() << "Connected VideoController::seekTimer to Timer::seek";
 
+    connect(this, &VideoController::setSpeedTimer, m_timer.get(), &Timer::setSpeed, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::setSpeedTimer to Timer::setSpeed";
+
     // Start timer thread
     m_timerThread.start();
 }
@@ -241,9 +244,35 @@ qint64 VideoController::duration() const {
 bool VideoController::isPlaying() const {
     // qDebug() << "VideoController: Returning isPlaying" << m_isPlaying;
     return m_isPlaying;
+} 
+
+void VideoController::setSpeed(float speed){
+    qDebug() << "VideoController: Setting playback speed to" << speed;
+    
+    // Convert float to AVRational
+    AVRational speedRational;
+    
+    // Simple and effective approach
+    speedRational.num = speed * 1000; 
+    speedRational.den = 1000;
+
+    qDebug() << "VideoController: emitting speed " << speedRational.num << "/" << speedRational.den << " to timer";
+    // Pass it to the timer
+    emit setSpeedTimer(speedRational);
 }
 
-bool VideoController::isPlaying() const {
-    // qDebug() << "VideoController: Returning isPlaying" << m_isPlaying;
-    return m_isPlaying;
+
+void VideoController::setSpeed(float speed){
+    qDebug() << "VideoController: Setting playback speed to" << speed;
+    
+    // Convert float to AVRational
+    AVRational speedRational;
+    
+    // Simple and effective approach
+    speedRational.num = speed * 1000; 
+    speedRational.den = 1000;
+
+    qDebug() << "VideoController: emitting speed " << speedRational.num << "/" << speedRational.den << " to timer";
+    // Pass it to the timer
+    emit setSpeedTimer(speedRational);
 }
