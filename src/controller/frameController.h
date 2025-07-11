@@ -53,8 +53,7 @@ public slots:
    
 signals:
     void ready(int index);
-    void requestDecodeForward(int numFrames);
-    void requestDecodeBackward(int numFrames);
+    void requestDecode(int numFrames, int direction);
     void requestUpload(FrameData* frame);
     void requestRender(FrameData* frame);
     void requestRelease();

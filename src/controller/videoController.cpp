@@ -86,12 +86,12 @@ void VideoController::start(){
 
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
-    qDebug() << "VideoController: onTick called";
-    qDebug() << "Direcetion:" << m_direction;
+    // qDebug() << "VideoController: onTick called";
+    qDebug() << "VideoController::Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
-            qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
+            // qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
         }
     }
 
@@ -131,6 +131,7 @@ void VideoController::onFCEndOfVideo(int index) {
 
 // Interface slots / signals
 void VideoController::play(){
+    m_direction = 1;
     emit playTimer();
 }
 
@@ -167,6 +168,7 @@ void VideoController::togglePlayPause() {
         emit pauseTimer();
     } else {
         qDebug() << "VideoController: Resuming playback";
+        m_direction = 1;
         emit playTimer();
     }
 }

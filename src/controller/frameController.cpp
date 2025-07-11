@@ -32,11 +32,11 @@ FrameController::FrameController(
     qDebug() << "Moved decoder to thread" << &m_decodeThread;
 
     // Request & Receive signals for decoding
-    connect(this, &FrameController::requestDecodeForward, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
-    qDebug() << "Connected requestDecodeForward to VideoDecoder::loadFrames";
+    connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
+    qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
 
-    connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
-    qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
+    // connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
+    // qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
 
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
@@ -95,7 +95,7 @@ void FrameController::start(){
 
     m_prefill = true;
     // Initial request to decode
-    emit requestDecodeForward(m_frameQueue->getSize() / 2);
+    emit requestDecode(m_frameQueue->getSize() / 2, 1);
     qDebug() << "Emitting initial requestDecode for prefill";
 }
 
@@ -107,7 +107,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if(target){
         qDebug() << "Requested render for frame with PTS" << pts;
-        requestRender(target);
+        emit requestRender(target);
     }else{
         qWarning() << "Cannot render frame" << pts;
     }
@@ -115,16 +115,21 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     emit requestRelease();
 
     // Upload future frame if inside frameQueue
-    FrameData* future = m_frameQueue->getHeadFrame(pts + 1 * direction);
-    if(future){
-        if (future->isEndFrame()){
+    int64_t futurePts = pts + 1 * direction;
+    if (futurePts < 0) {
+        qWarning() << "Future PTS is negative, cannot upload frame";
+        return;
+    }
+    FrameData* future = m_frameQueue->getHeadFrame(futurePts);
+    if (future) {
+        if (future->isEndFrame()) {
             // qDebug() << "End frame = True set by " << future->pts();
             m_endOfVideo = true;
         }else if (m_endOfVideo){
             // qDebug() << "End frame = False set by " << future->pts();
             m_endOfVideo = false;
         }
-        requestUpload(future);
+        emit requestUpload(future);
         qDebug() << "Requested upload for frame with PTS" << (pts + 1* direction);
     }else{
         qWarning() << "Cannot upload frame" << (pts + 1* direction);
@@ -132,14 +137,10 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
 
     if (!m_endOfVideo){
         // Request to decode more frames if needed
-        int frameToFill = m_frameQueue->getEmpty(direction);
-        qDebug() << "Frames to fill in queue:" << frameToFill;
+        int framesToFill = m_frameQueue->getEmpty(direction);
+        qDebug() << "Frames to fill in queue:" << framesToFill;
 
-        if(direction == 1 ){
-            requestDecodeForward(frameToFill);
-        }else{
-            requestDecodeBackward(frameToFill);
-        }
+        emit requestDecode(framesToFill, direction);
     }
 
     qDebug() << "\n";
