@@ -12,6 +12,7 @@ VideoWindow::VideoWindow(QQuickItem *parent):
     setFlag(ItemHasContents, true);
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptHoverEvents(true);
+    m_currentZoomRect.setRect(0, 0, 1, 1);
 }
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
@@ -185,7 +186,7 @@ void VideoWindow::resetZoom() {
 }
 
 void VideoWindow::zoomToSelection() {
-    const qreal minNormalizedSize = 1.0/m_maxZoom;
+    const qreal minNormalizedSize = 1.0 / m_maxZoom;
     if (!m_renderer) return;
 
     QRectF itemRect = boundingRect();
@@ -194,6 +195,7 @@ void VideoWindow::zoomToSelection() {
     // Strict validation of input rectangle
     if (m_selectionRect.width() <= 0 || m_selectionRect.height() <= 0) return;
 
+    // Calculate the geometry of the visible video area (accounting for letter/pillarboxing)
     QRectF videoRect = itemRect;
     qreal windowAspect = itemRect.width() / itemRect.height();
     qreal videoAspect = getAspectRatio();
@@ -212,60 +214,28 @@ void VideoWindow::zoomToSelection() {
     QRectF clampedRect = m_selectionRect.intersected(videoRect);
     if (clampedRect.width() <= 1e-6 || clampedRect.height() <= 1e-6) return;
 
-    // Normalize the clamped selection relative to the video area
-    QRectF normalizedSelection(
-        (clampedRect.x() - videoRect.x()) / videoRect.width(),
-        (clampedRect.y() - videoRect.y()) / videoRect.height(),
-        clampedRect.width() / videoRect.width(),
-        clampedRect.height() / videoRect.height()
+    // Convert the clamped pixel selection into coordinates relative to the *currently displayed view*.
+    qreal relX = (clampedRect.x() - videoRect.x()) / videoRect.width();
+    qreal relY = (clampedRect.y() - videoRect.y()) / videoRect.height();
+    qreal relW = clampedRect.width() / videoRect.width();
+    qreal relH = clampedRect.height() / videoRect.height();
+
+    // Map these relative coordinates to the coordinate system of the current zoom level (`m_currentZoomRect`).
+    QRectF newZoomRect(
+        m_currentZoomRect.x() + relX * m_currentZoomRect.width(),
+        m_currentZoomRect.y() + relY * m_currentZoomRect.height(),
+        relW * m_currentZoomRect.width(),
+        relH * m_currentZoomRect.height()
     );
-
-    // Strict validity check
-    if (normalizedSelection.width() <= 1e-6 || normalizedSelection.height() <= 1e-6 ||
-        normalizedSelection.x() < 0 || normalizedSelection.y() < 0 ||
-        normalizedSelection.x() + normalizedSelection.width() > 1.0 ||
-        normalizedSelection.y() + normalizedSelection.height() > 1.0 ||
-        std::isnan(normalizedSelection.x()) || std::isnan(normalizedSelection.y()) ||
-        std::isnan(normalizedSelection.width()) || std::isnan(normalizedSelection.height())) {
-        return;
-    }
-
-
-    // If currently zoomed, need to map selection area to relative coordinates within current zoom area
-    if (m_isZoomed && !m_currentZoomRect.isNull()) {
-        // Map selection area to relative coordinates within current zoom area
-        QRectF relativeSelection(
-            (normalizedSelection.x() - m_currentZoomRect.x()) / m_currentZoomRect.width(),
-            (normalizedSelection.y() - m_currentZoomRect.y()) / m_currentZoomRect.height(),
-            normalizedSelection.width() / m_currentZoomRect.width(),
-            normalizedSelection.height() / m_currentZoomRect.height()
-        );
-
-        // Limit to [0,1] range
-        relativeSelection = QRectF(
-            qMax(0.0, qMin(1.0, relativeSelection.x())),
-            qMax(0.0, qMin(1.0, relativeSelection.y())),
-            qMax(minNormalizedSize, qMin(1.0, relativeSelection.width())),
-            qMax(minNormalizedSize, qMin(1.0, relativeSelection.height()))
-        );
-
-        // Map relative coordinates back to global coordinates
-        normalizedSelection = QRectF(
-            m_currentZoomRect.x() + relativeSelection.x() * m_currentZoomRect.width(),
-            m_currentZoomRect.y() + relativeSelection.y() * m_currentZoomRect.height(),
-            relativeSelection.width() * m_currentZoomRect.width(),
-            relativeSelection.height() * m_currentZoomRect.height()
-        );
-    }
-
-    m_currentZoomRect = normalizedSelection;
+    
+    m_currentZoomRect = newZoomRect;
     m_isZoomed = true;
-    m_hasSelection = true;  // Set selection state
-    m_renderer->setZoomAndOffset(normalizedSelection);
+    m_hasSelection = true;
+    m_renderer->setZoomAndOffset(m_currentZoomRect);
     emit zoomChanged();
     update();
 
-    qDebug() << "Zoom parameters - selection area:" << normalizedSelection;
+    qDebug() << "Zoom parameters - selection area:" << m_currentZoomRect;
 }
 
 void VideoWindow::pan(const QPointF &delta) {
