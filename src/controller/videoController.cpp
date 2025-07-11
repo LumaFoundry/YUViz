@@ -123,6 +123,7 @@ void VideoController::onFCEndOfVideo(int index) {
 
     if (m_endCount == m_frameControllers.size()) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
+        m_reachedEnd = true;
         emit pauseTimer();
         m_endCount = 0;
     }
@@ -131,6 +132,13 @@ void VideoController::onFCEndOfVideo(int index) {
 
 // Interface slots / signals
 void VideoController::play(){
+
+    if (m_reachedEnd && m_timer->getStatus() == Status::Paused) {
+        qDebug() << "VideoController::Restarting playback from beginning";
+        seekTo(0.0);
+        m_reachedEnd = false;
+    }
+
     m_direction = 1;
     m_isPlaying = true;
     emit isPlayingChanged();
@@ -149,6 +157,7 @@ void VideoController::stepForward() {
         pause();
     }
     m_direction = 1;
+    m_reachedEnd = false;
     qDebug() << "VideoController: Step forward requested";
     emit stepForwardTimer();
 }
@@ -159,6 +168,7 @@ void VideoController::stepBackward() {
         pause();
     }
     m_direction = -1;
+    m_reachedEnd = false;
     qDebug() << "VideoController: Step backward requested";
     emit stepBackwardTimer();
 }
@@ -184,6 +194,8 @@ void VideoController::seekTo(double timeMs){
         qDebug() << "VideoController: Pausing playback";
         pause();
     } 
+
+    m_reachedEnd = false;
 
     m_currentTimeMs = timeMs;
     emit currentTimeMsChanged();

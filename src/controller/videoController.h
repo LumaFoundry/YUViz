@@ -77,6 +77,7 @@ private:
     int m_direction = 1;
 
     bool m_isPlaying = false;
+    bool m_reachedEnd = false;
 
 };
 

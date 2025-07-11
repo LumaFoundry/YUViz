@@ -37,7 +37,7 @@ ApplicationWindow {
     onWidthChanged: {
         if (!resizing) {
             resizing = true
-            wasPlayingBeforeResize = videoController.isPlaying()
+            wasPlayingBeforeResize = videoController.isPlaying
             if (wasPlayingBeforeResize) {
                 videoController.pause()
             }
