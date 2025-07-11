@@ -14,6 +14,7 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(bool isZoomed READ isZoomed NOTIFY zoomChanged)
     Q_PROPERTY(QRectF currentZoomRect READ currentZoomRect NOTIFY zoomChanged)
     Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
+    Q_PROPERTY(qreal maxZoom READ maxZoom WRITE setMaxZoom NOTIFY maxZoomChanged)
 
 public:
     explicit VideoWindow(QQuickItem *parent = nullptr);
@@ -23,6 +24,8 @@ public:
     QRectF currentZoomRect() const { return m_currentZoomRect; }
     void setAspectRatio(int width, int height);
     qreal getAspectRatio() const;
+    qreal maxZoom() const;
+    void setMaxZoom(qreal zoom);
 
 public slots:
     void uploadFrame(FrameData* frame);
@@ -45,6 +48,7 @@ signals:
     void errorOccurred();
     void selectionChanged(const QRectF &rect);
     void zoomChanged();
+    void maxZoomChanged();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;

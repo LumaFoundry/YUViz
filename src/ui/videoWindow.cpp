@@ -83,6 +83,16 @@ QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
     return node;
 }
 
+qreal VideoWindow::maxZoom() const {
+    return m_maxZoom;
+}
+
+void VideoWindow::setMaxZoom(qreal zoom) {
+    if (qFuzzyCompare(m_maxZoom, zoom) || zoom <= 0) return;
+    m_maxZoom = zoom;
+    emit maxZoomChanged();
+}
+
 void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
     if (!m_renderer) return;
 
@@ -102,10 +112,8 @@ void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
     }
 
     // Limit zoom-in
-    constexpr qreal maxZoomFactor = 1000.0;
-    if (factor > 1.0 && (newWidth < 1.0 / maxZoomFactor || newHeight < 1.0 / maxZoomFactor)) {
-        return;
-    }
+    const qreal minNormalizedSize = 1.0 / m_maxZoom;
+    if (factor > 1.0 && (newWidth < minNormalizedSize || newHeight < minNormalizedSize)) return;
 
     // Normalize the cursor position to [0, 1] relative to the window
     const QPointF normCenter(

@@ -10,9 +10,6 @@ ApplicationWindow {
     color: "black"
     visible: true
 
-    property real minZoom: 1.0
-    property real maxZoom: 1000.0
-
     property bool isCtrlPressed: false
     property bool isSelecting: false
     property point selectionStart: Qt.point(0, 0)
@@ -105,6 +102,8 @@ ApplicationWindow {
             id: videoWindow
             objectName: "videoWindow"
             anchors.fill: parent
+
+            maxZoom: 10000.0
 
             PointHandler {
                 id: pointHandler
