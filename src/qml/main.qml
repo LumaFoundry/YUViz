@@ -316,19 +316,18 @@ ApplicationWindow {
                 
                 property bool dragging: false
 
-                onPressedChanged: {
-
-                    dragging = pressed;
-
-                    if (!pressed) {
-                        keyHandler.forceActiveFocus()
-                    }
-                }
-
-            onValueChanged: {
-                if(dragging){
-                    videoController.seekTo(value);
-                    console.log("Slider value changed to: " + value);
+            onPressedChanged: {
+                if (pressed) {
+                    dragging = true;
+                } else {
+                    // On release: first seek to current value, then reset dragging state
+                    var finalPosition = value;
+                    videoController.seekTo(finalPosition);
+                    console.log("Slider released, seeking to: " + finalPosition);
+                    
+                    // Now change dragging state and return focus
+                    dragging = false;
+                    keyHandler.forceActiveFocus();
                 }
 
                 }
