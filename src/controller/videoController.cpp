@@ -132,17 +132,21 @@ void VideoController::onFCEndOfVideo(int index) {
 // Interface slots / signals
 void VideoController::play(){
     m_direction = 1;
+    m_isPlaying = true;
+    emit isPlayingChanged();
     emit playTimer();
 }
 
 void VideoController::pause(){
+    m_isPlaying = false;
+    emit isPlayingChanged();
     emit pauseTimer();
 }
 
 void VideoController::stepForward() {
     if(m_timer->getStatus() == Status::Playing){
         qDebug() << "VideoController: Step forward requested while playing, pausing first";
-        emit pauseTimer();
+        pause();
     }
     m_direction = 1;
     qDebug() << "VideoController: Step forward requested";
@@ -152,7 +156,7 @@ void VideoController::stepForward() {
 void VideoController::stepBackward() {
     if(m_timer->getStatus() == Status::Playing){
         qDebug() << "VideoController: Step backward requested while playing, pausing first";
-        emit pauseTimer();
+        pause();
     }
     m_direction = -1;
     qDebug() << "VideoController: Step backward requested";
@@ -165,11 +169,11 @@ void VideoController::togglePlayPause() {
 
     if (m_timer->getStatus() == Status::Playing) {
         qDebug() << "VideoController: Pausing playback";
-        emit pauseTimer();
+        pause();
     } else if (m_timer->getStatus() == Status::Paused) {
         qDebug() << "VideoController: Resuming playback";
         m_direction = 1;
-        emit playTimer();
+        play();
     }
 }
 
@@ -178,7 +182,7 @@ void VideoController::seekTo(double timeMs){
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
         qDebug() << "VideoController: Pausing playback";
-        emit pauseTimer();
+        pause();
     } 
 
     m_currentTimeMs = timeMs;
@@ -203,4 +207,9 @@ void VideoController::seekTo(double timeMs){
 qint64 VideoController::duration() const {
     // qDebug() << "VideoController: Returning duration" << m_duration;
     return m_duration;
+}
+
+bool VideoController::isPlaying() const {
+    // qDebug() << "VideoController: Returning isPlaying" << m_isPlaying;
+    return m_isPlaying;
 }

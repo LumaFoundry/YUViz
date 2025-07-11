@@ -21,7 +21,7 @@ class VideoController : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(qint64 duration READ duration CONSTANT)
-
+    Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
 
 public:
@@ -31,7 +31,7 @@ public:
     void start();
 
     qint64 duration() const;
-
+    bool isPlaying() const;
     double currentTimeMs() const { return m_currentTimeMs; }
 
 public slots:
@@ -55,6 +55,7 @@ signals:
     void tickFC(int64_t pts);
     void seekTimer(std::vector<int64_t> seekPts);
     void currentTimeMsChanged();
+    void isPlayingChanged();
 
 private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
@@ -74,6 +75,8 @@ private:
 
     // 1 for forward, -1 for backward
     int m_direction = 1;
+
+    bool m_isPlaying = false;
 
 };
 

@@ -16,6 +16,7 @@ ApplicationWindow {
 
     property bool isCtrlPressed: false
     property bool isSelecting: false
+    property bool wasPlayingBeforeResize: false
     property point selectionStart: Qt.point(0, 0)
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
@@ -27,14 +28,19 @@ ApplicationWindow {
         repeat: false
         onTriggered: {
             resizing = false
-            videoController.play()
+            if (wasPlayingBeforeResize) {
+                videoController.play()
+            }
         }
     }
 
     onWidthChanged: {
         if (!resizing) {
             resizing = true
-            videoController.pause()
+            wasPlayingBeforeResize = videoController.isPlaying()
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
         }
         resizeDebounce.restart()
     }
@@ -42,7 +48,9 @@ ApplicationWindow {
     onHeightChanged: {
         if (!resizing) {
             resizing = true
-            videoController.pause()
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
         }
         resizeDebounce.restart()
     }
