@@ -2,6 +2,7 @@ import QtQuick.Window 6.0
 import QtQuick.Controls 6.0
 import QtQuick 6.0
 import QtMultimedia 6.5
+import QtQuick.Layouts 1.15
 import Window 1.0
 
 ApplicationWindow {
@@ -314,9 +315,59 @@ ApplicationWindow {
             anchors.margins: 20
             spacing: 10
 
+            // Control Row on top
+            RowLayout {
+                spacing: 12
+                Layout.alignment: Qt.AlignLeft
+
+                // Direction switch
+                RowLayout {
+                    spacing: 6
+
+                    Text { text: "Direction:"; color: "white" }
+
+                    Switch {
+                        id: directionSwitch
+                        checked: true
+                        onToggled: {
+                            const dir = checked ? "forward" : "reverse";
+                            // call VC here
+                            keyHandler.forceActiveFocus(); 
+                        }
+                    }
+
+                    Text {
+                        text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
+                        color: "white"
+                        verticalAlignment: Text.AlignVCenter
+                        Layout.preferredWidth: 80
+                        font.family: "monospace"
+                    }
+                }
+
+                // Speed selector combobox
+                RowLayout {
+                    spacing: 6
+                    Text { text: "Speed:"; color: "white" }
+                    ComboBox {
+                        id: speedSelector
+                        model: ["0.1x", "0.25x", "0.5x", "1.0x", "1.5x", "2.0x", "5.0x", "10.0x"]
+                        currentIndex: 3
+                        Layout.preferredWidth: 70
+                        onCurrentIndexChanged: {
+                            let speed = parseFloat(currentText.replace("x", ""));
+                            // Call VC here
+                            keyHandler.forceActiveFocus(); 
+                        }
+                    }
+                }
+            }
+
+            // Time Slider
+
             Slider {
                 id: timeSlider
-                width: parent.width
+                Layout.fillWidth: true
                 from: 0.0
                 to: videoController.duration
                 value: dragging ? value : videoController.currentTimeMs
