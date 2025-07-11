@@ -39,9 +39,8 @@ public:
 	int getTotalFrames();
 
 public slots:
-    virtual void loadFrames(int num_frames);
+    virtual void loadFrames(int num_frames, int direction);
 	virtual void seek(int64_t timestamp);
-	virtual void loadPreviousFrames(int num_frames);
 
 signals:
     void framesLoaded(bool success);

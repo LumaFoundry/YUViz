@@ -171,7 +171,7 @@ void VideoDecoder::openFile()
  *
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
-void VideoDecoder::loadFrames(int num_frames)
+void VideoDecoder::loadFrames(int num_frames, int direction = 1)
 {
 
     if (num_frames == 0){
@@ -187,6 +187,24 @@ void VideoDecoder::loadFrames(int num_frames)
 
     bool isRawYUV = isYUV(codecContext->codec_id);
     int64_t maxpts = -1;
+    int64_t minpts = INT64_MAX;
+
+    // Seek to correct frame before loading
+    if (direction == -1){
+        if (currentFrameIndex == 0){
+            qDebug() << "At the beginning of the video, cannot seek backward";
+            m_frameQueue->updateTail(0);
+            emit framesLoaded(false);
+            return;
+        }
+        currentFrameIndex -= num_frames + 1;
+        if (currentFrameIndex < 0) {
+            currentFrameIndex = 0;
+        }
+        seekTo(currentFrameIndex);
+        // Make sure we don't load more than half of the queue size
+        num_frames = std::min(num_frames, m_frameQueue->getSize() / 2);
+    }
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -197,15 +215,16 @@ void VideoDecoder::loadFrames(int num_frames)
             qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
         maxpts = std::max(maxpts, temp_pts);
+        minpts = std::min(minpts, std::max(temp_pts, 0LL));
     }
-    m_frameQueue->updateTail(maxpts);
-    emit framesLoaded(true);
-}
 
-void VideoDecoder::loadPreviousFrames(int num_frames) {
-    currentFrameIndex -= num_frames + 1;
-    seekTo(currentFrameIndex);
-    loadFrames(num_frames);
+    if (direction == 1){
+        m_frameQueue->updateTail(maxpts);
+    }else{
+        m_frameQueue->updateTail(minpts);
+    }
+    
+    emit framesLoaded(true);
 }
 
 FrameMeta VideoDecoder::getMetaData()
@@ -465,6 +484,11 @@ void VideoDecoder::seekTo(int64_t targetPts)
     if (!formatContext || !codecContext || videoStreamIndex < 0) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
         return;
+    }
+
+    if (targetPts < 0){
+        qDebug() << "Decoder:: internal seek asked for negative pts: " << targetPts;
+        targetPts = 0;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
