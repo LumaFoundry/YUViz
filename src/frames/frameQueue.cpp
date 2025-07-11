@@ -40,9 +40,8 @@ int FrameQueue::getEmpty(int direction){
 
     if (empty < 0){
         empty = 0;
-    } else if (empty > queueSize / 2){
-        empty = queueSize / 2;
     }
+    
     return empty;
 }
 
