@@ -26,7 +26,7 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
-    // qDebug() << "VideoWindow::uploadFrame called in thread";
+    m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame);
 }
 
@@ -37,10 +37,6 @@ void VideoWindow::renderFrame() {
 
 void VideoWindow::setColorParams(AVColorSpace space, AVColorRange range) {
     m_renderer->setColorParams(space, range);
-}
-
-void VideoWindow::releaseBatch() {
-    m_renderer->releaseBatch();
 }
 
 void VideoWindow::batchIsFull() {
