@@ -31,13 +31,16 @@ ApplicationWindow {
             if (wasPlayingBeforeResize) {
                 videoController.play()
             }
+            if (wasPlayingBeforeResize) {
+                videoController.play()
+            }
         }
     }
 
     onWidthChanged: {
         if (!resizing) {
             resizing = true
-            wasPlayingBeforeResize = videoController.isPlaying
+            wasPlayingBeforeResize = videoController.isPlaying()
             if (wasPlayingBeforeResize) {
                 videoController.pause()
             }
@@ -49,6 +52,9 @@ ApplicationWindow {
     onHeightChanged: {
         if (!resizing) {
             resizing = true
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
             if (wasPlayingBeforeResize) {
                 videoController.pause()
             }
