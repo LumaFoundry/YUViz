@@ -67,6 +67,13 @@ VideoController::VideoController(QObject *parent,
     connect(this, &VideoController::setSpeedTimer, m_timer.get(), &Timer::setSpeed, Qt::AutoConnection);
     qDebug() << "Connected VideoController::setSpeedTimer to Timer::setSpeed";
 
+    connect(this, &VideoController::playForwardTimer, m_timer.get(), &Timer::playForward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::playForwardTimer to Timer::playForward";
+
+    connect(this, &VideoController::playBackwardTimer, m_timer.get(), &Timer::playBackward, Qt::AutoConnection);
+    qDebug() << "Connected VideoController::playBackwardTimer to Timer::playBackward";
+
+
     // Start timer thread
     m_timerThread.start();
 }
@@ -135,6 +142,8 @@ void VideoController::onFCEndOfVideo(int index) {
         m_reachedEnd = true;
         emit pauseTimer();
         m_endCount = 0;
+        m_isPlaying = false;
+        emit isPlayingChanged();
     }
 }
 
@@ -148,12 +157,17 @@ void VideoController::play(){
         m_reachedEnd = false;
     }
 
-    m_direction = 1;
+    m_direction = m_uiDirection;
+
     m_isPlaying = true;
     emit isPlayingChanged();
-    m_isPlaying = true;
-    emit isPlayingChanged();
-    emit playTimer();
+
+
+    if (m_direction == 1){
+        emit playForwardTimer();
+    }else{
+        emit playBackwardTimer();
+    }   
 }
 
 void VideoController::pause(){
@@ -200,8 +214,7 @@ void VideoController::togglePlayPause() {
         pause();
     } else if (m_timer->getStatus() == Status::Paused) {
         qDebug() << "VideoController: Resuming playback";
-        m_direction = 1;
-        play();
+
         play();
     }
 }
@@ -275,4 +288,26 @@ void VideoController::setSpeed(float speed){
     qDebug() << "VideoController: emitting speed " << speedRational.num << "/" << speedRational.den << " to timer";
     // Pass it to the timer
     emit setSpeedTimer(speedRational);
+}
+
+
+void VideoController::toggleDirection() {
+    if (m_uiDirection == 1) {
+        m_uiDirection = -1;
+        m_direction = -1;
+        qDebug() << "VideoController: Toggled direction to backward";
+        
+        if(m_isPlaying){
+            emit playBackwardTimer();
+        }
+        
+    } else {
+        m_uiDirection = 1;
+        m_direction = 1;
+        qDebug() << "VideoController: Toggled direction to forward";
+        
+        if(m_isPlaying){
+            emit playForwardTimer();
+        }
+    }
 }
