@@ -178,6 +178,16 @@ void VideoWindow::zoomToSelection() {
         videoRect.setY((itemRect.height() - newHeight) / 2.0);
         videoRect.setHeight(newHeight);
     }
+
+    qreal widthFactor = m_selectionRect.width()/videoRect.width();
+    qreal heightFactor = m_selectionRect.height()/videoRect.height();
+    if(widthFactor > heightFactor) {
+        m_selectionRect.setY(m_selectionRect.y() - (widthFactor * videoRect.height() - m_selectionRect.height())/2.0);
+        m_selectionRect.setHeight(widthFactor * videoRect.height());
+    } else {
+        m_selectionRect.setX(m_selectionRect.x() - (heightFactor * videoRect.width() - m_selectionRect.width())/2.0);
+        m_selectionRect.setWidth(heightFactor * videoRect.width());
+    }
     
     // Convert selection rectangle from window coordinates to current viewport coordinates
     QRectF selectionInView;
