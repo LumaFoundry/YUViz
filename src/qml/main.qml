@@ -244,35 +244,35 @@ ApplicationWindow {
         }
     }
 
-    Row {
-        id: controls
-        anchors.bottom: parent.bottom
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.margins: 20
-        spacing: 10
+    footer: ToolBar {
+        Row {
+            id: controls
+            anchors.horizontalCenter: parent.horizontalCenter
+            spacing: 10
 
-        Button {
-            text: "Play/Pause"
-            onClicked: {
-                videoController.togglePlayPause()
-                keyHandler.focus = true   
+            Button {
+                text: "Play/Pause"
+                onClicked: {
+                    videoController.togglePlayPause()
+                    mainContent.focus = true
+                }
             }
-        }
 
-        Button {
-            text: "Reset View"
-            onClicked: {
-                videoWindow.resetZoom()
-                selectionStart = Qt.point(0, 0)
-                selectionEnd = Qt.point(0, 0)
-                isSelecting = false
-                isProcessingSelection = false
-                selectionCanvas.requestPaint()
-                // Restore keyboard focus after reset
-                keyHandler.focus = true
+            Button {
+                text: "Reset View"
+                onClicked: {
+                    videoWindow.resetZoom()
+                    selectionStart = Qt.point(0, 0)
+                    selectionEnd = Qt.point(0, 0)
+                    isSelecting = false
+                    isProcessingSelection = false
+                    selectionCanvas.requestPaint()
+                    mainContent.focus = true
+                }
             }
         }
     }
+
     Text {
         anchors.top: parent.top
         anchors.left: parent.left
