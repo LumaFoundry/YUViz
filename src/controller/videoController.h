@@ -22,7 +22,6 @@ class VideoController : public QObject {
 
     Q_PROPERTY(qint64 duration READ duration CONSTANT)
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
-    Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
 
 public:
@@ -32,7 +31,6 @@ public:
     void start();
 
     qint64 duration() const;
-    bool isPlaying() const;
     bool isPlaying() const;
     double currentTimeMs() const { return m_currentTimeMs; }
 
@@ -45,7 +43,6 @@ public slots:
     void pause();
     void stepForward();
     void stepBackward();
-    void seekTo(double timeMs);
     void seekTo(double timeMs);
     void setSpeed(float speed);
     void toggleDirection();

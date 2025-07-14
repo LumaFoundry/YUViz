@@ -271,133 +271,142 @@ ApplicationWindow {
     }
 
     footer: ToolBar {
-        Row {
-            id: controls
-            anchors.horizontalCenter: parent.horizontalCenter
-            spacing: 10
-
-            Button {
-                text: "Play/Pause"
-                onClicked: {
-                    videoController.togglePlayPause()
-                    keyHandler.focus = true //Do not change, Windows requires
-                }
-            }
-
-            Button {
-                text: "Reset View"
-                onClicked: {
-                    videoWindow.resetZoom()
-                    selectionStart = Qt.point(0, 0)
-                    selectionEnd = Qt.point(0, 0)
-                    isSelecting = false
-                    isProcessingSelection = false
-                    selectionCanvas.requestPaint()
-                    keyHandler.focus = true
-                }
-            }
-
-            Button {
-                text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
-                onClicked: {
-                    toggleFullScreen()
-                    keyHandler.focus = true
-                }
-            }
-        }
-        Row {
-            id: playbackControls
-            anchors.bottom: parent.bottom
+        ColumnLayout {
+            id: panel
             anchors.left: parent.left
             anchors.right: parent.right
-
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.margins: 20
             spacing: 10
 
-            // Control Row on top
-            RowLayout {
-                spacing: 12
-                Layout.alignment: Qt.AlignLeft
+            Row {
+                id: controls
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 10
 
-                // Direction switch
+                Button {
+                    text: "Play/Pause"
+                    onClicked: {
+                        videoController.togglePlayPause()
+                        keyHandler.focus = true //Do not change, Windows requires
+                    }
+                }
+
+                Button {
+                    text: "Reset View"
+                    onClicked: {
+                        videoWindow.resetZoom()
+                        selectionStart = Qt.point(0, 0)
+                        selectionEnd = Qt.point(0, 0)
+                        isSelecting = false
+                        isProcessingSelection = false
+                        selectionCanvas.requestPaint()
+                        keyHandler.focus = true
+                    }
+                }
+
+                Button {
+                    text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
+                    onClicked: {
+                        toggleFullScreen()
+                        keyHandler.focus = true
+                    }
+                }
+            }
+
+            Row {
+                id: playbackControls
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 10
+
+                // Control Row on top
                 RowLayout {
-                    spacing: 6
+                    spacing: 12
+                    Layout.alignment: Qt.AlignLeft
 
-                    Text { text: "Direction:"; color: "white" }
+                    // Direction switch
+                    RowLayout {
+                        spacing: 6
 
-                    Switch {
-                        id: directionSwitch
-                        checked: true
-                        onToggled: {
-                            const dir = checked ? "forward" : "reverse";
-                            videoController.toggleDirection();
-                            keyHandler.forceActiveFocus(); 
+                        Text { text: "Direction:"; color: "white" }
+
+                        Switch {
+                            id: directionSwitch
+                            checked: true
+                            onToggled: {
+                                const dir = checked ? "forward" : "reverse";
+                                videoController.toggleDirection();
+                                keyHandler.forceActiveFocus(); 
+                            }
+                        }
+
+                        Text {
+                            text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
+                            color: "white"
+                            verticalAlignment: Text.AlignVCenter
+                            Layout.preferredWidth: 80
+                            font.family: "monospace"
                         }
                     }
 
-                    Text {
-                        text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
-                        color: "white"
-                        verticalAlignment: Text.AlignVCenter
-                        Layout.preferredWidth: 80
-                        font.family: "monospace"
-                    }
-                }
+                // Speed selector combobox
+                RowLayout {
+                    spacing: 6
+                    Text { text: "Speed:"; color: "white" }
+                    ComboBox {
+                        id: speedSelector
+                        model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
+                        currentIndex: 2
+                        Layout.preferredWidth: 70
+                        displayText: model[currentIndex]
 
-            // Speed selector combobox
-            RowLayout {
-                spacing: 6
-                Text { text: "Speed:"; color: "white" }
-                ComboBox {
-                    id: speedSelector
-                    model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
-                    currentIndex: 2
-                    Layout.preferredWidth: 70
-                    displayText: model[currentIndex]
+                        onCurrentIndexChanged: {
+                            let speed = parseFloat(model[currentIndex].replace("x", ""));
+                            videoController.setSpeed(speed);
+                            keyHandler.forceActiveFocus(); 
+                        }
 
-                    onCurrentIndexChanged: {
-                        let speed = parseFloat(model[currentIndex].replace("x", ""));
-                        videoController.setSpeed(speed);
-                        keyHandler.forceActiveFocus(); 
-                    }
-
-                    onActivated: {
-                        keyHandler.forceActiveFocus();
+                        onActivated: {
+                            keyHandler.forceActiveFocus();
+                        }
                     }
                 }
             }
         }
 
-            // Time Slider
+        RowLayout{
+            Layout.fillWidth: true
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
 
+            // Time Slider
             Slider {
                 id: timeSlider
                 Layout.fillWidth: true
                 from: 0.0
-                to: videoController.duration
-                value: dragging ? value : videoController.currentTimeMs
-                
-                property bool dragging: false
-
-            onPressedChanged: {
-                if (pressed) {
-                    dragging = true;
-                } else {
-                    // On release: first seek to current value, then reset dragging state
-                    var finalPosition = value;
-                    videoController.seekTo(finalPosition);
-                    console.log("Slider released, seeking to: " + finalPosition);
+                    to: videoController.duration
+                    value: dragging ? value : videoController.currentTimeMs
                     
-                    // Now change dragging state and return focus
-                    dragging = false;
-                    keyHandler.forceActiveFocus();
-                }
+                    property bool dragging: false
+
+                onPressedChanged: {
+                    if (pressed) {
+                        dragging = true;
+                    } else {
+                        // On release: first seek to current value, then reset dragging state
+                        var finalPosition = value;
+                        videoController.seekTo(finalPosition);
+                        console.log("Slider released, seeking to: " + finalPosition);
+                        
+                        // Now change dragging state and return focus
+                        dragging = false;
+                        keyHandler.forceActiveFocus();
+                    }
 
                 }
             }
         }
     }
+}
 
 
     function toggleFullScreen() {

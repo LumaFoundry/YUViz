@@ -35,17 +35,8 @@ FrameController::FrameController(
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
     qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
 
-    // connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
-    // qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
-
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
-
-    connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
-    qDebug() << "Connected requestSeek to VideoDecoder::seek";
-
-    connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
-    qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
 
     connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
     qDebug() << "Connected requestSeek to VideoDecoder::seek";
@@ -230,11 +221,6 @@ void FrameController::onFrameSeeked(int64_t pts) {
         qDebug() << "Frame is not seeked";
     }
     requestUpload(frameSeeked);
-    FrameData* frameSeeked = m_frameQueue->getHeadFrame(pts);
-    if(!frameSeeked){
-        qDebug() << "Frame is not seeked";
-    }
-    requestUpload(frameSeeked);
 }
 
 
@@ -244,13 +230,6 @@ void FrameController::onRenderError() {
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
 }
 
-int FrameController::totalFrames() {
-    return m_frameMeta->totalFrames();
-}
-
-int64_t FrameController::getDuration(){
-    return m_frameMeta->duration();
-}
 int FrameController::totalFrames() {
     return m_frameMeta->totalFrames();
 }
