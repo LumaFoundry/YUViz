@@ -35,9 +35,6 @@ FrameController::FrameController(
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
     qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
 
-    // connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
-    // qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
-
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
 
@@ -161,6 +158,7 @@ void FrameController:: onFrameDecoded(bool success){
         requestUpload(m_frameQueue->getHeadFrame(0));
     }
 
+
 }
 
 void FrameController::onFrameUploaded() {
@@ -173,6 +171,7 @@ void FrameController::onFrameUploaded() {
     if (m_seeking != -1){
         qDebug() << "FrameController::requesting render after seeked frame uploaded";
         emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
+        m_seeking = -1;
     }
 
 }
@@ -188,10 +187,17 @@ void FrameController::onFrameRendered() {
     if (m_seeking != -1){
         qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
+        return;
+    }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::Seeked frame is rendered";
+        m_seeking = -1; // Reset seeking after rendering
     }
 }
 
 void FrameController::onSeek(int64_t pts) {
+    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);

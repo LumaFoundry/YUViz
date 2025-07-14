@@ -178,6 +178,10 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1)
         emit framesLoaded(true);
         return;
     }
+    if (num_frames == 0){
+        emit framesLoaded(true);
+        return;
+    }
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
     if (!formatContext || !codecContext) {

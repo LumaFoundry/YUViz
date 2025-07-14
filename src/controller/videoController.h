@@ -44,7 +44,8 @@ public slots:
     void stepForward();
     void stepBackward();
     void seekTo(double timeMs);
-
+    void setSpeed(float speed);
+    void toggleDirection();
 
 signals:
     void playTimer();
@@ -54,8 +55,11 @@ signals:
     void stepBackwardTimer();
     void tickFC(int64_t pts);
     void seekTimer(std::vector<int64_t> seekPts);
+    void setSpeedTimer(AVRational speed);
     void currentTimeMsChanged();
     void isPlayingChanged();
+    void playBackwardTimer();
+    void playForwardTimer();
 
 private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
@@ -75,6 +79,7 @@ private:
 
     // 1 for forward, -1 for backward
     int m_direction = 1;
+    int m_uiDirection = 1;
 
     bool m_isPlaying = false;
     bool m_reachedEnd = false;

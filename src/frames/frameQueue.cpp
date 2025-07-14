@@ -63,7 +63,7 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
 
 FrameData* FrameQueue::getTailFrame(int64_t pts){
-    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    qDebug() << "Queue:: Tail index: " << (pts % queueSize);
     return &m_queue[pts % queueSize];
 }
 

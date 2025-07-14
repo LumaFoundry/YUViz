@@ -2,6 +2,7 @@ import QtQuick.Window 6.0
 import QtQuick.Controls 6.0
 import QtQuick 6.0
 import QtMultimedia 6.5
+import QtQuick.Layouts 1.15
 import Window 1.0
 
 ApplicationWindow {
@@ -31,13 +32,16 @@ ApplicationWindow {
             if (wasPlayingBeforeResize) {
                 videoController.play()
             }
+            if (wasPlayingBeforeResize) {
+                videoController.play()
+            }
         }
     }
 
     onWidthChanged: {
         if (!resizing) {
             resizing = true
-            wasPlayingBeforeResize = videoController.isPlaying
+            wasPlayingBeforeResize = videoController.isPlaying()
             if (wasPlayingBeforeResize) {
                 videoController.pause()
             }
@@ -45,9 +49,13 @@ ApplicationWindow {
         resizeDebounce.restart()
     }
     
+    
     onHeightChanged: {
         if (!resizing) {
             resizing = true
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
             if (wasPlayingBeforeResize) {
                 videoController.pause()
             }
@@ -263,77 +271,142 @@ ApplicationWindow {
     }
 
     footer: ToolBar {
-        Row {
-            id: controls
+        ColumnLayout {
+            id: panel
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 10
 
-            Button {
-                text: "Play/Pause"
-                onClicked: {
-                    videoController.togglePlayPause()
-                    keyHandler.focus = true //Do not change, Windows requires
+            Row {
+                id: controls
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 10
+
+                Button {
+                    text: "Play/Pause"
+                    onClicked: {
+                        videoController.togglePlayPause()
+                        keyHandler.focus = true //Do not change, Windows requires
+                    }
+                }
+
+                Button {
+                    text: "Reset View"
+                    onClicked: {
+                        videoWindow.resetZoom()
+                        selectionStart = Qt.point(0, 0)
+                        selectionEnd = Qt.point(0, 0)
+                        isSelecting = false
+                        isProcessingSelection = false
+                        selectionCanvas.requestPaint()
+                        keyHandler.focus = true
+                    }
+                }
+
+                Button {
+                    text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
+                    onClicked: {
+                        toggleFullScreen()
+                        keyHandler.focus = true
+                    }
                 }
             }
 
-            Button {
-                text: "Reset View"
-                onClicked: {
-                    videoWindow.resetZoom()
-                    selectionStart = Qt.point(0, 0)
-                    selectionEnd = Qt.point(0, 0)
-                    isSelecting = false
-                    isProcessingSelection = false
-                    selectionCanvas.requestPaint()
-                    keyHandler.focus = true
-                }
-            }
+            Row {
+                id: playbackControls
+                Layout.alignment: Qt.AlignHCenter
+                spacing: 10
 
-            Button {
-                text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
-                onClicked: {
-                    toggleFullScreen()
-                    keyHandler.focus = true
+                // Control Row on top
+                RowLayout {
+                    spacing: 12
+                    Layout.alignment: Qt.AlignLeft
+
+                    // Direction switch
+                    RowLayout {
+                        spacing: 6
+
+                        Text { text: "Direction:"; color: "white" }
+
+                        Switch {
+                            id: directionSwitch
+                            checked: true
+                            onToggled: {
+                                const dir = checked ? "forward" : "reverse";
+                                videoController.toggleDirection();
+                                keyHandler.forceActiveFocus(); 
+                            }
+                        }
+
+                        Text {
+                            text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
+                            color: "white"
+                            verticalAlignment: Text.AlignVCenter
+                            Layout.preferredWidth: 80
+                            font.family: "monospace"
+                        }
+                    }
+
+                // Speed selector combobox
+                RowLayout {
+                    spacing: 6
+                    Text { text: "Speed:"; color: "white" }
+                    ComboBox {
+                        id: speedSelector
+                        model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
+                        currentIndex: 2
+                        Layout.preferredWidth: 70
+                        displayText: model[currentIndex]
+
+                        onCurrentIndexChanged: {
+                            let speed = parseFloat(model[currentIndex].replace("x", ""));
+                            videoController.setSpeed(speed);
+                            keyHandler.forceActiveFocus(); 
+                        }
+
+                        onActivated: {
+                            keyHandler.forceActiveFocus();
+                        }
+                    }
                 }
             }
         }
-        Row {
-            id: playbackControls
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
 
-            anchors.horizontalCenter: parent.horizontalCenter
-            anchors.margins: 20
-            spacing: 10
+        RowLayout{
+            Layout.fillWidth: true
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
 
+            // Time Slider
             Slider {
                 id: timeSlider
-                width: parent.width
+                Layout.fillWidth: true
                 from: 0.0
-                to: videoController.duration
-                value: dragging ? value : videoController.currentTimeMs
-                
-                property bool dragging: false
-
-            onPressedChanged: {
-                if (pressed) {
-                    dragging = true;
-                } else {
-                    // On release: first seek to current value, then reset dragging state
-                    var finalPosition = value;
-                    videoController.seekTo(finalPosition);
-                    console.log("Slider released, seeking to: " + finalPosition);
+                    to: videoController.duration
+                    value: dragging ? value : videoController.currentTimeMs
                     
-                    // Now change dragging state and return focus
-                    dragging = false;
-                    keyHandler.forceActiveFocus();
-                }
+                    property bool dragging: false
+
+                onPressedChanged: {
+                    if (pressed) {
+                        dragging = true;
+                    } else {
+                        // On release: first seek to current value, then reset dragging state
+                        var finalPosition = value;
+                        videoController.seekTo(finalPosition);
+                        console.log("Slider released, seeking to: " + finalPosition);
+                        
+                        // Now change dragging state and return focus
+                        dragging = false;
+                        keyHandler.forceActiveFocus();
+                    }
 
                 }
             }
         }
     }
+}
 
 
     function toggleFullScreen() {
