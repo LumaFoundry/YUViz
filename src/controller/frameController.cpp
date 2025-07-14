@@ -35,8 +35,17 @@ FrameController::FrameController(
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
     qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
 
+    // connect(this, &FrameController::requestDecodeBackward, m_Decoder.get(), &VideoDecoder::loadPreviousFrames, Qt::AutoConnection);
+    // qDebug() << "Connected requestDecodeBackward to VideoDecoder::loadPreviousFrames";
+
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
     qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
+
+    connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
+    qDebug() << "Connected requestSeek to VideoDecoder::seek";
+
+    connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
+    qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
 
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
@@ -86,43 +95,52 @@ void FrameController::start(){
 
     m_prefill = true;
     // Initial request to decode
-    emit requestDecode(m_frameQueue->getSize() / 2);
+    emit requestDecode(m_frameQueue->getSize() / 2, 1);
     qDebug() << "Emitting initial requestDecode for prefill";
 }
 
 // Slots Definitions
-void FrameController::onTimerTick(int64_t pts) {
-    qDebug() << "\nonTimerTick for index" << m_index;
+void FrameController::onTimerTick(int64_t pts, int direction) {
+    qDebug() << "\nonTimerTick with pts" << pts << " for index" << m_index;
 
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if(target){
-        requestRender(target);
         qDebug() << "Requested render for frame with PTS" << pts;
-        if (target->isEndFrame()){
-            qDebug() << "End frame reached for index" << m_index;
-            m_endOfVideo = true;
-        }
-    } else{
+        emit requestRender(target);
+    }else{
         qWarning() << "Cannot render frame" << pts;
     }
 
     emit requestRelease();
 
     // Upload future frame if inside frameQueue
-    FrameData* future = m_frameQueue->getHeadFrame(pts + 1);
-    if(future){
-        requestUpload(future);
-        qDebug() << "Requested upload for frame with PTS" << (pts + 1);
+    int64_t futurePts = pts + 1 * direction;
+    if (futurePts < 0) {
+        qWarning() << "Future PTS is negative, cannot upload frame";
+        return;
+    }
+    FrameData* future = m_frameQueue->getHeadFrame(futurePts);
+    if (future) {
+        if (future->isEndFrame()) {
+            // qDebug() << "End frame = True set by " << future->pts();
+            m_endOfVideo = true;
+        }else if (m_endOfVideo){
+            // qDebug() << "End frame = False set by " << future->pts();
+            m_endOfVideo = false;
+        }
+        emit requestUpload(future);
+        qDebug() << "Requested upload for frame with PTS" << (pts + 1* direction);
     }else{
-        qWarning() << "Cannot upload frame" << (pts + 1);
+        qWarning() << "Cannot upload frame" << (pts + 1* direction);
     }
 
     if (!m_endOfVideo){
         // Request to decode more frames if needed
-        int frameToFill = m_frameQueue->getEmpty();
-        qDebug() << "Frames to fill in queue:" << frameToFill;
-        requestDecode(frameToFill);
+        int framesToFill = m_frameQueue->getEmpty(direction);
+        qDebug() << "Frames to fill in queue:" << framesToFill;
+
+        emit requestDecode(framesToFill, direction);
     }
 
     qDebug() << "\n";
@@ -142,6 +160,7 @@ void FrameController:: onFrameDecoded(bool success){
         // Assume first frame has pts 0 and upload to buffer
         requestUpload(m_frameQueue->getHeadFrame(0));
     }
+
 }
 
 void FrameController::onFrameUploaded() {
@@ -149,6 +168,11 @@ void FrameController::onFrameUploaded() {
     if (m_prefill){
         m_prefill = false;
         emit ready(m_index);
+    }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::requesting render after seeked frame uploaded";
+        emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
     }
 
 }
@@ -160,10 +184,50 @@ void FrameController::onFrameRendered() {
         emit endOfVideo(m_index);
         return;
     }
+
+    if (m_seeking != -1){
+        qDebug() << "FrameController::Seeked frame is rendered";
+        m_seeking = -1; // Reset seeking after rendering
+    }
 }
+
+void FrameController::onSeek(int64_t pts) {
+    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
+    // Check if frameQueue has the frame
+    FrameData* frame = m_frameQueue->getHeadFrame(pts);
+    m_seeking = pts;
+
+    m_endOfVideo = false;
+
+    emit requestSeek(pts, m_frameQueue->getSize() / 2);
+
+    // TODO: implement smart seek to check if frame is in frame Queue
+
+    qDebug() << "\n";
+}
+
+
+void FrameController::onFrameSeeked(int64_t pts) {
+    qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
+    
+    FrameData* frameSeeked = m_frameQueue->getHeadFrame(pts);
+    if(!frameSeeked){
+        qDebug() << "Frame is not seeked";
+    }
+    requestUpload(frameSeeked);
+}
+
 
 void FrameController::onRenderError() {
     qWarning() << "onRenderError for index" << m_index;
     // TODO: Handle rendering error
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
+}
+
+int FrameController::totalFrames() {
+    return m_frameMeta->totalFrames();
+}
+
+int64_t FrameController::getDuration(){
+    return m_frameMeta->duration();
 }

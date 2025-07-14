@@ -35,11 +35,16 @@ public:
 	void openFile();
     virtual FrameMeta getMetaData();
 
+	int64_t getDurationMs();
+	int getTotalFrames();
+
 public slots:
-    virtual void loadFrames(int num_frames);
+    virtual void loadFrames(int num_frames, int direction);
+	virtual void seek(int64_t timestamp);
 
 signals:
     void framesLoaded(bool success);
+	void frameSeeked(int64_t pts);
 
 private:
 	AVFormatContext* formatContext;
@@ -65,5 +70,9 @@ private:
     int64_t loadYUVFrame();
     void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
     int64_t loadCompressedFrame();
+
+	bool m_hitEndFrame = false;
+
+	void seekTo(int64_t targetPts);
 
 };

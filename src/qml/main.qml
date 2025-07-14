@@ -1,6 +1,7 @@
 import QtQuick.Window 6.0
 import QtQuick.Controls 6.0
 import QtQuick 6.0
+import QtMultimedia 6.5
 import Window 1.0
 
 ApplicationWindow {
@@ -15,6 +16,7 @@ ApplicationWindow {
 
     property bool isCtrlPressed: false
     property bool isSelecting: false
+    property bool wasPlayingBeforeResize: false
     property point selectionStart: Qt.point(0, 0)
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
@@ -26,21 +28,29 @@ ApplicationWindow {
         repeat: false
         onTriggered: {
             resizing = false
-            videoController.play()
+            if (wasPlayingBeforeResize) {
+                videoController.play()
+            }
         }
     }
 
     onWidthChanged: {
         if (!resizing) {
             resizing = true
-            videoController.pause()
+            wasPlayingBeforeResize = videoController.isPlaying
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
         }
         resizeDebounce.restart()
     }
+    
     onHeightChanged: {
         if (!resizing) {
             resizing = true
-            videoController.pause()
+            if (wasPlayingBeforeResize) {
+                videoController.pause()
+            }
         }
         resizeDebounce.restart()
     }
@@ -287,6 +297,42 @@ ApplicationWindow {
                 }
             }
         }
+        Row {
+            id: playbackControls
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.margins: 20
+            spacing: 10
+
+            Slider {
+                id: timeSlider
+                width: parent.width
+                from: 0.0
+                to: videoController.duration
+                value: dragging ? value : videoController.currentTimeMs
+                
+                property bool dragging: false
+
+            onPressedChanged: {
+                if (pressed) {
+                    dragging = true;
+                } else {
+                    // On release: first seek to current value, then reset dragging state
+                    var finalPosition = value;
+                    videoController.seekTo(finalPosition);
+                    console.log("Slider released, seeking to: " + finalPosition);
+                    
+                    // Now change dragging state and return focus
+                    dragging = false;
+                    keyHandler.forceActiveFocus();
+                }
+
+                }
+            }
+        }
     }
 
 
@@ -306,4 +352,6 @@ ApplicationWindow {
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: 14
     }
+
+
 }

@@ -42,11 +42,12 @@ qreal VideoWindow::getAspectRatio() const
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
+    // qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->uploadFrame(frame);
 }
 
 void VideoWindow::renderFrame() {
-    qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
+    // qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
     update();
 }
 
@@ -71,7 +72,7 @@ void VideoWindow::rendererError() {
 }
 
 QSGNode *VideoWindow::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
+    // qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
     
     if (!m_renderer) {
         return nullptr;

@@ -140,6 +140,9 @@ void VideoDecoder::openFile()
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
     metadata.setFilename(m_fileName);
+    metadata.setDuration(getDurationMs());
+    metadata.setTotalFrames(getTotalFrames());
+
 
     if (isYUV(codecContext->codec_id)){
         int ySize = m_width * m_height;
@@ -168,9 +171,13 @@ void VideoDecoder::openFile()
  *
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
-void VideoDecoder::loadFrames(int num_frames)
+void VideoDecoder::loadFrames(int num_frames, int direction = 1)
 {
 
+    if (num_frames == 0){
+        emit framesLoaded(true);
+        return;
+    }
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
     if (!formatContext || !codecContext) {
@@ -180,6 +187,24 @@ void VideoDecoder::loadFrames(int num_frames)
 
     bool isRawYUV = isYUV(codecContext->codec_id);
     int64_t maxpts = -1;
+    int64_t minpts = INT64_MAX;
+
+    // Seek to correct frame before loading
+    if (direction == -1){
+        if (currentFrameIndex == 0){
+            qDebug() << "At the beginning of the video, cannot seek backward";
+            m_frameQueue->updateTail(0);
+            emit framesLoaded(false);
+            return;
+        }
+        currentFrameIndex -= num_frames + 1;
+        if (currentFrameIndex < 0) {
+            currentFrameIndex = 0;
+        }
+        seekTo(currentFrameIndex);
+        // Make sure we don't load more than half of the queue size
+        num_frames = std::min(num_frames, m_frameQueue->getSize() / 2);
+    }
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -190,8 +215,15 @@ void VideoDecoder::loadFrames(int num_frames)
             qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
         maxpts = std::max(maxpts, temp_pts);
+        minpts = std::min(minpts, std::max(temp_pts, 0LL));
     }
-    m_frameQueue->updateTail(maxpts);
+
+    if (direction == 1){
+        m_frameQueue->updateTail(maxpts);
+    }else{
+        m_frameQueue->updateTail(minpts);
+    }
+    
     emit framesLoaded(true);
 }
 
@@ -394,14 +426,89 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
         };
     }
 
-    frameData->setPts(currentFrameIndex++);
+    frameData->setPts(currentFrameIndex);
 
-    if (isYUV(codecContext->codec_id) && currentFrameIndex == yuvTotalFrames - 1) {
-        frameData->setEndFrame(true);
+    if (isYUV(codecContext->codec_id)) {
+        if (currentFrameIndex == yuvTotalFrames - 1) {
+            // qDebug() << "VideoDecoder::" << currentFrameIndex << "is end frame";
+            frameData->setEndFrame(true);
+            m_hitEndFrame = true;
+        } else if(frameData->isEndFrame()) {
+            // qDebug() << "VideoDecoder::" << currentFrameIndex << "is not end frame";
+            frameData->setEndFrame(false);
+        }
     }
+
+    currentFrameIndex++;
     
     av_packet_unref(tempPacket);
     
     av_packet_free(&tempPacket);
 }
 
+int VideoDecoder::getTotalFrames()
+{
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
+    }
+
+    if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
+        return yuvTotalFrames;
+    }
+
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+
+    if (videoStream->nb_frames > 0) {
+        return static_cast<int>(videoStream->nb_frames);
+    }
+
+    return -1;
+}
+
+int64_t VideoDecoder::getDurationMs()
+{
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
+    }
+
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+    if (videoStream->duration != AV_NOPTS_VALUE) {
+        return av_rescale_q(videoStream->duration, videoStream->time_base, AVRational{1, 1000});
+    }
+
+    return -1;
+}
+
+void VideoDecoder::seekTo(int64_t targetPts)
+{
+    if (!formatContext || !codecContext || videoStreamIndex < 0) {
+        ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
+        return;
+    }
+
+    if (targetPts < 0){
+        qDebug() << "Decoder:: internal seek asked for negative pts: " << targetPts;
+        targetPts = 0;
+    }
+
+    int ret = av_seek_frame(formatContext, videoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
+
+    if (ret < 0) {
+        ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(targetPts), LogLevel::Error);
+        return;
+    }
+
+    avcodec_flush_buffers(codecContext);
+
+    currentFrameIndex = targetPts;
+}
+
+
+void VideoDecoder::seek(int64_t targetPts){
+    seekTo(targetPts);
+    qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
+    loadFrames(m_frameQueue->getSize() / 2);
+    qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
+    emit frameSeeked(targetPts);
+
+}

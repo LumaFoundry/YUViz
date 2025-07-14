@@ -22,17 +22,33 @@ FrameQueue::~FrameQueue() = default;
 
 // Prevent renderer / decoder from modifying pointers when the other is accessing
 
-int FrameQueue::getEmpty(){
-    size_t tailVal = tail.load(std::memory_order_acquire);
-    size_t headVal = head.load(std::memory_order_acquire);
+int FrameQueue::getEmpty(int direction){
+    int64_t tailVal = tail.load(std::memory_order_acquire);
+    int64_t headVal = head.load(std::memory_order_acquire);
     qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
-    qDebug() << "Queue:: empty frames: " << (headVal + queueSize / 2) - tailVal;
-    return (headVal + queueSize / 2) - tailVal;
+    
+    
+    int empty = 0;
+
+    if (direction == 1){
+        empty = (headVal + queueSize / 2) - tailVal;
+    }else{
+        empty = (tailVal + queueSize / 2) - headVal;
+    }
+
+    qDebug() << "Queue:: empty frames: " << empty;
+
+    if (empty < 0){
+        empty = 0;
+    }
+    
+    return empty;
 }
 
 // IMPORTANT: Must not call decoder when seeking / stepping
 FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
+    // qDebug() << "Queue:: Tail: " << (tail.load(std::memory_order_acquire));
     FrameData* target = &m_queue[pts % queueSize];
 
     // Check if target is loaded in queue
@@ -55,8 +71,7 @@ FrameData* FrameQueue::getTailFrame(int64_t pts){
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts){
     qDebug() << "Queue:: updateTail called with pts: " << pts;
-    if (pts > tail.load())
-    {
+    if (pts > 0){
         tail.store(pts, std::memory_order_release);
     }
 }
