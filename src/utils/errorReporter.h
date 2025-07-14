@@ -1,19 +1,24 @@
 #pragma once
 
-#include <QObject>
-#include <QMetaObject>
 #include <QCoreApplication>
-#include <iostream>
 #include <QDebug>
+#include <QMetaObject>
+#include <QObject>
 #include <QString>
 #include <functional>
+#include <iostream>
 
-enum class LogLevel { Info, Warning, Error, Fatal };
+enum class LogLevel {
+    Info,
+    Warning,
+    Error,
+    Fatal
+};
 
 class ErrorReporter : public QObject {
     Q_OBJECT
 
-public:
+  public:
     // Singleton instance - IMPORTANT: Only instantiate in main!
     static ErrorReporter& instance();
 
@@ -25,19 +30,17 @@ public:
     };
 
     // Overloaded function to accept const char*
-    void report(const char* msg, LogLevel level = LogLevel::Warning) {
-        report(QString::fromUtf8(msg), level);
-    }
+    void report(const char* msg, LogLevel level = LogLevel::Warning) { report(QString::fromUtf8(msg), level); }
 
     // Optional config
     void enableConsole(bool on);
     void enableQtWarnings(bool on);
     void setGuiCallback(std::function<void(QString, LogLevel)> callback);
 
-signals:
+  signals:
     void errorReported(QString msg, LogLevel level);
 
-private:
+  private:
     ErrorReporter() = default;
 
     bool m_consoleEnabled = true;

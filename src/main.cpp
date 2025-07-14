@@ -1,24 +1,23 @@
 #include <QApplication>
-#include <QWindow>
-#include <QSurface>
-#include <QTimer>
-#include <QFile>
-#include <QDebug>
-#include <QMessageBox>
-#include <QCommandLineParser>
 #include <QCommandLineOption>
-#include <QApplication>
+#include <QCommandLineParser>
+#include <QDebug>
+#include <QFile>
+#include <QMessageBox>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QSurface>
+#include <QTimer>
+#include <QWindow>
 #include <memory>
-#include "utils/videoFileInfo.h"
-#include "decoder/videoDecoder.h"
 #include "controller/frameController.h"
 #include "controller/videoController.h"
+#include "decoder/videoDecoder.h"
 #include "rendering/videoRenderer.h"
 #include "ui/videoWindow.h"
+#include "utils/videoFileInfo.h"
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
     QApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
 
@@ -30,7 +29,6 @@ int main(int argc, char *argv[]) {
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("file", "File path");
-
 
     QCommandLineOption graphicsApiOption(
         QStringList() << "g" << "graphics",
@@ -46,7 +44,8 @@ int main(int argc, char *argv[]) {
     parser.addOption(debugOption);
     QCommandLineOption framerateOption({"f", "framerate"}, QLatin1String("Framerate"), QLatin1String("framerate"));
     parser.addOption(framerateOption);
-    QCommandLineOption resolutionOption({"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
+    QCommandLineOption resolutionOption(
+        {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
     parser.process(app);
 
@@ -70,7 +69,11 @@ int main(int argc, char *argv[]) {
         height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
         if (!ok1 || !ok2) {
             qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-            QMessageBox::critical(nullptr, "Error", QString("Invalid dimensions for video: %1 x %2").arg(parser.value(resolutionOption).split("x")[0]).arg(parser.value(resolutionOption).split("x")[1]));
+            QMessageBox::critical(nullptr,
+                                  "Error",
+                                  QString("Invalid dimensions for video: %1 x %2")
+                                      .arg(parser.value(resolutionOption).split("x")[0])
+                                      .arg(parser.value(resolutionOption).split("x")[1]));
             return -1;
         }
     }
@@ -78,21 +81,16 @@ int main(int argc, char *argv[]) {
     QString filename = args.first();
 
     qDebug() << "Parsed command-line options. File: " << parser.value(filename)
-             << "Resolution: " << parser.value(resolutionOption)
+             << "Resolution: " << parser.value(resolutionOption) << "Framerate: " << parser.value(framerateOption);
+
+    qDebug() << "Video file path:" << filename << "Width:" << width << "Height:" << height
              << "Framerate: " << parser.value(framerateOption);
-
-
-    qDebug() << "Video file path:" << filename
-             << "Width:" << width << "Height:" << height
-             << "Framerate: " << parser.value(framerateOption);
-
 
     if (!QFile::exists(filename)) {
         qWarning() << "YUV file does not exist:" << filename;
         QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(filename));
         return -1;
     }
-
 
     // TODO: Need a better safe guard to check arguments
     // Check if we have at least one video (needs 3 arguments per video)
@@ -102,17 +100,17 @@ int main(int argc, char *argv[]) {
 
     // TODO: Create and show window
     QQmlApplicationEngine engine;
-    
+
     qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
-    
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     engine.load(url);
     if (engine.rootObjects().isEmpty()) {
         return -1;
     }
 
-    QObject *root = engine.rootObjects().first();
-    auto *windowPtr = root->findChild<VideoWindow*>("videoWindow");
+    QObject* root = engine.rootObjects().first();
+    auto* windowPtr = root->findChild<VideoWindow*>("videoWindow");
 
     windowPtr->setAspectRatio(width, height);
 

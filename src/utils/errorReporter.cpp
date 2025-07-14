@@ -11,10 +11,18 @@ void ErrorReporter::report(const QString& msg, LogLevel level) {
     if (m_consoleEnabled) {
         std::cerr << "[ErrorReporter] ";
         switch (level) {
-            case LogLevel::Info:    std::cerr << "[Info] "; break;
-            case LogLevel::Warning: std::cerr << "[Warning] "; break;
-            case LogLevel::Error:   std::cerr << "[Error] "; break;
-            case LogLevel::Fatal:   std::cerr << "[Fatal] "; break;
+        case LogLevel::Info:
+            std::cerr << "[Info] ";
+            break;
+        case LogLevel::Warning:
+            std::cerr << "[Warning] ";
+            break;
+        case LogLevel::Error:
+            std::cerr << "[Error] ";
+            break;
+        case LogLevel::Fatal:
+            std::cerr << "[Fatal] ";
+            break;
         }
         std::cerr << msg.toStdString() << std::endl;
     }
@@ -22,10 +30,18 @@ void ErrorReporter::report(const QString& msg, LogLevel level) {
     // Qt warnings
     if (m_qtWarningEnabled) {
         switch (level) {
-            case LogLevel::Info:    qInfo().noquote() << msg; break;
-            case LogLevel::Warning: qWarning().noquote() << msg; break;
-            case LogLevel::Error:   qCritical().noquote() << msg; break;
-            case LogLevel::Fatal:   qFatal("%s", msg.toStdString().c_str()); break;
+        case LogLevel::Info:
+            qInfo().noquote() << msg;
+            break;
+        case LogLevel::Warning:
+            qWarning().noquote() << msg;
+            break;
+        case LogLevel::Error:
+            qCritical().noquote() << msg;
+            break;
+        case LogLevel::Fatal:
+            qFatal("%s", msg.toStdString().c_str());
+            break;
         }
     }
 
@@ -49,4 +65,3 @@ void ErrorReporter::enableQtWarnings(bool on) {
 void ErrorReporter::setGuiCallback(std::function<void(QString, LogLevel)> callback) {
     m_guiCallback = std::move(callback);
 }
-

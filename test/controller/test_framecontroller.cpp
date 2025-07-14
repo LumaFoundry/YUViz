@@ -1,31 +1,30 @@
-#include <QtTest>
 #include <QSignalSpy>
 #include <QThread>
-#include <iostream>
-#include <gtest/gtest.h>
+#include <QtTest>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <iostream>
 #include "controller/frameController.h"
 #include "controller/playBackWorker.h"
 #include "frames/frameMeta.h"
 #include "frames/frameQueue.h"
-#include "rendering/videoRenderer.h"
 #include "mock/mock_decoder.h"
 #include "mock/mock_renderer.h"
+#include "rendering/videoRenderer.h"
 
 using ::testing::_;
 using ::testing::Return;
 
-
 class FrameControllerTest : public QObject {
     Q_OBJECT
 
-private:
+  private:
     FrameMeta meta;
     std::shared_ptr<PlaybackWorker> pbw = nullptr;
     QThread pbwThread;
 
-private slots:
-    void initTestCase(){
+  private slots:
+    void initTestCase() {
         meta.setYWidth(2);
         meta.setYHeight(2);
         meta.setUVWidth(1);
@@ -45,7 +44,6 @@ private slots:
         pbwThread.quit();
         pbwThread.wait();
     }
-
 };
 
 void FrameControllerTest::testFCStart() {
@@ -53,30 +51,28 @@ void FrameControllerTest::testFCStart() {
     std::cout << "Creating mock decoder..." << std::endl;
 
     auto decoder = std::make_unique<MockDecoder>();
-    
+
     EXPECT_CALL(*decoder, getMetaData()).WillOnce(Return(meta));
 
     int fakePts = 0;
 
-    EXPECT_CALL(*decoder, loadFrame(_))
-        .WillRepeatedly([&](FrameData* frame) {
-            memset(frame->yPtr(), 128, meta.ySize()); 
-            memset(frame->uPtr(), 128, meta.uvSize());
-            memset(frame->vPtr(), 128, meta.uvSize());
-            frame->setPts(fakePts++);
-            emit decoder->frameLoaded(true);
-        });
-        
-    std::cout << "Creating mock renderer..." << std::endl;
-    auto renderer = std::make_unique<MockRenderer>(nullptr, nullptr, nullptr);
-    EXPECT_CALL(*renderer, uploadFrame(_)).WillRepeatedly([&](FrameData* f){
-        emit renderer->batchUploaded(true);
+    EXPECT_CALL(*decoder, loadFrame(_)).WillRepeatedly([&](FrameData* frame) {
+        memset(frame->yPtr(), 128, meta.ySize());
+        memset(frame->uPtr(), 128, meta.uvSize());
+        memset(frame->vPtr(), 128, meta.uvSize());
+        frame->setPts(fakePts++);
+        emit decoder->frameLoaded(true);
     });
 
-    std::cout << "Creating FrameController..." << std::endl;
-    FrameController* controller = new FrameController(nullptr, std::move(decoder), std::move(renderer), pbw, nullptr, 0);
+    std::cout << "Creating mock renderer..." << std::endl;
+    auto renderer = std::make_unique<MockRenderer>(nullptr, nullptr, nullptr);
+    EXPECT_CALL(*renderer, uploadFrame(_)).WillRepeatedly([&](FrameData* f) { emit renderer->batchUploaded(true); });
 
-    //TODO: For some reason signals sent from mock objects cannot trigger slots in FC
+    std::cout << "Creating FrameController..." << std::endl;
+    FrameController* controller =
+        new FrameController(nullptr, std::move(decoder), std::move(renderer), pbw, nullptr, 0);
+
+    // TODO: For some reason signals sent from mock objects cannot trigger slots in FC
 
     // connect(decoder, &MockDecoder::frameLoaded, controller, &FrameController::onFrameDecoded);
     // connect(renderer, &MockRenderer::frameUploaded, controller, &FrameController::onFrameUploaded);

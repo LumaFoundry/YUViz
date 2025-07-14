@@ -1,20 +1,20 @@
 #pragma once
 
-#include <string>
-#include <fstream>
-#include <QObject>
 #include <QFileInfo>
-#include <iostream>
+#include <QObject>
 #include <cstring>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include "frameQueue.h"
-#include "frames/frameMeta.h"
 #include "frames/frameData.h"
+#include "frames/frameMeta.h"
 #include "utils/errorReporter.h"
 
 extern "C" {
-#include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
@@ -23,56 +23,55 @@ extern "C" {
 class VideoDecoder : public QObject {
     Q_OBJECT
 
-public:
-	VideoDecoder(QObject* parent = nullptr);
-	virtual ~VideoDecoder();
-	void setDimensions(int width, int height);
-	void setFramerate(double framerate);
-	void setFormat(AVPixelFormat format);
-	void setFileName(const std::string& fileName);
-	void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
+  public:
+    VideoDecoder(QObject* parent = nullptr);
+    virtual ~VideoDecoder();
+    void setDimensions(int width, int height);
+    void setFramerate(double framerate);
+    void setFormat(AVPixelFormat format);
+    void setFileName(const std::string& fileName);
+    void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
 
-	void openFile();
+    void openFile();
     virtual FrameMeta getMetaData();
 
-	int64_t getDurationMs();
-	int getTotalFrames();
+    int64_t getDurationMs();
+    int getTotalFrames();
 
-public slots:
+  public slots:
     virtual void loadFrames(int num_frames, int direction);
-	virtual void seek(int64_t timestamp);
+    virtual void seek(int64_t timestamp);
 
-signals:
+  signals:
     void framesLoaded(bool success);
-	void frameSeeked(int64_t pts);
+    void frameSeeked(int64_t pts);
 
-private:
-	AVFormatContext* formatContext;
-	AVCodecContext* codecContext;
-	AVDictionary* inputOptions;
-	int videoStreamIndex;
-	
-	FrameMeta metadata;
-	int currentFrameIndex = 0;
-	
-	int m_width;
-	int m_height;
-	double m_framerate;
-	AVPixelFormat m_format;
-	std::string m_fileName;
-	std::shared_ptr<FrameQueue> m_frameQueue;
+  private:
+    AVFormatContext* formatContext;
+    AVCodecContext* codecContext;
+    AVDictionary* inputOptions;
+    int videoStreamIndex;
 
-	int yuvTotalFrames = -1;
+    FrameMeta metadata;
+    int currentFrameIndex = 0;
 
-	void closeFile();
-	
-	bool isYUV(AVCodecID codecId);
+    int m_width;
+    int m_height;
+    double m_framerate;
+    AVPixelFormat m_format;
+    std::string m_fileName;
+    std::shared_ptr<FrameQueue> m_frameQueue;
+
+    int yuvTotalFrames = -1;
+
+    void closeFile();
+
+    bool isYUV(AVCodecID codecId);
     int64_t loadYUVFrame();
-    void copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag);
+    void copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& retFlag);
     int64_t loadCompressedFrame();
 
-	bool m_hitEndFrame = false;
+    bool m_hitEndFrame = false;
 
-	void seekTo(int64_t targetPts);
-
+    void seekTo(int64_t targetPts);
 };

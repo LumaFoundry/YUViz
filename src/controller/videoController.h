@@ -1,20 +1,20 @@
 #pragma once
 
-#include <QThread>
 #include <QElapsedTimer>
-#include <QtConcurrent>
+#include <QThread>
 #include <QVariant>
+#include <QtConcurrent>
 #include <map>
 
-#include "frameController.h"
-#include "frames/frameQueue.h"
-#include "frames/frameMeta.h"
-#include "frames/frameData.h"
-#include "decoder/videoDecoder.h"
-#include "rendering/videoRenderer.h"
-#include "utils/errorReporter.h"
 #include "controller/timer.h"
+#include "decoder/videoDecoder.h"
+#include "frameController.h"
+#include "frames/frameData.h"
+#include "frames/frameMeta.h"
+#include "frames/frameQueue.h"
+#include "rendering/videoRenderer.h"
 #include "ui/videoWindow.h"
+#include "utils/errorReporter.h"
 #include "utils/videoFileInfo.h"
 
 class VideoController : public QObject {
@@ -24,9 +24,8 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
 
-public:
-    VideoController(QObject *parent, 
-                    std::vector<VideoFileInfo> videoFiles = {});
+  public:
+    VideoController(QObject* parent, std::vector<VideoFileInfo> videoFiles = {});
     ~VideoController();
     void start();
 
@@ -34,7 +33,7 @@ public:
     bool isPlaying() const;
     double currentTimeMs() const { return m_currentTimeMs; }
 
-public slots:
+  public slots:
     void onReady(int index);
     void onFCEndOfVideo(int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
@@ -47,7 +46,7 @@ public slots:
     void setSpeed(float speed);
     void toggleDirection();
 
-signals:
+  signals:
     void playTimer();
     void stopTimer();
     void pauseTimer();
@@ -61,7 +60,7 @@ signals:
     void playBackwardTimer();
     void playForwardTimer();
 
-private:
+  private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
 
     std::shared_ptr<Timer> m_timer;
@@ -83,6 +82,4 @@ private:
 
     bool m_isPlaying = false;
     bool m_reachedEnd = false;
-
 };
-
