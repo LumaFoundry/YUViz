@@ -1,0 +1,37 @@
+BasedOnStyle: Google
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+BreakBeforeBraces: Allman
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: InlineOnly
+
+ColumnLimit: 100
+
+SpaceBeforeParens: ControlStatements
+SpacesInParentheses: false
+SpacesInAngles: false
+SpaceAfterCStyleCast: true
+
+AlwaysBreakTemplateDeclarations: Yes
+BinPackArguments: false
+BinPackParameters: false
+
+NamespaceIndentation: All
+IndentExternBlock: AfterExternBlock
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex:           '^<.*\.h>$'
+    Priority:        1
+    SortPriority:    0
+    CaseSensitive:   false
+  - Regex:           '^".*"$'
+    Priority:        2
+SortIncludes: true
