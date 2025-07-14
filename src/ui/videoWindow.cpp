@@ -113,6 +113,9 @@ void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
 
     m_zoom = newZoom;
     m_isZoomed = (m_zoom > 1.0f);
+    if (!m_isZoomed) {
+        resetZoom();
+    }
     
     m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
@@ -235,9 +238,9 @@ void VideoWindow::pan(const QPointF &delta) {
     m_centerY += dy;
 
     // Limit center point range to prevent out of bounds
-    float halfView = 0.5f / m_zoom;
-    m_centerX = qBound(halfView, m_centerX, 1.0f - halfView);
-    m_centerY = qBound(halfView, m_centerY, 1.0f - halfView);
+    // float halfView = 0.5f / m_zoom;
+    // m_centerX = qBound(halfView, m_centerX, 1.0f - halfView);
+    // m_centerY = qBound(halfView, m_centerY, 1.0f - halfView);
 
     m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
