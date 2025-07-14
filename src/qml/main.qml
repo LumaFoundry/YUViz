@@ -4,11 +4,14 @@ import QtQuick 6.0
 import Window 1.0
 
 ApplicationWindow {
+    id: mainWindow
     title: "videoplayer"
     width: 800
     height: 600
     color: "black"
     visible: true
+    flags: Qt.Window
+    visibility: Window.Windowed
 
     property bool isCtrlPressed: false
     property bool isSelecting: false
@@ -75,6 +78,11 @@ ApplicationWindow {
         Keys.onReleased: (event) => {
             if (event.key === Qt.Key_Control) {
                 isCtrlPressed = false
+                event.accepted = true
+            }
+
+            if (event.key === Qt.Key_Escape && mainWindow.visibility === Window.FullScreen) {
+                mainWindow.visibility = Window.Windowed
                 event.accepted = true
             }
         }
@@ -270,6 +278,20 @@ ApplicationWindow {
                     mainContent.focus = true
                 }
             }
+
+            Button {
+                text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
+                onClicked: toggleFullScreen()
+            }
+        }
+    }
+
+
+    function toggleFullScreen() {
+        if (mainWindow.visibility === Window.FullScreen) {
+            mainWindow.visibility = Window.Windowed
+        } else {
+            mainWindow.visibility = Window.FullScreen
         }
     }
 
