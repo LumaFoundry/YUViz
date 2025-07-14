@@ -12,7 +12,6 @@ VideoWindow::VideoWindow(QQuickItem *parent):
     setFlag(ItemHasContents, true);
     setAcceptedMouseButtons(Qt::LeftButton);
     setAcceptHoverEvents(true);
-    m_currentZoomRect.setRect(0, 0, 1, 1);
 }
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
@@ -100,50 +99,22 @@ void VideoWindow::zoomAt(qreal factor, const QPointF &centerPoint) {
     const QRectF itemRect = boundingRect();
     if (itemRect.isEmpty()) return;
 
-    const QRectF currentRect = (m_isZoomed && !m_currentZoomRect.isNull()) ? m_currentZoomRect : QRectF(0, 0, 1, 1);
 
-    // Calculate the new view dimensions
-    qreal newWidth = currentRect.width() / factor;
-    qreal newHeight = currentRect.height() / factor;
-
-    // If zooming out past the original view, just reset.
-    if (factor < 1.0 && (newWidth > 1.0 || newHeight > 1.0)) {
-        resetZoom();
-        return;
-    }
-
-    // Limit zoom-in
-    const qreal minNormalizedSize = 1.0 / m_maxZoom;
-    if (factor > 1.0 && (newWidth < minNormalizedSize || newHeight < minNormalizedSize)) return;
+    qreal newZoom = qBound(1.0f, m_zoom * factor, m_maxZoom);
+    qreal shiftCoef = 1.0f / m_zoom - 1.0f / newZoom;
 
     // Normalize the cursor position to [0, 1] relative to the window
     const QPointF normCenter(
         qBound(0.0, centerPoint.x() / itemRect.width(), 1.0),
         qBound(0.0, centerPoint.y() / itemRect.height(), 1.0)
     );
+    m_centerX = m_centerX + (normCenter.x() - 0.5) * shiftCoef;
+    m_centerY = m_centerY + (normCenter.y() - 0.5) * shiftCoef;
 
-    // Calculate the new top-left corner to keep the point under the cursor stationary
-    const qreal newX = currentRect.x() + normCenter.x() * currentRect.width() * (1.0 - 1.0 / factor);
-    const qreal newY = currentRect.y() + normCenter.y() * currentRect.height() * (1.0 - 1.0 / factor);
-
-    QRectF newZoomRect(newX, newY, newWidth, newHeight);
-
-    // Clamp the new rectangle to the bounds of the video
-    if (newZoomRect.x() < 0.0) newZoomRect.setX(0.0);
-    if (newZoomRect.y() < 0.0) newZoomRect.setY(0.0);
-    if (newZoomRect.right() > 1.0) newZoomRect.setX(1.0 - newZoomRect.width());
-    if (newZoomRect.bottom() > 1.0) newZoomRect.setY(1.0 - newZoomRect.height());
-
-    m_currentZoomRect = newZoomRect;
-
-    if (qFuzzyCompare(m_currentZoomRect.width(), 1.0) && qFuzzyCompare(m_currentZoomRect.height(), 1.0)) {
-        m_currentZoomRect.setRect(0,0,1,1);
-        m_isZoomed = false;
-    } else {
-        m_isZoomed = true;
-    }
+    m_zoom = newZoom;
+    m_isZoomed = (m_zoom > 1.0f);
     
-    m_renderer->setZoomAndOffset(m_currentZoomRect);
+    m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
     update();
 }
@@ -159,83 +130,85 @@ void VideoWindow::clearSelection() {
     m_hasSelection = false;
     m_isSelecting = false;
     m_isZoomed = false;
-    m_currentZoomRect = QRectF();
     emit zoomChanged();
     update();
 }
 
 void VideoWindow::resetZoom() {
-    // Reset zoom state, restore to full screen display
     m_isZoomed = false;
-    m_currentZoomRect = QRectF(0,0,1,1);
-
-    // Clear selection state
+    m_zoom = 1.0f;
+    m_centerX = 0.5f;
+    m_centerY = 0.5f;
     m_selectionRect = QRectF();
     m_hasSelection = false;
     m_isSelecting = false;
-
-    // Reset renderer zoom parameters
     if (m_renderer) {
-        m_renderer->setZoomAndOffset(m_currentZoomRect);
+        m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     }
-
     emit zoomChanged();
     update();
-
     qDebug() << "Reset zoom - restore to full screen display";
 }
 
 void VideoWindow::zoomToSelection() {
-    const qreal minNormalizedSize = 1.0 / m_maxZoom;
     if (!m_renderer) return;
-
     QRectF itemRect = boundingRect();
     if (itemRect.isEmpty()) return;
-
-    // Strict validation of input rectangle
     if (m_selectionRect.width() <= 0 || m_selectionRect.height() <= 0) return;
-
-    // Calculate the geometry of the visible video area (accounting for letter/pillarboxing)
+    
+    // Calculate current viewport rectangle (based on current zoom and center)
+    QRectF currentViewRect;
+    if (m_isZoomed) {
+        float halfView = 0.5f / m_zoom;
+        currentViewRect = QRectF(m_centerX - halfView, m_centerY - halfView, 1.0f / m_zoom, 1.0f / m_zoom);
+    } else {
+        currentViewRect = QRectF(0, 0, 1, 1);
+    }
+    
+    // Calculate video display area in window (considering letterboxing)
     QRectF videoRect = itemRect;
     qreal windowAspect = itemRect.width() / itemRect.height();
     qreal videoAspect = getAspectRatio();
-
-    if (windowAspect > videoAspect) { // Pillarbox (bars on left/right)
+    if (windowAspect > videoAspect) {
         qreal newWidth = videoAspect * itemRect.height();
         videoRect.setX((itemRect.width() - newWidth) / 2.0);
         videoRect.setWidth(newWidth);
-    } else { // Letterbox (bars on top/bottom)
+    } else {
         qreal newHeight = itemRect.width() / videoAspect;
         videoRect.setY((itemRect.height() - newHeight) / 2.0);
         videoRect.setHeight(newHeight);
     }
-
-    // Clamp the user's selection to the visible video area
-    QRectF clampedRect = m_selectionRect.intersected(videoRect);
-    if (clampedRect.width() <= 1e-6 || clampedRect.height() <= 1e-6) return;
-
-    // Convert the clamped pixel selection into coordinates relative to the *currently displayed view*.
-    qreal relX = (clampedRect.x() - videoRect.x()) / videoRect.width();
-    qreal relY = (clampedRect.y() - videoRect.y()) / videoRect.height();
-    qreal relW = clampedRect.width() / videoRect.width();
-    qreal relH = clampedRect.height() / videoRect.height();
-
-    // Map these relative coordinates to the coordinate system of the current zoom level (`m_currentZoomRect`).
-    QRectF newZoomRect(
-        m_currentZoomRect.x() + relX * m_currentZoomRect.width(),
-        m_currentZoomRect.y() + relY * m_currentZoomRect.height(),
-        relW * m_currentZoomRect.width(),
-        relH * m_currentZoomRect.height()
-    );
     
-    m_currentZoomRect = newZoomRect;
-    m_isZoomed = true;
-    m_hasSelection = true;
-    m_renderer->setZoomAndOffset(m_currentZoomRect);
+    // Convert selection rectangle from window coordinates to current viewport coordinates
+    QRectF selectionInView;
+    selectionInView.setX((m_selectionRect.x() - videoRect.x()) / videoRect.width());
+    selectionInView.setY((m_selectionRect.y() - videoRect.y()) / videoRect.height());
+    selectionInView.setWidth(m_selectionRect.width() / videoRect.width());
+    selectionInView.setHeight(m_selectionRect.height() / videoRect.height());
+    
+    // Map selection rectangle to current viewport coordinate system
+    QRectF mappedSelection;
+    mappedSelection.setX(currentViewRect.x() + selectionInView.x() * currentViewRect.width());
+    mappedSelection.setY(currentViewRect.y() + selectionInView.y() * currentViewRect.height());
+    mappedSelection.setWidth(selectionInView.width() * currentViewRect.width());
+    mappedSelection.setHeight(selectionInView.height() * currentViewRect.height());
+    
+    // Limit selection rectangle within current viewport bounds
+    QRectF clampedRect = mappedSelection.intersected(currentViewRect);
+    if (clampedRect.width() <= 1e-6 || clampedRect.height() <= 1e-6) return;
+    
+    // Calculate new zoom and center point
+    qreal newZoom = m_zoom * (currentViewRect.width() / clampedRect.width());
+    newZoom = qBound(1.0f, newZoom, m_maxZoom);
+    
+    m_centerX = clampedRect.x() + clampedRect.width() * 0.5f;
+    m_centerY = clampedRect.y() + clampedRect.height() * 0.5f;
+    m_zoom = newZoom;
+    
+    m_isZoomed = (m_zoom > 1.0f);
+    m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
     update();
-
-    qDebug() << "Zoom parameters - selection area:" << m_currentZoomRect;
 }
 
 void VideoWindow::pan(const QPointF &delta) {
@@ -244,43 +217,21 @@ void VideoWindow::pan(const QPointF &delta) {
     const QRectF itemRect = boundingRect();
     if (itemRect.isEmpty()) return;
 
-    // Pixel delta to a normalized delta, scaled by the current zoom level.
-    qreal dx = (-delta.x() / itemRect.width()) * m_currentZoomRect.width();
-    qreal dy = (-delta.y() / itemRect.height()) * m_currentZoomRect.height();
+    // Convert pan delta to normalized coordinates, divided by current zoom
+    float dx = -delta.x() / itemRect.width() / m_zoom;
+    float dy = -delta.y() / itemRect.height() / m_zoom;
 
-    // Calculate the maximum distance we can pan in any direction before hitting an edge.
-    const qreal dx_min = -m_currentZoomRect.x();
-    const qreal dx_max = 1.0 - m_currentZoomRect.right();
-    const qreal dy_min = -m_currentZoomRect.y();
-    const qreal dy_max = 1.0 - m_currentZoomRect.bottom();
+    m_centerX += dx;
+    m_centerY += dy;
 
-    // Clamp the delta to the allowed range.
-    dx = qBound(dx_min, dx, dx_max);
-    dy = qBound(dy_min, dy, dy_max);
-    
-    // Only update if there's any movement left after clamping.
-    if (qFuzzyCompare(dx, 0) && qFuzzyCompare(dy, 0)) {
-        return;
-    }
+    // Limit center point range to prevent out of bounds
+    float halfView = 0.5f / m_zoom;
+    m_centerX = qBound(halfView, m_centerX, 1.0f - halfView);
+    m_centerY = qBound(halfView, m_centerY, 1.0f - halfView);
 
-    m_currentZoomRect.translate(dx, dy);    
-    m_renderer->setZoomAndOffset(m_currentZoomRect);
-    
+    m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
     update();
 }
 
-void VideoWindow::mousePressEvent(QMouseEvent *event) {
-    // Mouse event handling is done by MouseArea in QML
-    QQuickItem::mousePressEvent(event);
-}
 
-void VideoWindow::mouseMoveEvent(QMouseEvent *event) {
-    // Mouse event handling is done by MouseArea in QML
-    QQuickItem::mouseMoveEvent(event);
-}
-
-void VideoWindow::mouseReleaseEvent(QMouseEvent *event) {
-    // Mouse event handling is done by MouseArea in QML
-    QQuickItem::mouseReleaseEvent(event);
-}

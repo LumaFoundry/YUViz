@@ -12,7 +12,6 @@ class VideoWindow : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(bool isZoomed READ isZoomed NOTIFY zoomChanged)
-    Q_PROPERTY(QRectF currentZoomRect READ currentZoomRect NOTIFY zoomChanged)
     Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
     Q_PROPERTY(qreal maxZoom READ maxZoom WRITE setMaxZoom NOTIFY maxZoomChanged)
 
@@ -21,7 +20,6 @@ public:
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
     VideoRenderer *m_renderer = nullptr;
     bool isZoomed() const { return m_isZoomed; }
-    QRectF currentZoomRect() const { return m_currentZoomRect; }
     void setAspectRatio(int width, int height);
     qreal getAspectRatio() const;
     qreal maxZoom() const;
@@ -52,9 +50,6 @@ signals:
 
 protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
-    void mousePressEvent(QMouseEvent *event) override;
-    void mouseMoveEvent(QMouseEvent *event) override;
-    void mouseReleaseEvent(QMouseEvent *event) override;
 
 private:
     QRectF m_selectionRect;
@@ -62,8 +57,11 @@ private:
     QPointF m_selectionStart;
     QPointF m_selectionEnd;
     bool m_isSelecting = false;
-    QRectF m_currentZoomRect; 
     bool m_isZoomed = false;
     qreal m_videoAspectRatio = 16.0 / 9.0;
     qreal m_maxZoom = 10000.0;
+    // Track current zoom and center point
+    float m_zoom = 1.0f;
+    float m_centerX = 0.5f;
+    float m_centerY = 0.5f;
 };

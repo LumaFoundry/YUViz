@@ -185,18 +185,7 @@ ApplicationWindow {
 
                         if (deltaX === 0 && deltaY === 0) return
 
-                        var aspectRatio = videoWindow.getAspectRatio
-
-                        var newDeltaX, newDeltaY
-                        if (Math.abs(deltaX) / aspectRatio > Math.abs(deltaY)) {
-                            newDeltaX = deltaX
-                            newDeltaY = (Math.abs(deltaX) / aspectRatio) * (deltaY < 0 ? -1 : 1)
-                        } else {
-                            newDeltaX = (Math.abs(deltaY) * aspectRatio) * (deltaX < 0 ? -1 : 1)
-                            newDeltaY = deltaY
-                        }
-
-                        selectionEnd = Qt.point(selectionStart.x + newDeltaX, selectionStart.y + newDeltaY)
+                        selectionEnd = Qt.point(selectionStart.x + deltaX, selectionStart.y + deltaY)
                         selectionCanvas.requestPaint()
                     }
                 }

@@ -196,17 +196,14 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QR
         float offsetX = 0.0f;
         float offsetY = 0.0f;
 
-        if (m_hasSelection && m_selectionRect.isValid()) {
-            // Apply zoom based on the selection rectangle's dimensions without forcing a uniform aspect ratio.
-            scaleX /= m_selectionRect.width();
-            scaleY /= m_selectionRect.height();
+        if (m_zoom != 1.0f) {
+            // Apply zoom factor
+            scaleX *= m_zoom;
+            scaleY *= m_zoom;
 
-            float selectionCenterX = m_selectionRect.x() + m_selectionRect.width() * 0.5f;
-            float selectionCenterY = m_selectionRect.y() + m_selectionRect.height() * 0.5f;
-            
-            // Calculate offset to center the selected region
-            offsetX = -(selectionCenterX - 0.5f) * 2.0f * scaleX;
-            offsetY = (selectionCenterY - 0.5f) * 2.0f * scaleY;
+            // Calculate offset to center the zoomed region
+            offsetX = -(m_centerX - 0.5f) * 2.0f * scaleX;
+            offsetY = (m_centerY - 0.5f) * 2.0f * scaleY;
         }
         
         // Struct matching the shader's std140 layout.
@@ -252,8 +249,9 @@ void VideoRenderer::releaseBatch()
     }
 }
 
-void VideoRenderer::setZoomAndOffset(const QRectF &selectionRect) {
-    m_selectionRect = selectionRect;
-    m_hasSelection = !selectionRect.isNull();
-    m_windowAspect = 0.0f;  
+void VideoRenderer::setZoomAndOffset(const float zoom, const float centerX, const float centerY) {
+    m_zoom = zoom;
+    m_centerX = centerX;
+    m_centerY = centerY;
+    m_windowAspect = 0.0f;
 }
