@@ -7,3 +7,4 @@
 !/src/**
 !/test/
 !/test/**
+!/.clang-format

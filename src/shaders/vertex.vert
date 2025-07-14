@@ -11,6 +11,6 @@ layout(std140, binding = 5) uniform ResizeParams {
 };
 
 void main() {
-    gl_Position = vec4(position * u_scale, 0.0, 1.0);
+    gl_Position = vec4(position * u_scale + u_offset, 0.0, 1.0);
     v_texCoord = texCoord;
-} 
+}

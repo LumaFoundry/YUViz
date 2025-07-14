@@ -149,7 +149,7 @@ void VideoController::togglePlayPause() {
     if (m_timer->getStatus() == Status::Playing) {
         qDebug() << "VideoController: Pausing playback";
         emit pauseTimer();
-    } else {
+    } else if (m_timer->getStatus() == Status::Paused) {
         qDebug() << "VideoController: Resuming playback";
         emit playTimer();
     }

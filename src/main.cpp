@@ -114,6 +114,8 @@ int main(int argc, char *argv[]) {
     QObject *root = engine.rootObjects().first();
     auto *windowPtr = root->findChild<VideoWindow*>("videoWindow");
 
+    windowPtr->setAspectRatio(width, height);
+
     // TODO: This can be used to handle multiple videos later
     VideoFileInfo videoFileInfo;
     videoFileInfo.filename = filename;
@@ -129,9 +131,10 @@ int main(int argc, char *argv[]) {
     qDebug() << "Creating VideoController";
     VideoController videoController(nullptr, videoFiles);
     qDebug() << "VideoController created successfully";
-    engine.rootContext()->setContextProperty("videoController", &videoController);
 
     videoController.start();
+
+    engine.rootContext()->setContextProperty("videoController", &videoController);
 
     return app.exec();
 }
