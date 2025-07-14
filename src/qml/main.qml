@@ -262,7 +262,7 @@ ApplicationWindow {
                 text: "Play/Pause"
                 onClicked: {
                     videoController.togglePlayPause()
-                    mainContent.focus = true
+                    keyHandler.focus = true //Do not change, Windows requires
                 }
             }
 
@@ -275,13 +275,16 @@ ApplicationWindow {
                     isSelecting = false
                     isProcessingSelection = false
                     selectionCanvas.requestPaint()
-                    mainContent.focus = true
+                    keyHandler.focus = true
                 }
             }
 
             Button {
                 text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
-                onClicked: toggleFullScreen()
+                onClicked: {
+                    toggleFullScreen()
+                    keyHandler.focus = true
+                }
             }
         }
     }
