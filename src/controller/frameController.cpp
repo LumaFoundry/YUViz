@@ -187,15 +187,9 @@ void FrameController::onFrameRendered() {
         m_seeking = -1; // Reset seeking after rendering
         return;
     }
-
-    if (m_seeking != -1) {
-        qDebug() << "FrameController::Seeked frame is rendered";
-        m_seeking = -1; // Reset seeking after rendering
-    }
 }
 
 void FrameController::onSeek(int64_t pts) {
-    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);

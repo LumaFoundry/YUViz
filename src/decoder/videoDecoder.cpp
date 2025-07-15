@@ -349,7 +349,6 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
-                av_packet_free(&tempPacket);
                 return pts;
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
