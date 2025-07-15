@@ -1,35 +1,34 @@
 #pragma once
 
-#include <memory>
-#include "rhi/qrhi.h"
 #include <QRectF>
+#include <memory>
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
+#include "rhi/qrhi.h"
 
 class VideoRenderer : public QObject {
     Q_OBJECT
-public:
-    VideoRenderer(QObject* parent,
-                  std::shared_ptr<FrameMeta> metaPtr);
+  public:
+    VideoRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr);
     ~VideoRenderer();
 
-    void initialize(QRhi *rhi, QRhiRenderPassDescriptor *rp);
+    void initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp);
     void setColorParams(AVColorSpace space, AVColorRange range);
     void uploadFrame(FrameData* frame);
-    void renderFrame(QRhiCommandBuffer *cb, const QRect &viewport, QRhiRenderTarget *rt);
+    void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
     void releaseBatch();
 
-signals:
+  signals:
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
 
-public slots:
+  public slots:
     void setZoomAndOffset(const float zoom, const float centerX, const float centerY);
 
-private:
+  private:
     std::shared_ptr<FrameMeta> m_metaPtr;
-    QRhi *m_rhi = nullptr;
+    QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
     float m_centerY = 0.5f;
@@ -43,11 +42,11 @@ private:
     std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
     std::unique_ptr<QRhiBuffer> m_vbuf;
     float m_windowAspect = 0;
-    
+
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
     QRhiResourceUpdateBatch* m_frameBatch = nullptr;
     QRhiResourceUpdateBatch* m_colorParamsBatch = nullptr;
     QRhiResourceUpdateBatch* m_resizeParamsBatch = nullptr;
 
-    QByteArray loadShaderSource(const QString &path);
+    QByteArray loadShaderSource(const QString& path);
 };

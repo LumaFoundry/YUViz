@@ -1,16 +1,16 @@
 #pragma once
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
 extern "C" {
-#include <libavutil/rational.h>
 #include <libavutil/pixfmt.h>
+#include <libavutil/rational.h>
 }
 
 class FrameMeta {
-public:
+  public:
     FrameMeta();
     ~FrameMeta();
 
@@ -43,7 +43,7 @@ public:
     void setDuration(int64_t msDuration);
     void setTotalFrames(int totalFrames);
 
-private:
+  private:
     int m_yWidth;
     int m_yHeight;
     int m_uvWidth;

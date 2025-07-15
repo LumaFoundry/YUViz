@@ -1,8 +1,8 @@
 #include "frameMeta.h"
 #include <cassert>
 
-
-FrameMeta::FrameMeta() {}
+FrameMeta::FrameMeta() {
+}
 
 FrameMeta::~FrameMeta() = default;
 

@@ -1,12 +1,12 @@
 #include <QtTest>
 #include <set>
-#include "frames/frameQueue.h"
 #include "frames/frameMeta.h"
+#include "frames/frameQueue.h"
 
 class FrameQueueTest : public QObject {
     Q_OBJECT
 
-private slots:
+  private slots:
     void testFifoOrder();
     void testReusability();
 };
@@ -53,7 +53,7 @@ void FrameQueueTest::testReusability() {
     }
 
     // Should not exceed queueSize
-    QVERIFY(framePtrs.size() <= 50); 
+    QVERIFY(framePtrs.size() <= 50);
 }
 
 QTEST_MAIN(FrameQueueTest)

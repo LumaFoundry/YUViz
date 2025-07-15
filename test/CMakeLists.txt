@@ -47,7 +47,6 @@ set(SRC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/frames/frameData.cpp
     ${CMAKE_SOURCE_DIR}/src/frames/frameQueue.cpp
     ${CMAKE_SOURCE_DIR}/src/controller/frameController.cpp
-    ${CMAKE_SOURCE_DIR}/src/controller/playBackWorker.cpp
     ${CMAKE_SOURCE_DIR}/src/controller/videoController.cpp
     ${CMAKE_SOURCE_DIR}/src/decoder/videoDecoder.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/videoRenderer.cpp

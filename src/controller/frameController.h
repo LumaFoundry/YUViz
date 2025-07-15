@@ -1,33 +1,29 @@
 #pragma once
 
-#include <QThread>
 #include <QElapsedTimer>
+#include <QThread>
 #include <QtConcurrent>
 #include <utility>
-#include "frames/frameQueue.h"
-#include "frames/frameMeta.h"
-#include "frames/frameData.h"
 #include "decoder/videoDecoder.h"
+#include "frames/frameData.h"
+#include "frames/frameMeta.h"
+#include "frames/frameQueue.h"
+#include "ui/videoWindow.h"
 #include "utils/errorReporter.h"
 #include "utils/videoFileInfo.h"
-#include "ui/videoWindow.h"
 
-extern "C"
-{
+extern "C" {
 #include <libavutil/rational.h>
 }
 
 // One controller per FrameQueue
 
-class FrameController : public QObject{
+class FrameController : public QObject {
     Q_OBJECT
 
-public:
+  public:
+    FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index);
 
-    FrameController(QObject *parent,
-                    VideoFileInfo videoFileInfo,
-                    int index);
-                
     ~FrameController();
 
     // Start decoder, renderer and timer threads
@@ -43,15 +39,15 @@ public:
     int totalFrames();
     int64_t getDuration();
 
-public slots:
+  public slots:
     // Receive signals from decoder and renderer
     void onFrameDecoded(bool success);
     void onFrameUploaded();
     void onFrameRendered();
     void onRenderError();
     void onFrameSeeked(int64_t pts);
-   
-signals:
+
+  signals:
     void ready(int index);
     void requestDecode(int numFrames, int direction);
     void requestUpload(FrameData* frame);
@@ -60,8 +56,7 @@ signals:
     void endOfVideo(int index);
     void requestSeek(int64_t pts, int loadCount);
 
-private:
-
+  private:
     // YUVReader to read frames from video file
     std::unique_ptr<VideoDecoder> m_Decoder = nullptr;
 
@@ -77,7 +72,7 @@ private:
     QThread m_decodeThread;
 
     // Last PTS of the frame rendered
-    int64_t m_lastPTS = -1; 
+    int64_t m_lastPTS = -1;
 
     // Prefill flag for preloading frames
     bool m_prefill = false;
@@ -85,5 +80,4 @@ private:
     bool m_endOfVideo = false;
 
     int64_t m_seeking = -1;
-
 };

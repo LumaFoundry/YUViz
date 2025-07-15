@@ -1,24 +1,21 @@
 #pragma once
 
-#include <vector>
-#include <mutex>
 #include <QObject>
+#include <mutex>
+#include <vector>
 
-extern "C"
-{
+extern "C" {
 #include <libavutil/rational.h>
 }
 
-enum Status
-{
-    Playing, 
-    Paused, 
+enum Status {
+    Playing,
+    Paused,
     Seeking
 };
 
-enum Direction
-{
-    Forward, 
+enum Direction {
+    Forward,
     Backward
 };
 
@@ -30,16 +27,15 @@ struct Cache {
     AVRational wake;
 };
 
-class Timer : public QObject
-{
+class Timer : public QObject {
     Q_OBJECT
 
-public:
+  public:
     Timer(QObject* parent, std::vector<AVRational> timebase);
     ~Timer();
     Status getStatus() const;
 
-public slots:
+  public slots:
     void play();
     void pause();
     void playForward();
@@ -49,13 +45,13 @@ public slots:
     void seek(std::vector<int64_t> seekPts);
     void setSpeed(AVRational speed);
 
-private slots:
+  private slots:
     void loop();
 
-signals:
+  signals:
     void tick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
 
-private:
+  private:
     std::vector<AVRational> m_timebase;
     size_t m_size;
     std::vector<int64_t> m_pts;

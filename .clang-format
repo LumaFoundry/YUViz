@@ -1,20 +1,22 @@
-BasedOnStyle: Google
+BasedOnStyle: Microsoft
 
 IndentWidth: 4
 TabWidth: 4
 UseTab: Never
 
-BreakBeforeBraces: Allman
+BreakBeforeBraces: Attach
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: InlineOnly
+BreakConstructorInitializers: AfterColon
+PackConstructorInitializers: Never
 
-ColumnLimit: 100
+ColumnLimit: 120
 
 SpaceBeforeParens: ControlStatements
 SpacesInParentheses: false
 SpacesInAngles: false
-SpaceAfterCStyleCast: true
+SpaceAfterCStyleCast: false
 
 AlwaysBreakTemplateDeclarations: Yes
 BinPackArguments: false
