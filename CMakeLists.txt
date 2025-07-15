@@ -44,7 +44,6 @@ set(SRC
   src/frames/frameQueue.cpp
   src/frames/frameData.cpp
   src/controller/frameController.cpp
-  src/controller/playBackWorker.cpp
   src/controller/videoController.cpp
   src/controller/timer.cpp
   src/rendering/videoRenderer.cpp
