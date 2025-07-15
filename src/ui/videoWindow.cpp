@@ -82,7 +82,7 @@ QSGNode* VideoWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
 }
 
 QPointF VideoWindow::convertToVideoCoordinates(const QPointF& point) const {
-    QRectF itemRect = boundingRect();
+    QRectF itemRect = QRectF(0, 0, window()->width(), window()->height());
     QRectF videoRect = itemRect;
     qreal windowAspect = itemRect.width() / itemRect.height();
     qreal videoAspect = getAspectRatio();
@@ -175,7 +175,7 @@ void VideoWindow::resetZoom() {
 void VideoWindow::zoomToSelection() {
     if (!m_renderer)
         return;
-    QRectF itemRect = boundingRect();
+    QRectF itemRect = QRectF(0, 0, window()->width(), window()->height());
     if (itemRect.isEmpty())
         return;
     if (m_selectionRect.width() <= 0 || m_selectionRect.height() <= 0)
