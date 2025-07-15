@@ -18,7 +18,11 @@ A lightweight video inspection tool for YUV format files.
     ```bash
    pacman -Syu
    pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-   pacman -S mingw-w64-x86_64-qt6 mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkgconf
+   pacman -S \
+    mingw-w64-x86_64-qt6-base \
+    mingw-w64-x86_64-qt6-declarative \
+    mingw-w64-x86_64-qt6-shadertools
+   pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkgconf
     ```
 
     ### Mac (Homebrew)
