@@ -72,6 +72,8 @@ class VideoDecoder : public QObject {
     int64_t loadCompressedFrame();
 
     bool m_hitEndFrame = false;
+	  bool m_needsTimebaseConversion = false;
+
 
     void seekTo(int64_t targetPts);
 };

@@ -42,6 +42,7 @@ void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
     m_frameQueue = frameQueue;
 }
 
+
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
  */
@@ -106,12 +107,16 @@ void VideoDecoder::openFile() {
     }
 
     AVRational timeBase;
-    // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate
-    // (fps)
-    if (isYUV(codecContext->codec_id) || !videoStream->time_base.num || !videoStream->time_base.den) {
-        timeBase = av_d2q(1.0 / m_framerate, 1000000);
+    AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+    // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
+    if (isYUV(codecContext->codec_id)
+    || !videoStream->time_base.num || !videoStream->time_base.den) {
+        timeBase = targetTimebase;
+        m_needsTimebaseConversion = false;
     } else {
         timeBase = videoStream->time_base;
+        // Compare stream timebase to target (1/fps)
+        m_needsTimebaseConversion = (timeBase.num != targetTimebase.num || timeBase.den != targetTimebase.den);
     }
 
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
@@ -162,10 +167,6 @@ void VideoDecoder::openFile() {
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
 void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
-    if (num_frames == 0) {
-        emit framesLoaded(true);
-        return;
-    }
     if (num_frames == 0) {
         emit framesLoaded(true);
         return;
@@ -310,7 +311,11 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
             ret = avcodec_receive_frame(codecContext, tempFrame);
             pts = tempFrame->pts;
-            qDebug() << "VideoDecoder:: pts from avcodec: " << pts;
+
+            if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
+                pts = av_rescale_q(pts, metadata.timeBase(), av_d2q(1.0 / m_framerate, 100000));
+            }
+
             FrameData* frameData = m_frameQueue->getTailFrame(pts);
 
             if (ret == 0) {
@@ -340,7 +345,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
-                    frameData->setPts(tempFrame->pts);
+                    frameData->setPts(pts);  // Use the normalized pts
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
@@ -482,8 +487,16 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         targetPts = 0;
     }
 
-    int ret = av_seek_frame(formatContext, videoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
+    int64_t seek_timestamp = targetPts;
+    if (m_needsTimebaseConversion) {
+        // Convert from 1/fps to stream timebase
+        AVStream* videoStream = formatContext->streams[videoStreamIndex];
+        AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+        seek_timestamp = av_rescale_q(targetPts, targetTimebase, videoStream->time_base);
+    }
 
+    int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
+    
     if (ret < 0) {
         ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(targetPts), LogLevel::Error);
         return;
