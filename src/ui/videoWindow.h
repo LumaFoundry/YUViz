@@ -64,4 +64,6 @@ class VideoWindow : public QQuickItem {
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
     float m_centerY = 0.5f;
+
+    QPointF convertToVideoCoordinates(const QPointF& point) const;
 };

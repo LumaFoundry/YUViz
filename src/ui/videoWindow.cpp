@@ -81,6 +81,28 @@ QSGNode* VideoWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
     return node;
 }
 
+QPointF VideoWindow::convertToVideoCoordinates(const QPointF& point) const {
+    QRectF itemRect = boundingRect();
+    QRectF videoRect = itemRect;
+    qreal windowAspect = itemRect.width() / itemRect.height();
+    qreal videoAspect = getAspectRatio();
+    if (windowAspect > videoAspect) {
+        qreal newWidth = videoAspect * itemRect.height();
+        videoRect.setX((itemRect.width() - newWidth) / 2.0);
+        videoRect.setWidth(newWidth);
+    } else {
+        qreal newHeight = itemRect.width() / videoAspect;
+        videoRect.setY((itemRect.height() - newHeight) / 2.0);
+        videoRect.setHeight(newHeight);
+    }
+
+    qreal widthMargin = (itemRect.width() - videoRect.width()) / 2.0;
+    qreal heightMargin = (itemRect.height() - videoRect.height()) / 2.0;
+
+    return QPointF(qBound(0.0, (point.x() - widthMargin) / videoRect.width(), 1.0),
+                   qBound(0.0, (point.y() - heightMargin) / videoRect.height(), 1.0));
+}
+
 qreal VideoWindow::maxZoom() const {
     return m_maxZoom;
 }
@@ -104,8 +126,7 @@ void VideoWindow::zoomAt(qreal factor, const QPointF& centerPoint) {
     qreal shiftCoef = 1.0f / m_zoom - 1.0f / newZoom;
 
     // Normalize the cursor position to [0, 1] relative to the window
-    const QPointF normCenter(qBound(0.0, centerPoint.x() / itemRect.width(), 1.0),
-                             qBound(0.0, centerPoint.y() / itemRect.height(), 1.0));
+    const QPointF normCenter = convertToVideoCoordinates(centerPoint);
     m_centerX = m_centerX + (normCenter.x() - 0.5) * shiftCoef;
     m_centerY = m_centerY + (normCenter.y() - 0.5) * shiftCoef;
 
