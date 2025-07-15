@@ -1,8 +1,8 @@
-#include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QFile>
+#include <QGuiApplication>
 #include <QMessageBox>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -18,7 +18,7 @@
 #include "utils/videoFileInfo.h"
 
 int main(int argc, char* argv[]) {
-    QApplication app(argc, argv);
+    QGuiApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
 
     // Set QDebug output to be off by default
