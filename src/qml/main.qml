@@ -254,6 +254,9 @@ ApplicationWindow {
     }
 
     footer: ToolBar {
+        background: Rectangle {
+            color: "#5d383838"
+        }
         ColumnLayout {
             id: panel
             anchors.left: parent.left
@@ -281,7 +284,7 @@ ApplicationWindow {
 
                     Text {
                         text: "Direction:"
-                        color: "black"
+                        color: "white"
                     }
 
                     Switch {
@@ -296,7 +299,7 @@ ApplicationWindow {
 
                     Text {
                         text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
-                        color: "black"
+                        color: "white"
                         verticalAlignment: Text.AlignVCenter
                         Layout.preferredWidth: 80
                         font.family: "monospace"
@@ -308,7 +311,7 @@ ApplicationWindow {
                     spacing: 6
                     Text {
                         text: "Speed:"
-                        color: "black"
+                        color: "white"
                     }
                     ComboBox {
                         id: speedSelector
@@ -399,7 +402,7 @@ ApplicationWindow {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.margins: 10
-        color: "black"
+        color: "white"
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: 14
     }
