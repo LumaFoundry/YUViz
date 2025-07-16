@@ -92,14 +92,14 @@ VideoController::~VideoController() {
 void VideoController::start() {
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto& fc : m_frameControllers) {
-        qDebug() << "Starting FrameController with index: " << fc->m_index;
+        // qDebug() << "Starting FrameController with index: " << fc->m_index;
         fc->start();
     }
 }
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
-    qDebug() << "VideoController::Direcetion:" << m_direction;
+    // qDebug() << "VideoController::Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
@@ -170,7 +170,7 @@ void VideoController::play() {
     m_direction = m_uiDirection;
 
     if (m_reachedEnd && m_timer->getStatus() == Status::Paused) {
-        qDebug() << "VideoController::Restarting playback from beginning";
+        // qDebug() << "VideoController::Restarting playback from beginning";
         seekTo(0.0);
         m_reachedEnd = false;
         m_direction = 1;
@@ -196,36 +196,34 @@ void VideoController::pause() {
 
 void VideoController::stepForward() {
     if (m_timer->getStatus() == Status::Playing) {
-        qDebug() << "VideoController: Step forward requested while playing, pausing first";
+        // qDebug() << "VideoController: Step forward requested while playing, pausing first";
         pause();
     }
     m_direction = 1;
     m_reachedEnd = false;
-    qDebug() << "VideoController: Step forward requested";
+    // qDebug() << "VideoController: Step forward requested";
     emit stepForwardTimer();
 }
 
 void VideoController::stepBackward() {
     if (m_timer->getStatus() == Status::Playing) {
-        qDebug() << "VideoController: Step backward requested while playing, pausing first";
+        // qDebug() << "VideoController: Step backward requested while playing, pausing first";
         pause();
     }
     m_direction = -1;
     m_reachedEnd = false;
-    qDebug() << "VideoController: Step backward requested";
+    // qDebug() << "VideoController: Step backward requested";
     emit stepBackwardTimer();
 }
 
 void VideoController::togglePlayPause() {
-    qDebug() << "VideoController:: togglePlayPause called";
-
-    qDebug() << "VideoController:: togglePlayPause called";
+    // qDebug() << "VideoController:: togglePlayPause called";
 
     if (m_timer->getStatus() == Status::Playing) {
-        qDebug() << "VideoController: Pausing playback";
+        // qDebug() << "VideoController: Pausing playback";
         pause();
     } else if (m_timer->getStatus() == Status::Paused) {
-        qDebug() << "VideoController: Resuming playback";
+        // qDebug() << "VideoController: Resuming playback";
         play();
     }
 }
@@ -233,7 +231,7 @@ void VideoController::togglePlayPause() {
 void VideoController::seekTo(double timeMs) {
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
-        qDebug() << "VideoController: Pausing playback";
+        // qDebug() << "VideoController: Pausing playback";
         pause();
     }
 
@@ -248,7 +246,7 @@ void VideoController::seekTo(double timeMs) {
         // Convert timeMs to PTS using the FC's timebase
         AVRational timebase = fc->getTimeBase();
         int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
-        qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
+        // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
         // Call seek on the FC
         fc->onSeek(pts);
         seekPts.push_back(pts);
@@ -268,7 +266,7 @@ bool VideoController::isPlaying() const {
 }
 
 void VideoController::setSpeed(float speed) {
-    qDebug() << "VideoController: Setting playback speed to" << speed;
+    // qDebug() << "VideoController: Setting playback speed to" << speed;
 
     // Convert float to AVRational
     AVRational speedRational;
@@ -277,7 +275,7 @@ void VideoController::setSpeed(float speed) {
     speedRational.num = speed * 1000;
     speedRational.den = 1000;
 
-    qDebug() << "VideoController: emitting speed " << speedRational.num << "/" << speedRational.den << " to timer";
+    // qDebug() << "VideoController: emitting speed " << speedRational.num << "/" << speedRational.den << " to timer";
     // Pass it to the timer
     emit setSpeedTimer(speedRational);
 }
@@ -286,11 +284,11 @@ void VideoController::toggleDirection() {
     if (m_uiDirection == 1) {
         m_uiDirection = -1;
         m_direction = -1;
-        qDebug() << "VideoController: Toggled direction to backward";
+        // qDebug() << "VideoController: Toggled direction to backward";
     } else {
         m_uiDirection = 1;
         m_direction = 1;
-        qDebug() << "VideoController: Toggled direction to forward";
+        // qDebug() << "VideoController: Toggled direction to forward";
     }
 
     emit directionChanged();

@@ -21,6 +21,7 @@ ApplicationWindow {
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
+    property bool resizing: false
 
     Timer {
         id: resizeDebounce
@@ -37,7 +38,7 @@ ApplicationWindow {
     onWidthChanged: {
         if (!resizing) {
             resizing = true;
-            wasPlayingBeforeResize = videoController.isPlaying();
+            wasPlayingBeforeResize = videoController.isPlaying;
             if (wasPlayingBeforeResize) {
                 videoController.pause();
             }
@@ -48,6 +49,7 @@ ApplicationWindow {
     onHeightChanged: {
         if (!resizing) {
             resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
             if (wasPlayingBeforeResize) {
                 videoController.pause();
             }
@@ -62,19 +64,19 @@ ApplicationWindow {
         focus: true
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Space) {
-                console.log("Space key pressed");
+                // console.log("Space key pressed");
                 videoController.togglePlayPause();
                 event.accepted = true;
             }
 
             if (event.key == Qt.Key_Right) {
-                console.log("Right arrow key pressed");
+                // console.log("Right arrow key pressed");
                 videoController.stepForward();
                 event.accepted = true;
             }
 
             if (event.key == Qt.Key_Left) {
-                console.log("Left arrow key pressed");
+                // console.log("Left arrow key pressed");
                 videoController.stepBackward();
                 event.accepted = true;
             }
@@ -218,7 +220,7 @@ ApplicationWindow {
                     // Calculate rectangle area
                     var rect = Qt.rect(Math.min(selectionStart.x, selectionEnd.x), Math.min(selectionStart.y, selectionEnd.y), Math.abs(selectionEnd.x - selectionStart.x), Math.abs(selectionEnd.y - selectionStart.y));
 
-                    console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
+                    // console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
 
                     videoWindow.setSelectionRect(rect);
                     videoWindow.zoomToSelection();
@@ -377,7 +379,7 @@ ApplicationWindow {
                             // On release: first seek to current value, then reset dragging state
                             var finalPosition = value;
                             videoController.seekTo(finalPosition);
-                            console.log("Slider released, seeking to: " + finalPosition);
+                            // console.log("Slider released, seeking to: " + finalPosition);
 
                             // Now change dragging state and return focus
                             dragging = false;

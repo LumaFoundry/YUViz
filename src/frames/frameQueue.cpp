@@ -66,7 +66,7 @@ FrameData* FrameQueue::getTailFrame(int64_t pts) {
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts) {
     // qDebug() << "Queue:: updateTail called with pts: " << pts;
-    if (pts > 0) {
+    if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }
 }
