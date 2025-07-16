@@ -54,8 +54,6 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::AutoConnection);
     qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
 
-    connect(this, &FrameController::requestRelease, m_window, &VideoWindow::releaseBatch, Qt::AutoConnection);
-
     connect(m_window->m_renderer,
             &VideoRenderer::batchIsEmpty,
             this,
@@ -113,12 +111,11 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
         qWarning() << "Cannot render frame" << pts;
     }
 
-    emit requestRelease();
-
     // Upload future frame if inside frameQueue
     int64_t futurePts = pts + 1 * direction;
     if (futurePts < 0) {
         qWarning() << "Future PTS is negative, cannot upload frame";
+        emit endOfVideo(m_index);
         return;
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
@@ -187,15 +184,9 @@ void FrameController::onFrameRendered() {
         m_seeking = -1; // Reset seeking after rendering
         return;
     }
-
-    if (m_seeking != -1) {
-        qDebug() << "FrameController::Seeked frame is rendered";
-        m_seeking = -1; // Reset seeking after rendering
-    }
 }
 
 void FrameController::onSeek(int64_t pts) {
-    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);

@@ -1,37 +1,90 @@
-## A videoplayer for YUV formats and based on Qt6 framework
+# A YUV Inspection Tool based on Qt6
+
+## Description
+A lightweight video inspection tool for YUV format files.
+
+## Requirements
+- CMake 3.16+
+- C++17 compatible compiler
+- Qt 6.9.0 or newer
+- FFmpeg libraries (libavcodec, libavutil, libswscale, libavformat)
+- PkgConfig
+- Ninja (recommended build system)
+
+
+## How to build
+1. Install Dependencies
+    ### Windows (MSYS2)
+    ```bash
+   pacman -Syu
+   pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+   pacman -S \
+    mingw-w64-x86_64-qt6-base \
+    mingw-w64-x86_64-qt6-declarative \
+    mingw-w64-x86_64-qt6-shadertools
+   pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkgconf
+    ```
+
+    ### Mac (Homebrew)
+    ```bash
+    brew install cmake ninja pkg-config
+    brew install qt@6 ffmpeg
+    ```
+
+    ### Linux (Ubuntu/Debian)
+    ```bash
+    ```
+
+2. Clone and build
+    ```bash
+    git clone https://github.com/LokiW-03/qt6-videoplayer.git
+    cd qt6-videoplayer
+    mkdir build && cd build
+    cmake .. -G Ninja
+    ninja
+    ```
+
+## Running the application
+```bash
+./videoplayer <input_file> -r <width>x<height> -f <fps> -d
+```
+Flags:
+- `-r`: resolution, needed for YUV files
+- `-f`: framerate, default=25
+- `-d`: debug flag
+
+Note: `-d` flag could affect performance and behaviour
 
 ## Module descriptions
 
-### frameData.cpp/h
-This module stores pointers of YUV data, and pts. 
+#### `frames/` - Frame Data Management
+- **frameData.cpp/h**: Stores YUV data pointers and presentation timestamps (pts)
+- **frameMeta.cpp/h**: Manages metadata shared across all frames
+- **frameQueue.cpp/h**: Implements a frame buffer with memory pooling for efficient YUV data storage
 
-### frameMeta.cpp/h
-This module stores metadata shared by all frames. 
+#### `controllers/` - Application Flow Control
+- **timer.cpp/h**: Provides precise timing mechanisms for frame presentation
+- **videoController.cpp/h**: Coordinates overall video playback operations for multiple videos
+- **frameController.cpp/h**: Manages frame decoding, timing, updates, and rendering coordination for each video
 
-### frameQueue.cpp/h
-This module manages a frameData queue, which stores pointers to frameData. 
-It also allocate a memory pool for storing YUV data. 
+#### `decoder/` - Video Decoding
+- **videoDecoder.cpp/h**: Handles FFmpeg integration for decoding various formats, supports seeking
 
-### frameController.cpp/h
-This module controls timing, ask yuvReader to update the frameData, and ask the renderer to render the next frame. 
-It also handles playback control. 
+#### `rendering/` - Video Display
+- **videoRenderer.cpp/h**: Low-level rendering component that uses Qt RHI to upload YUV data to GPU textures and render frames with custom shaders
+- **videoRenderNode.cpp/h**: Integrates with Qt's scene graph system to bridge between Qt's rendering pipeline and the custom VideoRenderer
 
-### yuvReader.cpp/h
-This module reads frame data in YUV from video file. 
-It is suggested to use FFMpeg as decoder/reader.
-It should support as many existing YUV format as possible (Most of them are supported by FFMpeg). 
-It should allow command line arguments input to select YUV format for reading those non-header YUV files. 
-It should read the raw YUV data of each frame. 
-It should have a function to be called by frameController, with inputs of frameData and its data pointers, write next frame's YUV data to that frameData. 
-It should have functions to move the reader to next or previous frame, or maybe with a selected pts's frame (FFMpeg seek()).
+#### `ui/` - User Interface
+- **videoWindow.cpp/h**: QML-exposable component that handles video display, user interactions (zooming, panning, selection), and manages the rendering pipeline
 
-### videoRenderer.cpp/h
-This module reads YUV data inside frameData and generates textures, renders in custom shaders. 
-It should handle different choice of graphics API. 
-It should have a function to be called by frameController, to render the next frame. 
-It should have a way to give its rendered frame to gui and let gui display it. 
+#### `utils/` - Helper Utilities
+- Common utilities and helper functions
 
-### gui/
-This module draws frames on a window. 
-It should handle different choice of graphics API. 
-It should allow some playback control, which calls functions inside frameControl. 
+#### `shaders/` - Rendering Shaders
+- Shaders for video processing and display
+
+#### `qml/` - Qt QML Interface
+- QML components for the user interface
+
+#### `main.cpp` - Application Entry Point
+- Initializes application, processes command line arguments

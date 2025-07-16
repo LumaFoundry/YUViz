@@ -7,6 +7,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 
 if(APPLE)
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qt/lib/cmake")

@@ -24,7 +24,7 @@ FrameQueue::~FrameQueue() = default;
 int FrameQueue::getEmpty(int direction) {
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
-    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
+    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
 
     int empty = 0;
 
@@ -34,7 +34,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + queueSize / 2) - headVal;
     }
 
-    qDebug() << "Queue:: empty frames: " << empty;
+    // qDebug() << "Queue:: empty frames: " << empty;
 
     if (empty < 0) {
         empty = 0;
@@ -59,13 +59,13 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 }
 
 FrameData* FrameQueue::getTailFrame(int64_t pts) {
-    qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
     return &m_queue[pts % queueSize];
 }
 
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts) {
-    qDebug() << "Queue:: updateTail called with pts: " << pts;
+    // qDebug() << "Queue:: updateTail called with pts: " << pts;
     if (pts > 0) {
         tail.store(pts, std::memory_order_release);
     }

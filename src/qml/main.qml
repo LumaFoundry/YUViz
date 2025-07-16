@@ -27,39 +27,32 @@ ApplicationWindow {
         interval: 100
         repeat: false
         onTriggered: {
-            resizing = false
+            resizing = false;
             if (wasPlayingBeforeResize) {
-                videoController.play()
-            }
-            if (wasPlayingBeforeResize) {
-                videoController.play()
+                videoController.play();
             }
         }
     }
 
     onWidthChanged: {
         if (!resizing) {
-            resizing = true
-            wasPlayingBeforeResize = videoController.isPlaying()
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying();
             if (wasPlayingBeforeResize) {
-                videoController.pause()
+                videoController.pause();
             }
         }
-        resizeDebounce.restart()
+        resizeDebounce.restart();
     }
-    
-    
+
     onHeightChanged: {
         if (!resizing) {
-            resizing = true
+            resizing = true;
             if (wasPlayingBeforeResize) {
-                videoController.pause()
-            }
-            if (wasPlayingBeforeResize) {
-                videoController.pause()
+                videoController.pause();
             }
         }
-        resizeDebounce.restart()
+        resizeDebounce.restart();
     }
 
     // Top-level key listener
@@ -67,209 +60,203 @@ ApplicationWindow {
         id: keyHandler
         anchors.fill: parent
         focus: true
-        Keys.onPressed: (event) => {
+        Keys.onPressed: event => {
             if (event.key === Qt.Key_Space) {
                 console.log("Space key pressed");
-                videoController.togglePlayPause()
-                event.accepted = true
+                videoController.togglePlayPause();
+                event.accepted = true;
             }
 
             if (event.key == Qt.Key_Right) {
                 console.log("Right arrow key pressed");
-                videoController.stepForward()
-                event.accepted = true
+                videoController.stepForward();
+                event.accepted = true;
             }
 
             if (event.key == Qt.Key_Left) {
                 console.log("Left arrow key pressed");
-                videoController.stepBackward()
-                event.accepted = true
+                videoController.stepBackward();
+                event.accepted = true;
             }
 
             if (event.key === Qt.Key_Control) {
-                isCtrlPressed = true
-                event.accepted = true
+                isCtrlPressed = true;
+                event.accepted = true;
             }
         }
 
-        Keys.onReleased: (event) => {
+        Keys.onReleased: event => {
             if (event.key === Qt.Key_Control) {
-                isCtrlPressed = false
-                event.accepted = true
+                isCtrlPressed = false;
+                event.accepted = true;
             }
 
             if (event.key === Qt.Key_Escape && mainWindow.visibility === Window.FullScreen) {
-                mainWindow.visibility = Window.Windowed
-                event.accepted = true
+                mainWindow.visibility = Window.Windowed;
+                event.accepted = true;
             }
         }
     }
 
-    PinchArea {
+    VideoWindow {
+        id: videoWindow
+        objectName: "videoWindow_0"
         anchors.fill: parent
-        pinch.target: videoWindow
 
-        property real lastPinchScale: 1.0
+        maxZoom: 10000.0
 
-        onPinchStarted: {
-            lastPinchScale = 1.0
-        }
-
-        onPinchUpdated: {
-            let factor = pinch.scale / lastPinchScale
-            if (factor !== 1.0) {
-                videoWindow.zoomAt(factor, pinch.center)
-            }
-            lastPinchScale = pinch.scale
-        }
-
-        VideoWindow {
-            id: videoWindow
-            objectName: "videoWindow"
+        PinchArea {
             anchors.fill: parent
+            pinch.target: videoWindow
 
-            maxZoom: 10000.0
+            property real lastPinchScale: 1.0
 
-            PointHandler {
-                id: pointHandler
-                acceptedButtons: Qt.LeftButton
-                // Enable this handler only when zoomed and NOT doing a selection drag
-                enabled: videoWindow.isZoomed && !isCtrlPressed
-
-                property point lastPosition: Qt.point(0, 0)
-
-                onActiveChanged: {
-                    isMouseDown = active
-                    if (active) {
-                        lastPosition = point.position
-                    }
-                }
-
-                onPointChanged: {
-                    if (active) {
-                        var currentPosition = point.position
-                        var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y)
-
-                        if (delta.x !== 0 || delta.y !== 0) {
-                            videoWindow.pan(delta)
-                        }
-
-                        lastPosition = currentPosition
-                    }
-                }
+            onPinchStarted: {
+                lastPinchScale = 1.0;
             }
-            
-            WheelHandler {
-                id: wheelHandler
-                acceptedModifiers: Qt.ControlModifier
 
-                property real lastRotation: wheelHandler.rotation
+            onPinchUpdated: {
+                let factor = pinch.scale / lastPinchScale;
+                if (factor !== 1.0) {
+                    videoWindow.zoomAt(factor, pinch.center);
+                }
+                lastPinchScale = pinch.scale;
+            }
+        }
 
-                onRotationChanged: {
-                    let delta = wheelHandler.rotation - wheelHandler.lastRotation;
+        PointHandler {
+            id: pointHandler
+            acceptedButtons: Qt.LeftButton
+            // Enable this handler only when zoomed and NOT doing a selection drag
+            enabled: videoWindow.isZoomed && !isCtrlPressed
 
-                    if (delta !== 0) {
-                        let factor = delta > 0 ? 1.2 : (1.0 / 1.2);
-                        videoWindow.zoomAt(factor, wheelHandler.point.position)
-                    }
+            property point lastPosition: Qt.point(0, 0)
 
-                    wheelHandler.lastRotation = wheelHandler.rotation;
+            onActiveChanged: {
+                isMouseDown = active;
+                if (active) {
+                    lastPosition = point.position;
                 }
             }
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton
-                hoverEnabled: true // Needed for cursor shape changes
-                
-                cursorShape: {
-                    if (isCtrlPressed) return Qt.CrossCursor
-                    if (videoWindow.isZoomed) {
-                        return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor
-                    }
-                    return Qt.ArrowCursor
-                }
-                
-                onPressed: function(mouse) {
-                    if (isCtrlPressed) {
-                        // Force reset processing state, ensure new selection can start
-                        isProcessingSelection = false
-                        isSelecting = true
-                        selectionStart = Qt.point(mouse.x, mouse.y)
-                        selectionEnd = selectionStart
-                    } else {
-                        mouse.accepted = false
-                    }
-                }
-                
-                onPositionChanged: function(mouse) {
-                    if (isSelecting) {
-                        var currentPos = Qt.point(mouse.x, mouse.y)
-                        var deltaX = currentPos.x - selectionStart.x
-                        var deltaY = currentPos.y - selectionStart.y
+            onPointChanged: {
+                if (active) {
+                    var currentPosition = point.position;
+                    var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y);
 
-                        if (deltaX === 0 && deltaY === 0) return
+                    if (delta.x !== 0 || delta.y !== 0) {
+                        videoWindow.pan(delta);
+                    }
 
-                        selectionEnd = Qt.point(selectionStart.x + deltaX, selectionStart.y + deltaY)
-                        selectionCanvas.requestPaint()
-                    }
-                }
-                
-                onReleased: function(mouse) {
-                    if (isSelecting) {
-                        isSelecting = false
-                        isProcessingSelection = true
-                        
-                        // Calculate rectangle area
-                        var rect = Qt.rect(
-                            Math.min(selectionStart.x, selectionEnd.x),
-                            Math.min(selectionStart.y, selectionEnd.y),
-                            Math.abs(selectionEnd.x - selectionStart.x),
-                            Math.abs(selectionEnd.y - selectionStart.y)
-                        )
-                        
-                        console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height)
-                              
-                        videoWindow.setSelectionRect(rect)
-                        videoWindow.zoomToSelection()
-                        
-                        // Clear selection state, make rectangle disappear
-                        selectionStart = Qt.point(0, 0)
-                        selectionEnd = Qt.point(0, 0)
-                        selectionCanvas.requestPaint()
-                        isProcessingSelection = false
-                    }
+                    lastPosition = currentPosition;
                 }
             }
-        
+        }
+
+        WheelHandler {
+            id: wheelHandler
+            acceptedModifiers: Qt.ControlModifier
+
+            property real lastRotation: wheelHandler.rotation
+
+            onRotationChanged: {
+                let delta = wheelHandler.rotation - wheelHandler.lastRotation;
+
+                if (delta !== 0) {
+                    let factor = delta > 0 ? 1.2 : (1.0 / 1.2);
+                    videoWindow.zoomAt(factor, wheelHandler.point.position);
+                }
+
+                wheelHandler.lastRotation = wheelHandler.rotation;
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            hoverEnabled: true // Needed for cursor shape changes
+
+            cursorShape: {
+                if (isCtrlPressed)
+                    return Qt.CrossCursor;
+                if (videoWindow.isZoomed) {
+                    return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+                }
+                return Qt.ArrowCursor;
+            }
+
+            onPressed: function (mouse) {
+                if (isCtrlPressed) {
+                    // Force reset processing state, ensure new selection can start
+                    isProcessingSelection = false;
+                    isSelecting = true;
+                    selectionStart = Qt.point(mouse.x, mouse.y);
+                    selectionEnd = selectionStart;
+                } else {
+                    mouse.accepted = false;
+                }
+            }
+
+            onPositionChanged: function (mouse) {
+                if (isSelecting) {
+                    var currentPos = Qt.point(mouse.x, mouse.y);
+                    var deltaX = currentPos.x - selectionStart.x;
+                    var deltaY = currentPos.y - selectionStart.y;
+
+                    if (deltaX === 0 && deltaY === 0)
+                        return;
+                    selectionEnd = Qt.point(selectionStart.x + deltaX, selectionStart.y + deltaY);
+                    selectionCanvas.requestPaint();
+                }
+            }
+
+            onReleased: function (mouse) {
+                if (isSelecting) {
+                    isSelecting = false;
+                    isProcessingSelection = true;
+
+                    // Calculate rectangle area
+                    var rect = Qt.rect(Math.min(selectionStart.x, selectionEnd.x), Math.min(selectionStart.y, selectionEnd.y), Math.abs(selectionEnd.x - selectionStart.x), Math.abs(selectionEnd.y - selectionStart.y));
+
+                    console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
+
+                    videoWindow.setSelectionRect(rect);
+                    videoWindow.zoomToSelection();
+
+                    // Clear selection state, make rectangle disappear
+                    selectionStart = Qt.point(0, 0);
+                    selectionEnd = Qt.point(0, 0);
+                    selectionCanvas.requestPaint();
+                    isProcessingSelection = false;
+                }
+            }
+        }
+
         // Draw selection rectangle
-            Canvas {
-                id: selectionCanvas
-                anchors.fill: parent
-                z: 1
-                
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.clearRect(0, 0, width, height)
-                    if (isSelecting || (selectionStart.x !== 0 || selectionStart.y !== 0)) {
-                        var rect = Qt.rect(
-                            Math.min(selectionStart.x, selectionEnd.x),
-                            Math.min(selectionStart.y, selectionEnd.y),
-                            Math.abs(selectionEnd.x - selectionStart.x),
-                            Math.abs(selectionEnd.y - selectionStart.y)
-                        )
-                        ctx.fillStyle = "rgba(0, 0, 255, 0.2)"
-                        ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
-                        ctx.strokeStyle = "blue"
-                        ctx.lineWidth = 2
-                        ctx.strokeRect(rect.x, rect.y, rect.width, rect.height)
-                    }
+        Canvas {
+            id: selectionCanvas
+            anchors.fill: parent
+            z: 1
+
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                if (isSelecting || (selectionStart.x !== 0 || selectionStart.y !== 0)) {
+                    var rect = Qt.rect(Math.min(selectionStart.x, selectionEnd.x), Math.min(selectionStart.y, selectionEnd.y), Math.abs(selectionEnd.x - selectionStart.x), Math.abs(selectionEnd.y - selectionStart.y));
+                    ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+                    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+                    ctx.strokeStyle = "blue";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
                 }
             }
         }
     }
 
     footer: ToolBar {
+        background: Rectangle {
+            color: "#5d383838"
+        }
         ColumnLayout {
             id: panel
             anchors.left: parent.left
@@ -277,80 +264,54 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: 10
 
-            Row {
+            RowLayout {
                 id: controls
                 Layout.alignment: Qt.AlignHCenter
                 spacing: 10
 
+                // Play/Pause button
                 Button {
                     text: "Play/Pause"
                     onClicked: {
-                        videoController.togglePlayPause()
-                        keyHandler.focus = true //Do not change, Windows requires
+                        videoController.togglePlayPause();
+                        keyHandler.focus = true; //Do not change, Windows requires
                     }
                 }
 
-                Button {
-                    text: "Reset View"
-                    onClicked: {
-                        videoWindow.resetZoom()
-                        selectionStart = Qt.point(0, 0)
-                        selectionEnd = Qt.point(0, 0)
-                        isSelecting = false
-                        isProcessingSelection = false
-                        selectionCanvas.requestPaint()
-                        keyHandler.focus = true
-                    }
-                }
-
-                Button {
-                    text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
-                    onClicked: {
-                        toggleFullScreen()
-                        keyHandler.focus = true
-                    }
-                }
-            }
-
-            Row {
-                id: playbackControls
-                Layout.alignment: Qt.AlignHCenter
-                spacing: 10
-
-                // Control Row on top
+                // Direction switch
                 RowLayout {
-                    spacing: 12
-                    Layout.alignment: Qt.AlignLeft
+                    spacing: 6
 
-                    // Direction switch
-                    RowLayout {
-                        spacing: 6
+                    Text {
+                        text: "Direction:"
+                        color: "white"
+                    }
 
-                        Text { text: "Direction:"; color: "white" }
-
-                        Switch {
-                            id: directionSwitch
-                            checked: true
-                            onToggled: {
-                                const dir = checked ? "forward" : "reverse";
-                                videoController.toggleDirection();
-                                keyHandler.forceActiveFocus(); 
-                            }
-                        }
-
-                        Text {
-                            text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
-                            color: "white"
-                            verticalAlignment: Text.AlignVCenter
-                            Layout.preferredWidth: 80
-                            font.family: "monospace"
+                    Switch {
+                        id: directionSwitch
+                        checked: videoController.isForward
+                        onToggled: {
+                            videoController.toggleDirection();
+                            keyHandler.forceActiveFocus();
                         }
                     }
+
+                    Text {
+                        text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
+                        color: "white"
+                        verticalAlignment: Text.AlignVCenter
+                        Layout.preferredWidth: 80
+                        font.family: "monospace"
+                    }
+                }
 
                 // Speed selector combobox
                 RowLayout {
                     spacing: 6
-                    Text { text: "Speed:"; color: "white" }
+                    Text {
+                        text: "Speed:"
+                        color: "white"
+                    }
                     ComboBox {
                         id: speedSelector
                         model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
@@ -361,7 +322,7 @@ ApplicationWindow {
                         onCurrentIndexChanged: {
                             let speed = parseFloat(model[currentIndex].replace("x", ""));
                             videoController.setSpeed(speed);
-                            keyHandler.forceActiveFocus(); 
+                            keyHandler.forceActiveFocus();
                         }
 
                         onActivated: {
@@ -369,50 +330,70 @@ ApplicationWindow {
                         }
                     }
                 }
+
+                // Reset View Button
+                Button {
+                    text: "Reset View"
+                    onClicked: {
+                        videoWindow.resetZoom();
+                        selectionStart = Qt.point(0, 0);
+                        selectionEnd = Qt.point(0, 0);
+                        isSelecting = false;
+                        isProcessingSelection = false;
+                        selectionCanvas.requestPaint();
+                        keyHandler.focus = true;
+                    }
+                }
+
+                // Fullscreen toggle
+                Button {
+                    text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
+                    onClicked: {
+                        toggleFullScreen();
+                        keyHandler.focus = true;
+                    }
+                }
             }
-        }
 
-        RowLayout{
-            Layout.fillWidth: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-
-            // Time Slider
-            Slider {
-                id: timeSlider
+            RowLayout {
                 Layout.fillWidth: true
-                from: 0.0
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+
+                // Time Slider
+                Slider {
+                    id: timeSlider
+                    Layout.fillWidth: true
+                    from: 0.0
                     to: videoController.duration
                     value: dragging ? value : videoController.currentTimeMs
-                    
+
                     property bool dragging: false
 
-                onPressedChanged: {
-                    if (pressed) {
-                        dragging = true;
-                    } else {
-                        // On release: first seek to current value, then reset dragging state
-                        var finalPosition = value;
-                        videoController.seekTo(finalPosition);
-                        console.log("Slider released, seeking to: " + finalPosition);
-                        
-                        // Now change dragging state and return focus
-                        dragging = false;
-                        keyHandler.forceActiveFocus();
-                    }
+                    onPressedChanged: {
+                        if (pressed) {
+                            dragging = true;
+                        } else {
+                            // On release: first seek to current value, then reset dragging state
+                            var finalPosition = value;
+                            videoController.seekTo(finalPosition);
+                            console.log("Slider released, seeking to: " + finalPosition);
 
+                            // Now change dragging state and return focus
+                            dragging = false;
+                            keyHandler.forceActiveFocus();
+                        }
+                    }
                 }
             }
         }
     }
-}
-
 
     function toggleFullScreen() {
         if (mainWindow.visibility === Window.FullScreen) {
-            mainWindow.visibility = Window.Windowed
+            mainWindow.visibility = Window.Windowed;
         } else {
-            mainWindow.visibility = Window.FullScreen
+            mainWindow.visibility = Window.FullScreen;
         }
     }
 
@@ -424,6 +405,4 @@ ApplicationWindow {
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: 14
     }
-
-
 }
