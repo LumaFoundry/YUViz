@@ -70,11 +70,3 @@ void FrameQueue::updateTail(int64_t pts) {
         tail.store(pts, std::memory_order_release);
     }
 }
-
-void FrameQueue::clear() {
-    head.store(0, std::memory_order_release);
-    tail.store(0, std::memory_order_release);
-
-    // We don't need to actually clear the queue as it just gets overwritten
-    // We could in theory set all pts to -1, but that's unnecessary
-}

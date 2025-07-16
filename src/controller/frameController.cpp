@@ -144,6 +144,30 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     qDebug() << "\n";
 }
 
+void FrameController::onTimerStep(int64_t pts, int direction) {
+    qDebug() << "\nonTimerStep with pts" << pts << " for index" << m_index;
+
+    // Safe guard
+    if (pts < 0) {
+        qWarning() << "Negative PTS, cannot upload frame";
+        emit endOfVideo(m_index);
+        return;
+    }
+
+    // Upload requested Frame
+    FrameData* target = m_frameQueue->getHeadFrame(pts);
+    if (target) {
+        qDebug() << "Requested render for frame with PTS" << pts;
+        m_stepping = pts;
+        emit requestUpload(target);
+    } else {
+        qWarning() << "Cannot render frame" << pts;
+    }
+    qDebug() << "\n";
+
+    m_direction = direction;
+}
+
 // Handle frame decoding error and increment Tail
 void FrameController::onFrameDecoded(bool success) {
     if (!success) {
@@ -170,6 +194,18 @@ void FrameController::onFrameUploaded() {
         emit requestRender(m_frameQueue->getHeadFrame(m_seeking));
         m_seeking = -1;
     }
+
+    if (m_stepping != -1) {
+        qDebug() << "FrameController::Stepping frame is rendered";
+        requestRender(m_frameQueue->getHeadFrame(m_stepping));
+        if (!m_endOfVideo) {
+            // Request to decode more frames if needed
+            int framesToFill = m_frameQueue->getEmpty(m_direction);
+            qDebug() << "Frames to fill in queue:" << framesToFill;
+
+            emit requestDecode(framesToFill, m_direction);
+        }
+    }
 }
 
 void FrameController::onFrameRendered() {
@@ -182,6 +218,12 @@ void FrameController::onFrameRendered() {
     if (m_seeking != -1) {
         qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
+        return;
+    }
+
+    if (m_stepping != -1) {
+        qDebug() << "FrameController::Stepping frame is rendered";
+        m_stepping = -1; // Reset stepping after rendering
         return;
     }
 }

@@ -47,6 +47,9 @@ VideoController::VideoController(QObject* parent, std::vector<VideoFileInfo> vid
     connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::AutoConnection);
     qDebug() << "Connected Timer::tick to VideoController::onTick";
 
+    connect(m_timer.get(), &Timer::step, this, &VideoController::onStep, Qt::AutoConnection);
+    qDebug() << "Connected Timer::step to VideoController::onStep";
+
     connect(this, &VideoController::playTimer, m_timer.get(), &Timer::play, Qt::AutoConnection);
     qDebug() << "Connected VideoController::playTimer to Timer::play";
 
@@ -109,6 +112,21 @@ void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update,
         m_currentTimeMs = playingTimeMs;
         emit currentTimeMsChanged();
     }
+}
+
+void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
+    // qDebug() << "VideoController: onTick called";
+    qDebug() << "VideoController::Direcetion:" << m_direction;
+    for (size_t i = 0; i < m_frameControllers.size(); ++i) {
+        if (update[i]) {
+            m_frameControllers[i]->onTimerStep(pts[i], m_direction);
+            // qDebug() << "Emitted onTimerStep for FrameController index" << i << "with PTS" << pts[i];
+        }
+    }
+
+    // Update VC-local property and notify QML
+    m_currentTimeMs = playingTimeMs;
+    emit currentTimeMsChanged();
 }
 
 void VideoController::onReady(int index) {
