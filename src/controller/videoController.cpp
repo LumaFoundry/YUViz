@@ -117,7 +117,7 @@ void VideoController::onReady(int index) {
     if (m_readyCount == m_frameControllers.size()) {
         // All frame controllers are ready, start playback
         qDebug() << "Starting timer";
-        emit playTimer();
+        play();
     } else {
         qWarning() << "onReady: frame upload failed";
         ErrorReporter::instance().report("Frame upload failed");
@@ -130,24 +130,35 @@ void VideoController::onFCEndOfVideo(int index) {
     m_endCount++;
 
     if (m_endCount == m_frameControllers.size()) {
-        qDebug() << "All FrameControllers reached end of video, stopping playback";
-        m_reachedEnd = true;
-        emit pauseTimer();
-        m_endCount = 0;
-        m_isPlaying = false;
-        emit isPlayingChanged();
+        if (m_currentTimeMs > 0) {
+            qDebug() << "All FrameControllers reached end of video, stopping playback";
+            m_reachedEnd = true;
+            pause();
+            m_endCount = 0;
+        } else {
+            m_reachedEnd = false;
+            m_direction = 1;
+            m_uiDirection = 1;
+            pause();
+            emit directionChanged();
+            play();
+        }
     }
 }
 
 // Interface slots / signals
 void VideoController::play() {
+
+    m_direction = m_uiDirection;
+
     if (m_reachedEnd && m_timer->getStatus() == Status::Paused) {
         qDebug() << "VideoController::Restarting playback from beginning";
         seekTo(0.0);
         m_reachedEnd = false;
+        m_direction = 1;
+        m_uiDirection = 1;
+        emit directionChanged();
     }
-
-    m_direction = m_uiDirection;
 
     m_isPlaying = true;
     emit isPlayingChanged();
@@ -258,17 +269,15 @@ void VideoController::toggleDirection() {
         m_uiDirection = -1;
         m_direction = -1;
         qDebug() << "VideoController: Toggled direction to backward";
-
-        if (m_isPlaying) {
-            emit playBackwardTimer();
-        }
     } else {
         m_uiDirection = 1;
         m_direction = 1;
         qDebug() << "VideoController: Toggled direction to forward";
+    }
 
-        if (m_isPlaying) {
-            emit playForwardTimer();
-        }
+    emit directionChanged();
+
+    if (m_isPlaying) {
+        play();
     }
 }

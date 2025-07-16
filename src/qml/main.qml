@@ -289,9 +289,8 @@ ApplicationWindow {
 
                     Switch {
                         id: directionSwitch
-                        checked: true
+                        checked: videoController.isForward
                         onToggled: {
-                            const dir = checked ? "forward" : "reverse";
                             videoController.toggleDirection();
                             keyHandler.forceActiveFocus();
                         }

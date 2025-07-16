@@ -15,9 +15,6 @@ VideoWindow::VideoWindow(QQuickItem* parent) :
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     m_renderer = new VideoRenderer(this, metaPtr);
-    // connect(m_renderer, &VideoRenderer::batchIsFull, this, &VideoWindow::batchIsFull);
-    // connect(m_renderer, &VideoRenderer::batchIsEmpty, this, &VideoWindow::batchIsEmpty);
-    // connect(m_renderer, &VideoRenderer::rendererError, this, &VideoWindow::rendererError);
     if (window()) {
         update();
     } else {
@@ -40,6 +37,7 @@ qreal VideoWindow::getAspectRatio() const {
 
 void VideoWindow::uploadFrame(FrameData* frame) {
     // qDebug() << "VideoWindow::uploadFrame called in thread";
+    m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame);
 }
 
@@ -50,10 +48,6 @@ void VideoWindow::renderFrame() {
 
 void VideoWindow::setColorParams(AVColorSpace space, AVColorRange range) {
     m_renderer->setColorParams(space, range);
-}
-
-void VideoWindow::releaseBatch() {
-    m_renderer->releaseBatch();
 }
 
 void VideoWindow::batchIsFull() {
