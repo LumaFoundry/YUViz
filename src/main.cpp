@@ -138,7 +138,7 @@ int main(int argc, char* argv[]) {
 
     // TODO: Create and show window
     QQmlApplicationEngine engine;
-
+    qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
