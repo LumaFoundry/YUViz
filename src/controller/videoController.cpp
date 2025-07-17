@@ -99,7 +99,7 @@ void VideoController::start() {
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
-    // qDebug() << "VideoController::Direcetion:" << m_direction;
+    qDebug() << "VideoController::Tick Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
@@ -116,7 +116,7 @@ void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update,
 
 void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
-    qDebug() << "VideoController::Direcetion:" << m_direction;
+    qDebug() << "VideoController::Step Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
             m_frameControllers[i]->onTimerStep(pts[i], m_direction);

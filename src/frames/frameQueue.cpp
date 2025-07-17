@@ -24,7 +24,7 @@ FrameQueue::~FrameQueue() = default;
 int FrameQueue::getEmpty(int direction) {
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
-    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
+    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
 
     int empty = 0;
 
