@@ -162,10 +162,7 @@ void VideoDecoder::openFile() {
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
 void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
-    if (num_frames == 0) {
-        emit framesLoaded(true);
-        return;
-    }
+
     if (num_frames == 0) {
         emit framesLoaded(true);
         return;
@@ -186,17 +183,22 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         if (currentFrameIndex == 0) {
             qDebug() << "At the beginning of the video, cannot seek backward";
             m_frameQueue->updateTail(0);
+            ErrorReporter::instance().report("Cannot seek backward", LogLevel::Warning);
             emit framesLoaded(false);
             return;
         }
+        // currentFrameIndex = localTail - num_frames + 1;
         currentFrameIndex -= num_frames + 1;
         if (currentFrameIndex < 0) {
             currentFrameIndex = 0;
         }
         seekTo(currentFrameIndex);
+        qDebug() << "VideoDecoder::seeking to " << currentFrameIndex;
         // Make sure we don't load more than half of the queue size
         num_frames = std::min(num_frames, m_frameQueue->getSize() / 2);
     }
+
+    localTail = currentFrameIndex;
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -213,6 +215,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
     if (direction == 1) {
         m_frameQueue->updateTail(maxpts);
     } else {
+        // m_frameQueue->updateTail(localTail);
         m_frameQueue->updateTail(minpts);
     }
 

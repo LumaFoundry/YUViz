@@ -31,8 +31,6 @@ class FrameQueue {
 
     int getEmpty(int direction);
 
-    void clear();
-
   private:
     // Size of the queue
     const int queueSize = 50;

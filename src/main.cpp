@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (parser.isSet(framerateOption)) {
-        parser.value(framerateOption).toDouble();
+        framerate = parser.value(framerateOption).toDouble();
     }
 
     if (parser.isSet(resolutionOption)) {
