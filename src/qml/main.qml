@@ -100,10 +100,15 @@ ApplicationWindow {
         }
     }
 
+ColumnLayout {
+    anchors.fill: parent
+    spacing: 0
+
     VideoWindow {
         id: videoWindow
         objectName: "videoWindow_0"
-        anchors.fill: parent
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
         maxZoom: 10000.0
 
@@ -255,10 +260,11 @@ ApplicationWindow {
         }
     }
 
-    footer: ToolBar {
+    ToolBar {
         background: Rectangle {
             color: "#5d383838"
         }
+        Layout.fillWidth: true
         ColumnLayout {
             id: panel
             anchors.left: parent.left
@@ -390,6 +396,7 @@ ApplicationWindow {
             }
         }
     }
+}
 
     function toggleFullScreen() {
         if (mainWindow.visibility === Window.FullScreen) {
