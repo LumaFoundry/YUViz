@@ -339,6 +339,49 @@ ColumnLayout {
                     }
                 }
 
+                // Color Space selector combobox
+                RowLayout {
+                    spacing: 6
+                    Text {
+                        text: "Color Space:"
+                        color: "white"
+                    }
+                    ComboBox {
+                        id: colorSpaceSelector
+                        model: [
+                            "BT709",
+                            "BT709 Full", 
+                            "BT470BG",
+                            "BT470BG Full",
+                            "BT2020",
+                            "BT2020 Full"
+                        ]
+                        currentIndex: 0
+                        Layout.preferredWidth: 100
+                        displayText: model[currentIndex]
+
+                        onCurrentIndexChanged: {
+                            // define color space and range mapping
+                            let colorSpaceMap = [
+                                {space: 1, range: 1},  // BT709 MPEG
+                                {space: 1, range: 2},  // BT709 Full
+                                {space: 5, range: 1},  // BT470BG MPEG  
+                                {space: 5, range: 2},  // BT470BG Full
+                                {space: 10, range: 1}, // BT2020_CL MPEG
+                                {space: 10, range: 2}  // BT2020_CL Full
+                            ];
+                            
+                            let selected = colorSpaceMap[currentIndex];
+                            videoWindow.setColorParams(selected.space, selected.range);
+                            keyHandler.forceActiveFocus();
+                        }
+
+                        onActivated: {
+                            keyHandler.forceActiveFocus();
+                        }
+                    }
+                }
+
                 // Reset View Button
                 Button {
                     text: "Reset View"
