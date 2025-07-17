@@ -70,7 +70,7 @@ QSGNode* VideoWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
     }
     VideoRenderNode* node = static_cast<VideoRenderNode*>(oldNode);
     if (!node) {
-        node = new VideoRenderNode(window(), m_renderer);
+        node = new VideoRenderNode(this, m_renderer);
     }
     return node;
 }
