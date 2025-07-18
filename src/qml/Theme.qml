@@ -40,7 +40,7 @@ QtObject {
     property int sliderHeight: Math.round(24 * scaleFactor)
 
     // Icon sizes
-    property int iconSize: Math.round(120 * iconScaleFactor)
+    property int iconSize: Math.round(24 * scaleFactor)
 
     // Switch sizes
     property int switchWidth: Math.round(30 * scaleFactor)
