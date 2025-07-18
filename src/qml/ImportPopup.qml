@@ -15,6 +15,7 @@ Popup {
 
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
+    property var mainWindow
 
     background: Rectangle {
         color: "white"
@@ -46,7 +47,8 @@ Popup {
 
             FileDialog {
                 id: fileDialog
-                title: "Choose a YUV file"
+                title: "Choose a video file"
+                parentWindow: mainWindow
                 onAccepted: {
                     importPopup.selectedFile = selectedFile.toString().replace("file://", "");
                 }
