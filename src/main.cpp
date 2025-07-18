@@ -9,14 +9,16 @@
 #include <QSurface>
 #include <QTimer>
 #include <QWindow>
-#include <memory>
 #include <iostream>
+#include <memory>
 #include "controller/frameController.h"
 #include "controller/videoController.h"
 #include "decoder/videoDecoder.h"
 #include "rendering/videoRenderer.h"
+#include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
 #include "utils/videoFileInfo.h"
+
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
@@ -49,8 +51,7 @@ int main(int argc, char* argv[]) {
     QCommandLineOption resolutionOption(
         {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
-    QCommandLineOption yuvFormatOption(
-        {"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
+    QCommandLineOption yuvFormatOption({"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
     parser.addOption(yuvFormatOption);
     parser.process(app);
 
@@ -74,9 +75,8 @@ int main(int argc, char* argv[]) {
         height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
         if (!ok1 || !ok2) {
             qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-            std::cerr << "Error: Invalid dimensions for video: " 
-                      << parser.value(resolutionOption).split("x")[0].toStdString() 
-                      << " x " 
+            std::cerr << "Error: Invalid dimensions for video: "
+                      << parser.value(resolutionOption).split("x")[0].toStdString() << " x "
                       << parser.value(resolutionOption).split("x")[1].toStdString() << std::endl;
             return -1;
         }
@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
         } else if (yuvFormatStr == "444P") {
             yuvFormat = AV_PIX_FMT_YUV444P;
         } else {
-            std::cerr << "Error: Invalid YUV format: " << yuvFormatStr.toStdString() 
+            std::cerr << "Error: Invalid YUV format: " << yuvFormatStr.toStdString()
                       << ". Supported formats: 420P, 422P, 444P" << std::endl;
             return -1;
         }
@@ -107,13 +107,14 @@ int main(int argc, char* argv[]) {
 
     // Check if the file is a .yuv file and require specific flags
     if (filename.toLower().endsWith(".yuv")) {
-        bool hasAllFlags = parser.isSet(framerateOption) && 
-                          parser.isSet(resolutionOption) && 
-                          parser.isSet(yuvFormatOption);
-        
+        bool hasAllFlags =
+            parser.isSet(framerateOption) && parser.isSet(resolutionOption) && parser.isSet(yuvFormatOption);
+
         if (!hasAllFlags) {
             qWarning() << "For .yuv files, all required flags must be specified";
-            std::cerr << "Error: For .yuv files, the following flags are required: -f/--framerate, -r/--resolution, -y/--yuv-format" << std::endl;
+            std::cerr << "Error: For .yuv files, the following flags are required: -f/--framerate, -r/--resolution, "
+                         "-y/--yuv-format"
+                      << std::endl;
             return -1;
         }
     }
@@ -130,13 +131,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // TODO: Need a better safe guard to check arguments
-    // Check if we have at least one video (needs 3 arguments per video)
-    // if (args.size() < 3 || args.size() % 4 != 0) {
-    //     parser.showHelp(-1);
-    // }
-
-    // TODO: Create and show window
     QQmlApplicationEngine engine;
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
@@ -147,50 +141,16 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr);
+    VideoLoader videoLoader(&engine, nullptr, videoController);
+
     std::vector<VideoFileInfo> videoFiles;
+    engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
 
-    // === Test Code - please remove later === //
-    int videoCount = 1;
-    // === Test Code - please remove later === //
-
-    engine.rootContext()->setContextProperty("videoCount", videoCount);
-
-    QObject* root = engine.rootObjects().first();
-
-    for (int i = 0; i < videoCount; i++) {
-        QString windowName = QString("videoWindow_%1").arg(i);
-
-        auto* windowPtr = root->findChild<VideoWindow*>(windowName);
-
-        if (!windowPtr) {
-            qDebug() << "windowPtr is NULL for window name:" << windowName;
-        }
-        windowPtr->setAspectRatio(width, height);
-
-        VideoFileInfo videoFileInfo;
-        videoFileInfo.filename = filename;
-        videoFileInfo.width = width;
-        videoFileInfo.height = height;
-        videoFileInfo.pixelFormat = yuvFormat;
-        // videoFileInfo.framerate = framerate;
-        videoFileInfo.windowPtr = windowPtr;
-
-        // === Test Code - please remove later === //
-        videoFileInfo.framerate = (i == 0) ? framerate : 24.0;
-        // === Test Code - please remove later === //
-
-        videoFiles.push_back(videoFileInfo);
-    }
+    // videoLoader.loadVideo(filename, width, height, framerate);
+    engine.rootContext()->setContextProperty("videoController", videoController.get());
 
     qDebug() << "Number of video files to play:" << videoFiles.size();
-
-    qDebug() << "Creating VideoController";
-    VideoController videoController(nullptr, videoFiles);
-    qDebug() << "VideoController created successfully";
-
-    videoController.start();
-
-    engine.rootContext()->setContextProperty("videoController", &videoController);
 
     return app.exec();
 }

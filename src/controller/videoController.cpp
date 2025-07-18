@@ -5,41 +5,72 @@ VideoController::VideoController(QObject* parent, std::vector<VideoFileInfo> vid
     QObject(parent) {
     qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
 
-    std::vector<AVRational> timeBases;
-
     // Creating FC for each video
-    int fc_index = 0;
     for (const auto& videoFile : videoFiles) {
-        qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << fc_index;
-
-        // qDebug() << "Decoder opened file:" << videoFile.filename;
-        auto frameController = std::make_unique<FrameController>(nullptr, videoFile, fc_index);
-        qDebug() << "Created FrameController for index" << fc_index;
-
-        // Connect each FC's upload signal to VC's slot
-        connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
-        qDebug() << "Connected FrameController::ready to VideoController::onReady";
-
-        connect(frameController.get(),
-                &FrameController::endOfVideo,
-                this,
-                &VideoController::onFCEndOfVideo,
-                Qt::AutoConnection);
-        qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
-
-        timeBases.push_back(frameController->getTimeBase());
-
-        // Get the max duration from all FC (in theory they should all be the same)
-        m_duration = m_duration > frameController->getDuration() ? m_duration : frameController->getDuration();
-
-        m_frameControllers.push_back(std::move(frameController));
-        qDebug() << "FrameController count now:" << m_frameControllers.size();
-
-        fc_index++;
+        addVideo(videoFile);
     }
 
-    qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
-    m_timer = std::make_unique<Timer>(nullptr, timeBases);
+    if (!m_frameControllers.empty()) {
+        qDebug() << "All FrameControllers created. Total count:" << m_frameControllers.size();
+        m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
+        setUpTimer();
+    }
+}
+
+VideoController::~VideoController() {
+    qDebug() << "VideoController destructor called";
+
+    emit stopTimer();
+
+    m_frameControllers.clear();
+
+    m_timerThread.quit();
+    m_timerThread.wait();
+}
+
+void VideoController::addVideo(VideoFileInfo videoFile) {
+
+    if (m_timer != nullptr) {
+        m_timer.reset();
+        m_timeBases.clear();
+    }
+
+    m_currentTimeMs = 0;
+    emit currentTimeMsChanged();
+
+    qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << m_videoCount;
+
+    // qDebug() << "Decoder opened file:" << videoFile.filename;
+    auto frameController = std::make_unique<FrameController>(nullptr, videoFile, m_videoCount);
+    qDebug() << "Created FrameController for index" << m_videoCount;
+
+    // Connect each FC's upload signal to VC's slot
+    connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
+    qDebug() << "Connected FrameController::ready to VideoController::onReady";
+
+    connect(frameController.get(),
+            &FrameController::endOfVideo,
+            this,
+            &VideoController::onFCEndOfVideo,
+            Qt::AutoConnection);
+    qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
+
+    m_timeBases.push_back(frameController->getTimeBase());
+
+    // Get the max duration from all FC (in theory they should all be the same)
+    m_duration = std::max(m_duration, frameController->getDuration());
+    emit durationChanged();
+
+    m_frameControllers.push_back(std::move(frameController));
+    qDebug() << "FrameController count now:" << m_frameControllers.size();
+
+    m_videoCount++;
+
+    m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
+    setUpTimer();
+}
+
+void VideoController::setUpTimer() {
     m_timer->moveToThread(&m_timerThread);
     qDebug() << "Move timer to thread" << &m_timerThread;
 
@@ -76,17 +107,6 @@ VideoController::VideoController(QObject* parent, std::vector<VideoFileInfo> vid
 
     // Start timer thread
     m_timerThread.start();
-}
-
-VideoController::~VideoController() {
-    qDebug() << "VideoController destructor called";
-
-    emit stopTimer();
-
-    m_frameControllers.clear();
-
-    m_timerThread.quit();
-    m_timerThread.wait();
 }
 
 void VideoController::start() {
@@ -134,8 +154,8 @@ void VideoController::onReady(int index) {
     qDebug() << "Ready count =" << m_readyCount;
     if (m_readyCount == m_frameControllers.size()) {
         // All frame controllers are ready, start playback
-        qDebug() << "Starting timer";
-        play();
+        // qDebug() << "Starting timer";
+        m_ready = true;
     } else {
         qWarning() << "onReady: frame upload failed";
         ErrorReporter::instance().report("Frame upload failed");
@@ -166,6 +186,13 @@ void VideoController::onFCEndOfVideo(int index) {
 
 // Interface slots / signals
 void VideoController::play() {
+
+    if (!m_ready) {
+        return;
+    }
+
+    m_currentTimeMs = 0;
+    emit currentTimeMsChanged();
 
     m_direction = m_uiDirection;
 

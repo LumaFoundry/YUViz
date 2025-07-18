@@ -166,7 +166,9 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         if (direction == 1) {
             emit requestSeek(pts, m_frameQueue->getSize() / 2);
         } else {
-            emit requestSeek(pts - m_frameQueue->getSize() / 2, m_frameQueue->getSize() / 2);
+            // Safe guard for negative PTS
+            int64_t targetPts = std::max(pts - m_frameQueue->getSize() / 2, int64_t(0));
+            emit requestSeek(targetPts, m_frameQueue->getSize() / 2);
         }
     }
 

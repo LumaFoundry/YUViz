@@ -104,7 +104,8 @@ Popup {
                 enabled: !isYUV || filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))
                 onClicked: {
                     const res = resolutionInput.text.split("x");
-                    videoLoader.loadVideo(filePathInput.text, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text));
+                    const path = fileDialog.selectedFile;
+                    videoLoader.loadVideo(path, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text));
                     importPopup.close();
                 }
             }
