@@ -24,6 +24,10 @@ ApplicationWindow {
     property bool isMouseDown: false
     property bool resizing: false
 
+    ImportPopup {
+        id: importDialog
+    }
+
     Timer {
         id: resizeDebounce
         interval: 100
@@ -97,6 +101,31 @@ ApplicationWindow {
             if (event.key === Qt.Key_Escape && mainWindow.visibility === Window.FullScreen) {
                 mainWindow.visibility = Window.Windowed;
                 event.accepted = true;
+            }
+        }
+    }
+
+    menuBar: MenuBar {
+        background: Rectangle {
+            color: "#96ffffff"
+        }
+        font.pixelSize: Theme.fontSizeNormal
+
+        Menu {
+            title: "File"
+            Action {
+                text: "Open"
+                onTriggered: importDialog.open()
+            }
+            Action {
+                text: "Exit"
+                onTriggered: Qt.quit()
+            }
+        }
+        Menu {
+            title: "Help"
+            Action {
+                text: "About"
             }
         }
     }
@@ -278,12 +307,23 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 10
 
-                    ToolButton {
-                        icon.name: videoController.isPlaying ? "media-playback-pause" : "media-playback-start"
-                        icon.color: Theme.iconColor
-                        icon.width: Theme.iconSize
-                        icon.height: Theme.iconSize
-                        background: null
+                    Button {
+                        id: playPauseButton
+                        text: videoController.isPlaying ? "⏸" : "▶"
+                        Layout.preferredWidth: Theme.iconSize
+                        Layout.preferredHeight: Theme.iconSize
+                        background: Rectangle {
+                            color: "#5d383838"
+                        }
+
+                        contentItem: Text {
+                            text: playPauseButton.text
+                            font.pixelSize: playPauseButton.font.pixelSize
+                            color: Theme.iconColor
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.centerIn: parent
+                        }
 
                         onClicked: {
                             videoController.togglePlayPause();
@@ -304,7 +344,7 @@ ApplicationWindow {
                         Switch {
                             id: directionSwitch
                             checked: videoController.isForward
-                            scale: Qt.platform.os === "osx" ? 0.8 : 0.7
+                            scale: 0.8
                             onToggled: {
                                 videoController.toggleDirection();
                                 keyHandler.forceActiveFocus();
@@ -429,12 +469,24 @@ ApplicationWindow {
                     }
 
                     // Fullscreen toggle
-                    ToolButton {
-                        icon.name: mainWindow.visibility === Window.FullScreen ? "view-restore" : "view-fullscreen"
-                        icon.color: Theme.iconColor
-                        icon.width: Theme.iconSize
-                        icon.height: Theme.iconSize
-                        background: null
+                    Button {
+                        id: fullscreenButton
+                        Layout.preferredWidth: Theme.iconSize
+                        Layout.preferredHeight: Theme.iconSize
+                        text: mainWindow.visibility === Window.FullScreen ? "🗗" : "⤢"
+                        font.pixelSize: Theme.fontSizeNormal
+                        background: Rectangle {
+                            color: "#5d383838"
+                        }
+
+                        contentItem: Text {
+                            text: fullscreenButton.text
+                            font.pixelSize: fullscreenButton.font.pixelSize
+                            color: Theme.iconColor
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.centerIn: parent
+                        }
 
                         // Use the toggleFullScreen function to handle fullscreen state
                         onClicked: {
