@@ -15,6 +15,7 @@ QtObject {
     // Device-scale factor (defaults to 1.0, scales on high DPI)
     // readonly property real scaleFactor: Screen.logicalPixelDensity / 96
     readonly property real scaleFactor: 1.0
+    readonly property real iconScaleFactor: Screen.logicalPixelDensity / 96
 
     // Fonts
     property int fontSizeSmall: Math.round(12 * scaleFactor)
@@ -39,7 +40,7 @@ QtObject {
     property int sliderHeight: Math.round(24 * scaleFactor)
 
     // Icon sizes
-    property int iconSize: Math.round(6 * scaleFactor)
+    property int iconSize: Math.round(120 * iconScaleFactor)
 
     // Switch sizes
     property int switchWidth: Math.round(30 * scaleFactor)
