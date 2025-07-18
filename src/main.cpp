@@ -14,6 +14,7 @@
 #include "controller/videoController.h"
 #include "decoder/videoDecoder.h"
 #include "rendering/videoRenderer.h"
+#include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
 #include "utils/videoFileInfo.h"
 
@@ -92,13 +93,6 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    // TODO: Need a better safe guard to check arguments
-    // Check if we have at least one video (needs 3 arguments per video)
-    // if (args.size() < 3 || args.size() % 4 != 0) {
-    //     parser.showHelp(-1);
-    // }
-
-    // TODO: Create and show window
     QQmlApplicationEngine engine;
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
@@ -109,49 +103,16 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr);
+    VideoLoader videoLoader(&engine, nullptr, videoController);
+
     std::vector<VideoFileInfo> videoFiles;
+    engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
 
-    // === Test Code - please remove later === //
-    int videoCount = 1;
-    // === Test Code - please remove later === //
-
-    engine.rootContext()->setContextProperty("videoCount", videoCount);
-
-    QObject* root = engine.rootObjects().first();
-
-    for (int i = 0; i < videoCount; i++) {
-        QString windowName = QString("videoWindow_%1").arg(i);
-
-        auto* windowPtr = root->findChild<VideoWindow*>(windowName);
-
-        if (!windowPtr) {
-            qDebug() << "windowPtr is NULL for window name:" << windowName;
-        }
-        windowPtr->setAspectRatio(width, height);
-
-        VideoFileInfo videoFileInfo;
-        videoFileInfo.filename = filename;
-        videoFileInfo.width = width;
-        videoFileInfo.height = height;
-        // videoFileInfo.framerate = framerate;
-        videoFileInfo.windowPtr = windowPtr;
-
-        // === Test Code - please remove later === //
-        videoFileInfo.framerate = (i == 0) ? framerate : 24.0;
-        // === Test Code - please remove later === //
-
-        videoFiles.push_back(videoFileInfo);
-    }
+    // videoLoader.loadVideo(filename, width, height, framerate);
+    engine.rootContext()->setContextProperty("videoController", videoController.get());
 
     qDebug() << "Number of video files to play:" << videoFiles.size();
-
-    qDebug() << "Creating VideoController";
-    VideoController videoController(nullptr, videoFiles);
-    qDebug() << "VideoController created successfully";
-
-    videoController.start();
-
-    engine.rootContext()->setContextProperty("videoController", &videoController);
 
     return app.exec();
 }

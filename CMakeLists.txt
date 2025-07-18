@@ -52,6 +52,7 @@ set(SRC
   src/decoder/videoDecoder.cpp
   src/utils/errorReporter.cpp
   src/ui/videoWindow.cpp
+  src/ui/videoLoader.cpp
   src/qml/qml.qrc
 )
 
