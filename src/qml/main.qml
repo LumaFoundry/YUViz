@@ -348,7 +348,7 @@ ApplicationWindow {
 
                     Button {
                         id: playPauseButton
-                        text: videoController.isPlaying ? "⏸" : "▶"
+                        text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
                         Layout.preferredWidth: Theme.iconSize
                         Layout.preferredHeight: Theme.iconSize
                         background: Rectangle {
@@ -382,7 +382,7 @@ ApplicationWindow {
 
                         Switch {
                             id: directionSwitch
-                            checked: videoController.isForward
+                            checked: videoController ? videoController.isForward : true
                             scale: 0.8
                             onToggled: {
                                 videoController.toggleDirection();
@@ -548,8 +548,8 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.sliderHeight
 
                         from: 0.0
-                        to: videoController.duration
-                        value: dragging ? value : videoController.currentTimeMs
+                        to: videoController ? videoController.duration : 0
+                        value: dragging ? value : videoController ? videoController.currentTimeMs : 0
                         topPadding: Theme.sliderHandleSize / 2
                         bottomPadding: Theme.sliderHandleSize / 2
 
