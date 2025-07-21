@@ -16,6 +16,7 @@ Popup {
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
     property var mainWindow
+    signal accepted
 
     background: Rectangle {
         color: "white"
@@ -107,6 +108,7 @@ Popup {
                     const path = fileDialog.selectedFile;
                     videoLoader.loadVideo(path, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text));
                     importPopup.close();
+                    importPopup.accepted();
                 }
             }
         }
