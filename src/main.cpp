@@ -10,6 +10,7 @@
 #include <QTimer>
 #include <QWindow>
 #include <memory>
+#include <iostream>
 #include "controller/frameController.h"
 #include "controller/videoController.h"
 #include "decoder/videoDecoder.h"
@@ -49,7 +50,7 @@ int main(int argc, char* argv[]) {
         {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
     QCommandLineOption yuvFormatOption(
-        {"y", "yuv-format"}, QLatin1String("YUV pixel format (420, 422, 444)"), QLatin1String("format"));
+        {"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
     parser.addOption(yuvFormatOption);
     parser.process(app);
 
@@ -73,11 +74,10 @@ int main(int argc, char* argv[]) {
         height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
         if (!ok1 || !ok2) {
             qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-            QMessageBox::critical(nullptr,
-                                  "Error",
-                                  QString("Invalid dimensions for video: %1 x %2")
-                                      .arg(parser.value(resolutionOption).split("x")[0])
-                                      .arg(parser.value(resolutionOption).split("x")[1]));
+            std::cerr << "Error: Invalid dimensions for video: " 
+                      << parser.value(resolutionOption).split("x")[0].toStdString() 
+                      << " x " 
+                      << parser.value(resolutionOption).split("x")[1].toStdString() << std::endl;
             return -1;
         }
     }
@@ -91,14 +91,32 @@ int main(int argc, char* argv[]) {
         } else if (yuvFormatStr == "444P") {
             yuvFormat = AV_PIX_FMT_YUV444P;
         } else {
-            QMessageBox::critical(nullptr,
-                                  "Error",
-                                  QString("Invalid YUV format: %1. Supported formats: 420P, 422P, 444P").arg(yuvFormatStr));
+            std::cerr << "Error: Invalid YUV format: " << yuvFormatStr.toStdString() 
+                      << ". Supported formats: 420P, 422P, 444P" << std::endl;
             return -1;
         }
     }
 
+    if (args.isEmpty()) {
+        qWarning() << "No file specified";
+        std::cerr << "Error: No file specified" << std::endl;
+        parser.showHelp(-1);
+    }
+
     QString filename = args.first();
+
+    // Check if the file is a .yuv file and require specific flags
+    if (filename.toLower().endsWith(".yuv")) {
+        bool hasAllFlags = parser.isSet(framerateOption) && 
+                          parser.isSet(resolutionOption) && 
+                          parser.isSet(yuvFormatOption);
+        
+        if (!hasAllFlags) {
+            qWarning() << "For .yuv files, all required flags must be specified";
+            std::cerr << "Error: For .yuv files, the following flags are required: -f/--framerate, -r/--resolution, -y/--yuv-format" << std::endl;
+            return -1;
+        }
+    }
 
     qDebug() << "Parsed command-line options. File: " << parser.value(filename)
              << "Resolution: " << parser.value(resolutionOption) << "Framerate: " << parser.value(framerateOption);
@@ -107,8 +125,8 @@ int main(int argc, char* argv[]) {
              << "Framerate: " << parser.value(framerateOption);
 
     if (!QFile::exists(filename)) {
-        qWarning() << "YUV file does not exist:" << filename;
-        QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(filename));
+        qWarning() << "File does not exist:" << filename;
+        std::cerr << "Error: File does not exist: " << filename.toStdString() << std::endl;
         return -1;
     }
 
