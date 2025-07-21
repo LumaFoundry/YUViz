@@ -39,6 +39,7 @@ int main(int argc, char* argv[]) {
     int width = 1920;
     int height = 1080;
     double framerate = 25.0;
+    AVPixelFormat yuvFormat = AV_PIX_FMT_YUV420P; // Default to 420
 
     QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
     parser.addOption(debugOption);
@@ -47,6 +48,9 @@ int main(int argc, char* argv[]) {
     QCommandLineOption resolutionOption(
         {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
+    QCommandLineOption yuvFormatOption(
+        {"y", "yuv-format"}, QLatin1String("YUV pixel format (420, 422, 444)"), QLatin1String("format"));
+    parser.addOption(yuvFormatOption);
     parser.process(app);
 
     if (parser.isSet(debugOption)) {
@@ -74,6 +78,22 @@ int main(int argc, char* argv[]) {
                                   QString("Invalid dimensions for video: %1 x %2")
                                       .arg(parser.value(resolutionOption).split("x")[0])
                                       .arg(parser.value(resolutionOption).split("x")[1]));
+            return -1;
+        }
+    }
+
+    if (parser.isSet(yuvFormatOption)) {
+        QString yuvFormatStr = parser.value(yuvFormatOption);
+        if (yuvFormatStr == "420P") {
+            yuvFormat = AV_PIX_FMT_YUV420P;
+        } else if (yuvFormatStr == "422P") {
+            yuvFormat = AV_PIX_FMT_YUV422P;
+        } else if (yuvFormatStr == "444P") {
+            yuvFormat = AV_PIX_FMT_YUV444P;
+        } else {
+            QMessageBox::critical(nullptr,
+                                  "Error",
+                                  QString("Invalid YUV format: %1. Supported formats: 420P, 422P, 444P").arg(yuvFormatStr));
             return -1;
         }
     }
@@ -133,6 +153,7 @@ int main(int argc, char* argv[]) {
         videoFileInfo.filename = filename;
         videoFileInfo.width = width;
         videoFileInfo.height = height;
+        videoFileInfo.pixelFormat = yuvFormat;
         // videoFileInfo.framerate = framerate;
         videoFileInfo.windowPtr = windowPtr;
 
