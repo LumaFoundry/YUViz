@@ -113,9 +113,6 @@ ApplicationWindow {
     }
 
     menuBar: MenuBar {
-        background: Rectangle {
-            color: "#96ffffff"
-        }
         font.pixelSize: Theme.fontSizeNormal
 
         Menu {
@@ -133,6 +130,40 @@ ApplicationWindow {
             title: "Help"
             Action {
                 text: "About"
+            }
+        }
+
+        delegate: MenuBarItem {
+            id: menuBarItem
+
+            contentItem: Text {
+                text: menuBarItem.text
+                font: menuBarItem.font
+                opacity: enabled ? 1.0 : 0.3
+                color: menuBarItem.highlighted ? "#000000" : Theme.textColor
+                horizontalAlignment: Text.AlignLeft
+                verticalAlignment: Text.AlignVCenter
+                elide: Text.ElideRight
+            }
+
+            background: Rectangle {
+                implicitWidth: 40
+                implicitHeight: 40
+                opacity: enabled ? 1 : 0.3
+                color: menuBarItem.highlighted ? Theme.textColor : "transparent"
+            }
+        }
+
+        background: Rectangle {
+            implicitWidth: 40
+            implicitHeight: 40
+            color: "#5d383838"
+
+            Rectangle {
+                color: Theme.textColor
+                width: parent.width
+                height: 1
+                anchors.bottom: parent.bottom
             }
         }
     }
