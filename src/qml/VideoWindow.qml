@@ -153,4 +153,8 @@ VideoWindow {
             }
         }
     }
+
+    function resetSelectionCanvas() {
+        selectionCanvas.requestPaint();
+    }
 }

@@ -17,6 +17,7 @@ Popup {
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
     property var mainWindow
+    signal videoImported(string filePath, int width, int height, double fps, bool add)
     signal accepted
 
     background: Rectangle {
@@ -107,10 +108,13 @@ Popup {
                 enabled: !isYUV || filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))
                 onClicked: {
                     const res = resolutionInput.text.split("x");
-                    const path = fileDialog.selectedFile;
-                    videoLoader.loadVideo(path, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text), true);
+                    const filePath = fileDialog.selectedFile;
+                    let width = isYUV ? parseInt(res[0]) : 0;
+                    let height = isYUV ? parseInt(res[1]) : 0;
+                    let fps = isYUV ? parseFloat(fpsInput.text) : 0;
+                    let add = mode === "add";
+                    importPopup.videoImported(filePath, width, height, fps, add);
                     importPopup.close();
-                    importPopup.accepted();
                 }
             }
         }
