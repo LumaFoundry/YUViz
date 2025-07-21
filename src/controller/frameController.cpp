@@ -20,8 +20,7 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     m_Decoder->setFrameQueue(m_frameQueue);
 
     m_window = videoFileInfo.windowPtr;
-    qDebug() << "Created and showed VideoWindow for index" << m_index << "API"
-             << static_cast<int>(videoFileInfo.graphicsApi);
+    qDebug() << "Created and showed VideoWindow for index" << m_index;
 
     m_window->initialize(m_frameMeta);
 
@@ -101,7 +100,7 @@ void FrameController::start() {
 
 // Slots Definitions
 void FrameController::onTimerTick(int64_t pts, int direction) {
-    qDebug() << "\nonTimerTick with pts" << pts << " for index" << m_index;
+    qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
@@ -146,7 +145,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
 }
 
 void FrameController::onTimerStep(int64_t pts, int direction) {
-    qDebug() << "\nonTimerStep with pts" << pts << " for index" << m_index;
+    qDebug() << "onTimerStep with pts" << pts << " for index" << m_index;
 
     // Safe guard
     if (pts < 0) {

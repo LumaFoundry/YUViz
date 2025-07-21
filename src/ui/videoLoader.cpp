@@ -8,7 +8,7 @@ VideoLoader::VideoLoader(QQmlApplicationEngine* engine, QObject* parent, std::sh
     m_vcPtr(vcPtr) {
 }
 
-void VideoLoader::loadVideo(const QString& filePath, int width, int height, double fps) {
+void VideoLoader::loadVideo(const QString& filePath, int width, int height, double fps, bool add) {
     QString path = QUrl(filePath).toLocalFile();
     // QString path = filePath;
 
@@ -33,8 +33,14 @@ void VideoLoader::loadVideo(const QString& filePath, int width, int height, doub
     info.framerate = fps;
     info.windowPtr = windowPtr;
 
-    qDebug() << "adding video" << info.filename;
-    m_vcPtr->addVideo(info);
+    if (add) {
+        qDebug() << "adding video" << info.filename;
+        m_vcPtr->addVideo(info);
+    } else {
+        qDebug() << "resetting video" << info.filename;
+        // m_vcPtr->resetVideo(info);
+    }
+
     qDebug() << "starting vc";
     m_vcPtr->start();
 }

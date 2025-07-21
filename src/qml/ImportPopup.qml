@@ -13,6 +13,7 @@ Popup {
     x: (parent ? (parent.width - width) / 2 : 0)
     y: (parent ? (parent.height - height) / 2 : 0)
 
+    property string mode: "new"  // "new" or "add"
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
     property var mainWindow
@@ -102,12 +103,12 @@ Popup {
             }
 
             Button {
-                text: "Load"
+                text: mode === "add" ? "Add" : "Load"
                 enabled: !isYUV || filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))
                 onClicked: {
                     const res = resolutionInput.text.split("x");
                     const path = fileDialog.selectedFile;
-                    videoLoader.loadVideo(path, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text));
+                    videoLoader.loadVideo(path, parseInt(res[0]), parseInt(res[1]), parseFloat(fpsInput.text), true);
                     importPopup.close();
                     importPopup.accepted();
                 }
