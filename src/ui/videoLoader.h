@@ -14,7 +14,7 @@ class VideoLoader : public QObject {
                          QObject* parent = nullptr,
                          std::shared_ptr<VideoController> vcPtr = nullptr);
 
-    Q_INVOKABLE void loadVideo(const QString& filePath, int width, int height, double fps);
+    Q_INVOKABLE void loadVideo(const QString& filePath, int width, int height, double fps, bool add);
 
   private:
     QQmlApplicationEngine* m_engine;
