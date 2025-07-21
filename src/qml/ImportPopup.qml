@@ -50,6 +50,7 @@ Popup {
                 id: fileDialog
                 title: "Choose a video file"
                 parentWindow: mainWindow
+                options: FileDialog.DontUseNativeDialog
                 onAccepted: {
                     importPopup.selectedFile = selectedFile.toString().replace("file://", "");
                 }
