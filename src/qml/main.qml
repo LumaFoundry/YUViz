@@ -15,6 +15,7 @@ ApplicationWindow {
     flags: Qt.Window
     visibility: Window.Windowed
 
+    property bool videoLoaded: false
     property bool isCtrlPressed: false
     property bool isSelecting: false
     property bool wasPlayingBeforeResize: false
@@ -27,6 +28,10 @@ ApplicationWindow {
     ImportPopup {
         id: importDialog
         mainWindow: mainWindow
+        onAccepted: {
+            videoLoaded = true;
+            keyHandler.forceActiveFocus();
+        }
     }
 
     Timer {
@@ -68,6 +73,7 @@ ApplicationWindow {
         id: keyHandler
         anchors.fill: parent
         focus: true
+        enabled: videoLoaded
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Space) {
                 // console.log("Space key pressed");
@@ -295,6 +301,7 @@ ApplicationWindow {
             background: Rectangle {
                 color: "#5d383838"
             }
+            enabled: videoLoaded
             Layout.fillWidth: true
             ColumnLayout {
                 id: panel

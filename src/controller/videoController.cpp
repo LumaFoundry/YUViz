@@ -154,7 +154,7 @@ void VideoController::onReady(int index) {
     qDebug() << "Ready count =" << m_readyCount;
     if (m_readyCount == m_frameControllers.size()) {
         // All frame controllers are ready, start playback
-        // qDebug() << "Starting timer";
+        qDebug() << "Ready = true";
         m_ready = true;
     } else {
         qWarning() << "onReady: frame upload failed";
