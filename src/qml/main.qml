@@ -24,15 +24,23 @@ ApplicationWindow {
     property bool isMouseDown: false
     property bool resizing: false
 
+    property string importedFilePath: ""
+    property int importedWidth: 0
+    property int importedHeight: 0
+    property double importedFps: 0
+    property bool importedAdd: false
+
     ImportPopup {
         id: importDialog
-        mainWindow: mainWindow
-        onAccepted: {
-            videoLoaded = true;
-            keyHandler.forceActiveFocus();
+        onVideoImported: function (filePath, width, height, fps, add) {
+            importedFilePath = filePath;
+            importedWidth = width;
+            importedHeight = height;
+            importedFps = fps;
+            importedAdd = add;
+            videoLoaded = true; // triggers loader
         }
     }
-
     Timer {
         id: resizeDebounce
         interval: 100
@@ -181,13 +189,46 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        VideoWindow {
-            id: videoWindow_0
-            objectName: "videoWindow_0"
+        Item {
+            id: videoArea
             Layout.fillWidth: true
             Layout.fillHeight: true
-        }
 
+            Loader {
+                id: videoWindowLoader
+                anchors.fill: parent
+                sourceComponent: videoLoaded ? videoWindowComponent : null
+                onItemChanged: {
+                    if (item !== null) {
+                        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, true);
+                        keyHandler.focus = true;
+                    }
+                }
+            }
+
+            Component {
+                id: videoWindowComponent
+                VideoWindow {
+                    id: videoWindow_0
+                    objectName: "videoWindow_0"
+                    anchors.fill: parent
+                }
+            }
+
+            Rectangle {
+                id: placeholder
+                anchors.fill: parent
+                color: "#181818"
+                visible: !videoLoaded
+                z: -1
+                Text {
+                    anchors.centerIn: parent
+                    text: "No video loaded"
+                    color: Theme.textColor
+                    font.pointSize: Theme.fontSizeNormal
+                }
+            }
+        }
         ToolBar {
             background: Rectangle {
                 color: "#5d383838"
@@ -340,7 +381,7 @@ ApplicationWindow {
                                 ];
 
                                 let selected = colorSpaceMap[currentIndex];
-                                videoWindow_0.setColorParams(selected.space, selected.range);
+                                videoWindowLoader.item.setColorParams(selected.space, selected.range);
                                 keyHandler.forceActiveFocus();
                             }
 
@@ -357,12 +398,12 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
-                            videoWindow_0.resetZoom();
+                            videoWindowLoader.item.resetZoom();
                             selectionStart = Qt.point(0, 0);
                             selectionEnd = Qt.point(0, 0);
                             isSelecting = false;
                             isProcessingSelection = false;
-                            selectionCanvas.requestPaint();
+                            videoWindowLoader.item.resetSelectionCanvas();
                             keyHandler.focus = true;
                         }
                     }
