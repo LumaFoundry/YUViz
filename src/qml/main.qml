@@ -258,6 +258,192 @@ ColumnLayout {
                 }
             }
         }
+
+        // Pixel values overlay
+        Canvas {
+            id: pixelValuesCanvas
+            anchors.fill: parent
+            z: 2
+            visible: true
+
+            property var currentFrameData: null
+            property var frameMeta: null
+
+            // connect to VideoWindow signals
+            Connections {
+                target: videoWindow
+                function onFrameDataUpdated(frameData) {
+                    pixelValuesCanvas.currentFrameData = frameData
+                    pixelValuesCanvas.frameMeta = {
+                        yWidth: frameData.yWidth,
+                        yHeight: frameData.yHeight,
+                        uvWidth: frameData.uvWidth,
+                        uvHeight: frameData.uvHeight,
+                        format: frameData.format
+                    }
+                    pixelValuesCanvas.requestPaint()
+                }
+                
+                function onZoomChanged() {
+                    pixelValuesCanvas.requestPaint()
+                }
+                
+                function onCenterXChanged() {
+                    pixelValuesCanvas.requestPaint()
+                }
+                
+                function onCenterYChanged() {
+                    pixelValuesCanvas.requestPaint()
+                }
+            }
+
+            onPaint: {
+                try {
+                    var ctx = getContext("2d");
+                    if (!ctx) return;
+                    
+                    ctx.clearRect(0, 0, width, height);
+                    
+                    // pixel value threshold not working
+                    if (!currentFrameData || !currentFrameData.yData || videoWindow.zoom < videoWindow.pixelValueThreshold) {
+                        return;
+                    }
+                    
+                    var videoRect = getVideoRect();
+
+                    
+                    var yWidth = currentFrameData.yWidth;
+                    var yHeight = currentFrameData.yHeight;
+                    
+                    var pixelSpacing = Math.max(1, Math.floor(40 / videoWindow.zoom));
+                    
+                    var viewWidth = yWidth / videoWindow.zoom;
+                    var viewHeight = yHeight / videoWindow.zoom;
+                    
+                    var startX = Math.max(0, Math.floor((videoWindow.centerX - 0.5 / videoWindow.zoom) * yWidth));
+                    var endX = Math.min(yWidth, Math.ceil((videoWindow.centerX + 0.5 / videoWindow.zoom) * yWidth));
+                    var startY = Math.max(0, Math.floor((videoWindow.centerY - 0.5 / videoWindow.zoom) * yHeight));
+                    var endY = Math.min(yHeight, Math.ceil((videoWindow.centerY + 0.5 / videoWindow.zoom) * yHeight));
+                    
+                    // iterate over visible pixels and display YUV values
+                    for (var y = startY; y < endY; y += pixelSpacing) {
+                        for (var x = startX; x < endX; x += pixelSpacing) {
+                            if (x >= yWidth || y >= yHeight) continue;
+                            
+                            var yIndex = y * yWidth + x;
+                            if (yIndex >= currentFrameData.yData.length) continue;
+                            var yValue = currentFrameData.yData[yIndex];
+                            
+                            // get U, V values (YUV420 format, U, V are 2x2 sampled)
+                            // TODO: add support for 444 422 formats
+                            var ux = Math.floor(x / 2);
+                            var uy = Math.floor(y / 2);
+                            var uValue = 0, vValue = 0;
+                            
+                            if (ux < currentFrameData.uvWidth && uy < currentFrameData.uvHeight) {
+                                var uvIndex = uy * currentFrameData.uvWidth + ux;
+                                if (uvIndex < currentFrameData.uData.length) {
+                                    uValue = currentFrameData.uData[uvIndex];
+                                }
+                                if (uvIndex < currentFrameData.vData.length) {
+                                    vValue = currentFrameData.vData[uvIndex];
+                                }
+                            }
+                            
+                            // calculate normalized coordinates of pixel in video (pixel center)
+                            var normalizedX = (x + 0.5) / yWidth;
+                            var normalizedY = (y + 0.5) / yHeight;
+                            
+                            // apply scaling and translation
+                            var transformedX = (normalizedX - videoWindow.centerX) * videoWindow.zoom + 0.5;
+                            var transformedY = (normalizedY - videoWindow.centerY) * videoWindow.zoom + 0.5;
+                            
+                            // convert to screen coordinates
+                            var screenX = videoRect.x + transformedX * videoRect.width;
+                            var screenY = videoRect.y + transformedY * videoRect.height;
+                            
+                            // check if in screen range
+                            if (screenX >= 0 && screenX < width && screenY >= 0 && screenY < height) {
+                                drawPixelValue(ctx, screenX, screenY, yValue, uValue, vValue);
+                            }
+                        }
+                    }
+                    
+                } catch (error) {
+                    console.log("QML: Canvas onPaint error:", error);
+                }
+            }
+            
+            function getVideoRect() {
+                var itemRect = {width: width, height: height};
+                var videoRect = {x: 0, y: 0, width: itemRect.width, height: itemRect.height};
+                var windowAspect = itemRect.width / itemRect.height;
+                var videoAspect = videoWindow.getAspectRatio;
+                
+                if (windowAspect > videoAspect) {
+                    // window wider, height adapted, width centered
+                    var newWidth = videoAspect * itemRect.height;
+                    videoRect.x = (itemRect.width - newWidth) / 2.0;
+                    videoRect.width = newWidth;
+                } else {
+                    // window higher, width adapted, height centered
+                    var newHeight = itemRect.width / videoAspect;
+                    videoRect.y = (itemRect.height - newHeight) / 2.0;
+                    videoRect.height = newHeight;
+                }
+                
+                return videoRect;
+            }
+            
+            function drawPixelValue(ctx, x, y, yVal, uVal, vVal) {
+                try {
+                    var fontSize = Math.max(10, Math.min(16, 14 / videoWindow.zoom));
+                    var padding = Math.max(3, Math.min(10, 6 / videoWindow.zoom));
+                    var lineHeight = fontSize + 2;
+                    
+                    var text = "U" + uVal + "\nY" + yVal + "\nV" + vVal;
+                    var lines = text.split('\n');
+                    var maxWidth = 0;
+                    
+                    // temporarily set font to calculate text width
+                    var originalFont = ctx.font;
+                    ctx.font = fontSize + "px Consolas";
+                    
+                    for (var i = 0; i < lines.length; i++) {
+                        var textWidth = ctx.measureText(lines[i]).width;
+                        maxWidth = Math.max(maxWidth, textWidth);
+                    }
+                    
+                    // draw semi-transparent background
+                    var bgWidth = maxWidth + padding * 2;
+                    var bgHeight = lines.length * lineHeight + padding * 2;
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+                    ctx.fillRect(x - bgWidth/2, y - bgHeight/2, bgWidth, bgHeight);
+                    
+                    // draw text
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    
+                    for (var i = 0; i < lines.length; i++) {
+                        var textY = y - bgHeight/2 + padding + i * lineHeight + lineHeight/2;
+                        
+                        // draw black stroke
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = 1;
+                        ctx.strokeText(lines[i], x, textY);
+                        
+                        // draw white text
+                        ctx.fillStyle = "white";
+                        ctx.fillText(lines[i], x, textY);
+                    }
+                    
+                    // restore original font
+                    ctx.font = originalFont;
+                } catch (error) {
+                    console.log("QML: drawPixelValue error:", error);
+                }
+            }
+        }
     }
 
     ToolBar {
@@ -411,7 +597,7 @@ ColumnLayout {
         anchors.left: parent.left
         anchors.margins: 10
         color: "white"
-        text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
+        text: videoWindow.zoom.toFixed(2) + "x"
         font.pixelSize: 14
     }
 }
