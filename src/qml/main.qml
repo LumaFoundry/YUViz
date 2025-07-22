@@ -404,7 +404,7 @@ ColumnLayout {
                     var padding = Math.max(3, Math.min(9, 0.3 * videoWindow.zoom));
                     var lineHeight = fontSize + 2;
                     
-                    var text = "U" + uVal + "\nY" + yVal + "\nV" + vVal;
+                    var text = "Y" + yVal + "\nU" + uVal + "\nV" + vVal;
                     var lines = text.split('\n');
                     var maxWidth = 0;
                     
