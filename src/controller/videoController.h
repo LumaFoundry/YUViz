@@ -51,6 +51,7 @@ class VideoController : public QObject {
     void seekTo(double timeMs);
     void setSpeed(float speed);
     void toggleDirection();
+    void removeVideo(int index);
 
   signals:
     void playTimer();
