@@ -42,7 +42,6 @@ void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
     m_frameQueue = frameQueue;
 }
 
-
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
  */
@@ -108,15 +107,12 @@ void VideoDecoder::openFile() {
 
     AVRational timeBase;
     AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+    qDebug() << "TIMEBASE: " << videoStream->time_base.num << "/" << videoStream->time_base.den;
+    qDebug() << "TARGET TIMEBASE: " << targetTimebase.num << "/" << targetTimebase.den;
     // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
-    if (isYUV(codecContext->codec_id)
-    || !videoStream->time_base.num || !videoStream->time_base.den) {
+    if (timeBase.den != targetTimebase.den) {
         timeBase = targetTimebase;
-        m_needsTimebaseConversion = false;
-    } else {
-        timeBase = videoStream->time_base;
-        // Compare stream timebase to target (1/fps)
-        m_needsTimebaseConversion = (timeBase.num != targetTimebase.num || timeBase.den != targetTimebase.den);
+        m_needsTimebaseConversion = true;
     }
 
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
@@ -131,7 +127,7 @@ void VideoDecoder::openFile() {
     metadata.setUVWidth(uvWidth);
     metadata.setUVHeight(uvHeight);
     metadata.setPixelFormat(codecContext->pix_fmt);
-    metadata.setTimeBase(timeBase);
+    metadata.setTimeBase(targetTimebase);
     metadata.setSampleAspectRatio(videoStream->sample_aspect_ratio);
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
@@ -187,6 +183,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         if (currentFrameIndex == 0) {
             qDebug() << "At the beginning of the video, cannot seek backward";
             m_frameQueue->updateTail(0);
+            ErrorReporter::instance().report("Cannot seek backward", LogLevel::Warning);
             emit framesLoaded(false);
             return;
         }
@@ -195,9 +192,12 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             currentFrameIndex = 0;
         }
         seekTo(currentFrameIndex);
+        qDebug() << "VideoDecoder::seeking to " << currentFrameIndex;
         // Make sure we don't load more than half of the queue size
         num_frames = std::min(num_frames, m_frameQueue->getSize() / 2);
     }
+
+    localTail = currentFrameIndex;
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -354,7 +354,6 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
-                av_packet_free(&tempPacket);
                 return pts;
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
@@ -496,7 +495,7 @@ void VideoDecoder::seekTo(int64_t targetPts) {
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
-    
+
     if (ret < 0) {
         ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(targetPts), LogLevel::Error);
         return;

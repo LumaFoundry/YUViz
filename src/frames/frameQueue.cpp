@@ -34,7 +34,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + queueSize / 2) - headVal;
     }
 
-    qDebug() << "Queue:: empty frames: " << empty;
+    // qDebug() << "Queue:: empty frames: " << empty;
 
     if (empty < 0) {
         empty = 0;
@@ -59,22 +59,14 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 }
 
 FrameData* FrameQueue::getTailFrame(int64_t pts) {
-    qDebug() << "Queue:: Tail index: " << (pts % queueSize);
+    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
     return &m_queue[pts % queueSize];
 }
 
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts) {
-    qDebug() << "Queue:: updateTail called with pts: " << pts;
-    if (pts > 0) {
+    // qDebug() << "Queue:: updateTail called with pts: " << pts;
+    if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }
-}
-
-void FrameQueue::clear() {
-    head.store(0, std::memory_order_release);
-    tail.store(0, std::memory_order_release);
-
-    // We don't need to actually clear the queue as it just gets overwritten
-    // We could in theory set all pts to -1, but that's unnecessary
 }

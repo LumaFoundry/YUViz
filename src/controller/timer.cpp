@@ -214,7 +214,7 @@ void Timer::stepForward() {
         AVRational next = forwardWake();
         forwardUpdate(next);
         m_playingTimeMs = av_rescale_q(next.num, AVRational{1000, next.den}, AVRational{1, 1});
-        emit tick(m_pts, m_update, m_playingTimeMs);
+        emit step(m_pts, m_update, m_playingTimeMs);
         m_wake = next;
         saveCache();
     }
@@ -227,7 +227,7 @@ void Timer::stepBackward() {
         AVRational next = backwardWake();
         backwardUpdate(next);
         m_playingTimeMs = av_rescale_q(next.num, AVRational{1000, next.den}, AVRational{1, 1});
-        emit tick(m_pts, m_update, m_playingTimeMs);
+        emit step(m_pts, m_update, m_playingTimeMs);
         m_wake = next;
         saveCache();
     }

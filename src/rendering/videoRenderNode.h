@@ -8,15 +8,16 @@
 
 class VideoRenderNode : public QSGRenderNode {
   public:
-    explicit VideoRenderNode(QQuickWindow* window, VideoRenderer* renderer);
+    explicit VideoRenderNode(QQuickItem* item, VideoRenderer* renderer);
     ~VideoRenderNode() override = default;
 
     void prepare() override;
     void render(const RenderState* state) override;
     RenderingFlags flags() const override { return RenderingFlag::BoundedRectRendering; }
+    QRectF rect() const override;
 
   private:
-    QQuickWindow* m_window;
+    QQuickItem* m_item;
     VideoRenderer* m_renderer;
     bool m_initialized = false;
 };

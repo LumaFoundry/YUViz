@@ -29,7 +29,6 @@ class VideoWindow : public QQuickItem {
     void uploadFrame(FrameData* frame);
     void renderFrame();
     void setColorParams(AVColorSpace space, AVColorRange range);
-    void releaseBatch();
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
@@ -64,4 +63,6 @@ class VideoWindow : public QQuickItem {
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
     float m_centerY = 0.5f;
+
+    QPointF convertToVideoCoordinates(const QPointF& point) const;
 };

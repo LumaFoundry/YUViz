@@ -29,6 +29,7 @@ class FrameController : public QObject {
     // Start decoder, renderer and timer threads
     void start();
     void onTimerTick(int64_t pts, int direction);
+    void onTimerStep(int64_t pts, int direction);
 
     void onSeek(int64_t pts);
 
@@ -52,7 +53,6 @@ class FrameController : public QObject {
     void requestDecode(int numFrames, int direction);
     void requestUpload(FrameData* frame);
     void requestRender(FrameData* frame);
-    void requestRelease();
     void endOfVideo(int index);
     void requestSeek(int64_t pts, int loadCount);
 
@@ -76,6 +76,9 @@ class FrameController : public QObject {
 
     // Prefill flag for preloading frames
     bool m_prefill = false;
+
+    int64_t m_stepping = -1;
+    int m_direction = 1; // 1 for forward, -1 for backward
 
     bool m_endOfVideo = false;
 

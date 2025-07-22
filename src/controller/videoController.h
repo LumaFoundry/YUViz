@@ -23,6 +23,7 @@ class VideoController : public QObject {
     Q_PROPERTY(qint64 duration READ duration CONSTANT)
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
+    Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
 
   public:
     VideoController(QObject* parent, std::vector<VideoFileInfo> videoFiles = {});
@@ -32,11 +33,13 @@ class VideoController : public QObject {
     qint64 duration() const;
     bool isPlaying() const;
     double currentTimeMs() const { return m_currentTimeMs; }
+    bool isForward() const { return m_uiDirection == 1; }
 
   public slots:
     void onReady(int index);
     void onFCEndOfVideo(int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
+    void onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void togglePlayPause();
     void play();
     void pause();
@@ -59,6 +62,7 @@ class VideoController : public QObject {
     void isPlayingChanged();
     void playBackwardTimer();
     void playForwardTimer();
+    void directionChanged();
 
   private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;

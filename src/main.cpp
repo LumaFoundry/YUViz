@@ -1,8 +1,8 @@
-#include <QApplication>
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 #include <QDebug>
 #include <QFile>
+#include <QGuiApplication>
 #include <QMessageBox>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -18,7 +18,7 @@
 #include "utils/videoFileInfo.h"
 
 int main(int argc, char* argv[]) {
-    QApplication app(argc, argv);
+    QGuiApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
 
     // Set QDebug output to be off by default
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (parser.isSet(framerateOption)) {
-        parser.value(framerateOption).toDouble();
+        framerate = parser.value(framerateOption).toDouble();
     }
 
     if (parser.isSet(resolutionOption)) {
@@ -109,21 +109,40 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    QObject* root = engine.rootObjects().first();
-    auto* windowPtr = root->findChild<VideoWindow*>("videoWindow");
-
-    windowPtr->setAspectRatio(width, height);
-
-    // TODO: This can be used to handle multiple videos later
-    VideoFileInfo videoFileInfo;
-    videoFileInfo.filename = filename;
-    videoFileInfo.width = width;
-    videoFileInfo.height = height;
-    videoFileInfo.framerate = framerate;
-    videoFileInfo.windowPtr = windowPtr;
-
     std::vector<VideoFileInfo> videoFiles;
-    videoFiles.push_back(videoFileInfo);
+
+    // === Test Code - please remove later === //
+    int videoCount = 1;
+    // === Test Code - please remove later === //
+
+    engine.rootContext()->setContextProperty("videoCount", videoCount);
+
+    QObject* root = engine.rootObjects().first();
+
+    for (int i = 0; i < videoCount; i++) {
+        QString windowName = QString("videoWindow_%1").arg(i);
+
+        auto* windowPtr = root->findChild<VideoWindow*>(windowName);
+
+        if (!windowPtr) {
+            qDebug() << "windowPtr is NULL for window name:" << windowName;
+        }
+        windowPtr->setAspectRatio(width, height);
+
+        VideoFileInfo videoFileInfo;
+        videoFileInfo.filename = filename;
+        videoFileInfo.width = width;
+        videoFileInfo.height = height;
+        // videoFileInfo.framerate = framerate;
+        videoFileInfo.windowPtr = windowPtr;
+
+        // === Test Code - please remove later === //
+        videoFileInfo.framerate = (i == 0) ? framerate : 24.0;
+        // === Test Code - please remove later === //
+
+        videoFiles.push_back(videoFileInfo);
+    }
+
     qDebug() << "Number of video files to play:" << videoFiles.size();
 
     qDebug() << "Creating VideoController";

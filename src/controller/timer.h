@@ -50,6 +50,7 @@ class Timer : public QObject {
 
   signals:
     void tick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
+    void step(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
 
   private:
     std::vector<AVRational> m_timebase;
