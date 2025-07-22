@@ -111,7 +111,7 @@ void VideoDecoder::openFile() {
     qDebug() << "TARGET TIMEBASE: " << targetTimebase.num << "/" << targetTimebase.den;
     // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
     if (timeBase.den != targetTimebase.den) {
-        timeBase = targetTimebase;
+        //timeBase = targetTimebase;
         m_needsTimebaseConversion = true;
     }
 
@@ -313,10 +313,12 @@ int64_t VideoDecoder::loadCompressedFrame() {
             pts = tempFrame->pts;
 
             if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
-                pts = av_rescale_q(pts, metadata.timeBase(), av_d2q(1.0 / m_framerate, 100000));
+                AVStream* videoStream = formatContext->streams[videoStreamIndex];
+                AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+                pts = av_rescale_q(pts, videoStream->time_base, targetTimebase);
             }
 
-            FrameData* frameData = m_frameQueue->getTailFrame(pts);
+            FrameData* frameData = m_frameQueue->getTailFrame(currentFrameIndex);
 
             if (ret == 0) {
                 int width = metadata.yWidth();
@@ -345,7 +347,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
-                    frameData->setPts(pts);  // Use the normalized pts
+                    // Use currentFrameIndex for consistent frame numbering with timer
+                    frameData->setPts(currentFrameIndex);
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
@@ -354,7 +357,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
-                return pts;
+                return currentFrameIndex - 1;  // Return the frame number we just processed
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -488,10 +491,11 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 
     int64_t seek_timestamp = targetPts;
     if (m_needsTimebaseConversion) {
-        // Convert from 1/fps to stream timebase
         AVStream* videoStream = formatContext->streams[videoStreamIndex];
-        AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
-        seek_timestamp = av_rescale_q(targetPts, targetTimebase, videoStream->time_base);
+        double timestamp_seconds = targetPts / m_framerate;
+        seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
+        
+        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts" << seek_timestamp;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
