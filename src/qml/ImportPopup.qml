@@ -20,6 +20,10 @@ Popup {
     signal videoImported(string filePath, int width, int height, double fps, bool add)
     signal accepted
 
+    function openFileDialog() {
+        fileDialog.open();
+    }
+
     background: Rectangle {
         color: "white"
         radius: 6
@@ -53,8 +57,26 @@ Popup {
                 title: "Choose a video file"
                 parentWindow: mainWindow
                 options: FileDialog.DontUseNativeDialog
+                nameFilters: ["All Video Files (*.yuv *.y4m *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "Raw YUV Files (*.yuv *.y4m)", "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "All Files (*)"]
                 onAccepted: {
                     importPopup.selectedFile = selectedFile.toString().replace("file://", "");
+                    const file = importPopup.selectedFile.split('/').pop();
+
+                    // Extract resolution
+                    const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
+                    if (resMatch) {
+                        resolutionInput.text = resMatch[0];
+                    } else {
+                        resolutionInput.text = "";
+                    }
+
+                    // Extract FPS
+                    const fpsMatch = file.match(/(?:^|_|-)(\d{2,3}(?:\.\d{1,2})?)(?=_|\-|x|\D|\.yuv|$)/i);
+                    if (fpsMatch) {
+                        fpsInput.text = fpsMatch[1];
+                    } else {
+                        fpsInput.text = "";
+                    }
                 }
             }
 
@@ -75,6 +97,11 @@ Popup {
             visible: isYUV
             placeholderText: "1920x1080"
             Layout.fillWidth: true
+            onAccepted: {
+                if (resolutionInput.text === "") {
+                    resolutionInput.text = resolutionInput.placeholderText;
+                }
+            }
         }
 
         Label {
@@ -88,6 +115,11 @@ Popup {
             visible: isYUV
             placeholderText: "25.0"
             Layout.fillWidth: true
+            onAccepted: {
+                if (fpsInput.text === "") {
+                    fpsInput.text = fpsInput.placeholderText;
+                }
+            }
         }
 
         Item {
@@ -105,7 +137,7 @@ Popup {
 
             Button {
                 text: mode === "add" ? "Add" : "Load"
-                enabled: !isYUV || filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))
+                enabled: importPopup.selectedFile !== "" && (!isYUV || (filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))))
                 onClicked: {
                     const res = resolutionInput.text.split("x");
                     const filePath = fileDialog.selectedFile;

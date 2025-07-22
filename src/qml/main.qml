@@ -122,6 +122,7 @@ ApplicationWindow {
                 onTriggered: {
                     importDialog.mode = "new";
                     importDialog.open();
+                    importDialog.openFileDialog();
                 }
             }
             Action {
@@ -129,6 +130,7 @@ ApplicationWindow {
                 onTriggered: {
                     importDialog.mode = "add";
                     importDialog.open();
+                    importDialog.openFileDialog();
                 }
             }
             Action {
