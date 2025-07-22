@@ -6,6 +6,21 @@ import Theme 1.0
 
 ApplicationWindow {
     id: mainWindow
+    property int videoCount: 0
+    QtObject {
+        id: qmlBridge
+        objectName: "qmlBridge"
+
+        function createVideoWindow(index) {
+            let obj = videoWindowComponent.createObject(videoWindowContainer);
+            if (obj !== null) {
+                obj.objectName = "videoWindow_" + index;
+                obj.assigned = false;
+                mainWindow.videoCount += 1;
+            }
+            return obj;
+        }
+    }
     title: "videoplayer"
     width: 800
     height: 600
@@ -76,7 +91,7 @@ ApplicationWindow {
         id: keyHandler
         anchors.fill: parent
         focus: true
-        enabled: videoLoaded
+        enabled: videoWindowContainer.children.length > 0
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Space) {
                 // console.log("Space key pressed");
@@ -195,7 +210,7 @@ ApplicationWindow {
             Loader {
                 id: videoWindowLoader
                 anchors.fill: parent
-                sourceComponent: videoLoaded ? videoWindowComponent : null
+                sourceComponent: videoWindowContainer.children.length === 0 ? videoWindowComponent : null
                 onItemChanged: {
                     if (item !== null) {
                         item.requestRemove.connect(function () {
@@ -208,12 +223,19 @@ ApplicationWindow {
                 }
             }
 
+            Grid {
+                id: videoWindowContainer
+                anchors.fill: parent
+                spacing: 0
+                columns: Math.ceil(Math.sqrt(mainWindow.videoCount))
+            }
+
             Component {
                 id: videoWindowComponent
                 VideoWindow {
-                    id: videoWindow_0
-                    objectName: "videoWindow_0"
-                    anchors.fill: parent
+                    id: videoWindowInstance
+                    width: (videoArea.width / videoWindowContainer.columns)
+                    height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
                 }
             }
 
@@ -221,7 +243,7 @@ ApplicationWindow {
                 id: placeholder
                 anchors.fill: parent
                 color: "#181818"
-                visible: !videoLoaded
+                visible: videoWindowContainer.children.length === 0
                 z: -1
                 Text {
                     anchors.centerIn: parent
@@ -235,7 +257,7 @@ ApplicationWindow {
             background: Rectangle {
                 color: "#5d383838"
             }
-            enabled: videoLoaded
+            enabled: videoWindowContainer.children.length > 0
             Layout.fillWidth: true
             ColumnLayout {
                 id: panel
