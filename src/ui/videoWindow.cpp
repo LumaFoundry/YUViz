@@ -1,6 +1,7 @@
 #include "videoWindow.h"
 #include <QMouseEvent>
 #include <QtMath>
+#include <libavutil/pixfmt.h>
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
 #include "rendering/videoRenderNode.h"
@@ -287,39 +288,44 @@ void VideoWindow::pan(const QPointF& delta) {
     update();
 }
 
-int VideoWindow::getYValue(int x, int y) const {
+QVariant VideoWindow::getYUV(int x, int y) const {
     if (!m_renderer)
-        return -1;
+        return QVariant();
     FrameData* frame = m_renderer->getCurrentFrame();
     auto meta = m_renderer->getFrameMeta();
     if (!frame || !meta)
-        return -1;
-    int w = meta->yWidth(), h = meta->yHeight();
-    if (x < 0 || y < 0 || x >= w || y >= h)
-        return -1;
-    return frame->yPtr()[y * w + x];
-}
-int VideoWindow::getUValue(int x, int y) const {
-    if (!m_renderer)
-        return -1;
-    FrameData* frame = m_renderer->getCurrentFrame();
-    auto meta = m_renderer->getFrameMeta();
-    if (!frame || !meta)
-        return -1;
-    int w = meta->uvWidth(), h = meta->uvHeight();
-    if (x < 0 || y < 0 || x >= w || y >= h)
-        return -1;
-    return frame->uPtr()[y * w + x];
-}
-int VideoWindow::getVValue(int x, int y) const {
-    if (!m_renderer)
-        return -1;
-    FrameData* frame = m_renderer->getCurrentFrame();
-    auto meta = m_renderer->getFrameMeta();
-    if (!frame || !meta)
-        return -1;
-    int w = meta->uvWidth(), h = meta->uvHeight();
-    if (x < 0 || y < 0 || x >= w || y >= h)
-        return -1;
-    return frame->vPtr()[y * w + x];
+        return QVariant();
+    int yW = meta->yWidth(), yH = meta->yHeight();
+    int uvW = meta->uvWidth(), uvH = meta->uvHeight();
+    if (x < 0 || y < 0 || x >= yW || y >= yH)
+        return QVariant();
+    int yVal = frame->yPtr()[y * yW + x];
+    int uVal = 0, vVal = 0;
+    int ux = 0, uy = 0;
+    AVPixelFormat fmt = meta->format();
+    switch (fmt) {
+    case AV_PIX_FMT_YUV420P:
+        ux = x / 2;
+        uy = y / 2;
+        break;
+    case AV_PIX_FMT_YUV422P:
+        ux = x / 2;
+        uy = y;
+        break;
+    case AV_PIX_FMT_YUV444P:
+        ux = x;
+        uy = y;
+        break;
+    default:
+        ux = x / 2;
+        uy = y / 2;
+        break;
+    }
+    if (ux >= 0 && uy >= 0 && ux < uvW && uy < uvH) {
+        uVal = frame->uPtr()[uy * uvW + ux];
+        vVal = frame->vPtr()[uy * uvW + ux];
+    }
+    QVariantList result;
+    result << yVal << uVal << vVal;
+    return result;
 }

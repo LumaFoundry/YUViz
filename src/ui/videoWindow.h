@@ -30,9 +30,7 @@ class VideoWindow : public QQuickItem {
     qreal zoom() const { return m_zoom; }
     qreal centerX() const { return m_centerX; }
     qreal centerY() const { return m_centerY; }
-    Q_INVOKABLE int getYValue(int x, int y) const;
-    Q_INVOKABLE int getUValue(int x, int y) const;
-    Q_INVOKABLE int getVValue(int x, int y) const;
+    Q_INVOKABLE QVariant getYUV(int x, int y) const; // 返回QVariantList: [Y, U, V]，采样和格式判断在cpp实现
 
   public slots:
     void uploadFrame(FrameData* frame);

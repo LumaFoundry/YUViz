@@ -316,15 +316,11 @@ ColumnLayout {
                     for (var y = startY; y < endY; y += pixelSpacing) {
                         for (var x = startX; x < endX; x += pixelSpacing) {
                             if (x >= yWidth || y >= yHeight) continue;
-                            var yValue = videoWindow.getYValue(x, y);
-                            // YUV420 sampling
-                            var ux = Math.floor(x / 2);
-                            var uy = Math.floor(y / 2);
-                            var uValue = 0, vValue = 0;
-                            if (ux < uvWidth && uy < uvHeight) {
-                                uValue = videoWindow.getUValue(ux, uy);
-                                vValue = videoWindow.getVValue(ux, uy);
-                            }
+                            var yuv = videoWindow.getYUV(x, y);
+                            if (!yuv || yuv.length !== 3) continue;
+                            var yValue = yuv[0];
+                            var uValue = yuv[1];
+                            var vValue = yuv[2];
                             var normalizedX = (x + 0.5) / yWidth;
                             var normalizedY = (y + 0.5) / yHeight;
                             var transformedX = (normalizedX - videoWindow.centerX) * videoWindow.zoom + 0.5;
@@ -335,8 +331,7 @@ ColumnLayout {
                                 drawPixelValue(ctx, screenX, screenY, yValue, uValue, vValue);
                             }
                         }
-                    }
-                    
+                    }             
                 } catch (error) {
                     console.log("QML: Canvas onPaint error:", error);
                 }

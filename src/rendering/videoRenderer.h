@@ -33,7 +33,7 @@ class VideoRenderer : public QObject {
 
   private:
     std::shared_ptr<FrameMeta> m_metaPtr;
-    FrameData* m_currentFrame = nullptr; // 新增：保存当前帧指针
+    FrameData* m_currentFrame = nullptr;
     QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
