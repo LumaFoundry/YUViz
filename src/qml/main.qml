@@ -323,10 +323,10 @@ ColumnLayout {
                     var viewWidth = yWidth / videoWindow.zoom;
                     var viewHeight = yHeight / videoWindow.zoom;
                     
-                    var startX = Math.max(0, Math.floor((videoWindow.centerX - 0.5 / videoWindow.zoom) * yWidth));
-                    var endX = Math.min(yWidth, Math.ceil((videoWindow.centerX + 0.5 / videoWindow.zoom) * yWidth));
-                    var startY = Math.max(0, Math.floor((videoWindow.centerY - 0.5 / videoWindow.zoom) * yHeight));
-                    var endY = Math.min(yHeight, Math.ceil((videoWindow.centerY + 0.5 / videoWindow.zoom) * yHeight));
+                    var startX = Math.max(0, Math.floor((videoWindow.centerX - 0.6 / videoWindow.zoom) * yWidth));
+                    var endX = Math.min(yWidth, Math.ceil((videoWindow.centerX + 0.6 / videoWindow.zoom) * yWidth));
+                    var startY = Math.max(0, Math.floor((videoWindow.centerY - 0.6 / videoWindow.zoom) * yHeight));
+                    var endY = Math.min(yHeight, Math.ceil((videoWindow.centerY + 0.6 / videoWindow.zoom) * yHeight));
                     
                     // iterate over visible pixels and display YUV values
                     for (var y = startY; y < endY; y += pixelSpacing) {
