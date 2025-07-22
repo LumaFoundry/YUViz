@@ -303,7 +303,7 @@ ColumnLayout {
                     var format = meta.format;
 
                     // threshold logic
-                    var threshold = Math.round(yWidth / 15);
+                    var threshold = Math.round(yWidth / 10);
                     if (videoWindow.zoom < threshold) return;
 
                     var videoRect = getVideoRect();
