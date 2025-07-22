@@ -200,6 +200,10 @@ ApplicationWindow {
                 sourceComponent: videoLoaded ? videoWindowComponent : null
                 onItemChanged: {
                     if (item !== null) {
+                        item.requestRemove.connect(function () {
+                            videoController.removeVideo(0);
+                            videoLoaded = false;
+                        });
                         videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, true);
                         keyHandler.focus = true;
                     }

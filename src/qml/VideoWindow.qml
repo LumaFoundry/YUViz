@@ -6,6 +6,18 @@ VideoWindow {
     id: videoWindow
     property var videoId: ""
     objectName: "videoWindow_" + videoId
+    signal requestRemove
+
+    Button {
+        text: "✕"
+        width: 30
+        height: 30
+        anchors.top: parent.top
+        anchors.right: parent.right
+        onClicked: {
+            videoWindow.requestRemove();
+        }
+    }
 
     PinchArea {
         anchors.fill: parent

@@ -32,7 +32,6 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
     if (m_timer != nullptr) {
         m_timer.reset();
-        m_timeBases.clear();
     }
 
     m_currentTimeMs = 0;
@@ -107,6 +106,32 @@ void VideoController::setUpTimer() {
 
     // Start timer thread
     m_timerThread.start();
+}
+
+void VideoController::removeVideo(int index) {
+    pause();
+    qDebug() << "Removing video at index" << index;
+
+    if (index < 0 || index >= m_frameControllers.size()) {
+        qWarning() << "Invalid index for removing video:" << index;
+        return;
+    }
+
+    // Remove the FrameController at the specified index
+    m_frameControllers.erase(m_frameControllers.begin() + index);
+    m_timeBases.erase(m_timeBases.begin() + index);
+    m_videoCount--;
+
+    // Destroy current timer and reset
+    if (m_timer) {
+        m_timer.reset();
+    }
+
+    if (!m_frameControllers.empty()) {
+        m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
+        setUpTimer();
+        start();
+    }
 }
 
 void VideoController::start() {
