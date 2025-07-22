@@ -39,50 +39,7 @@ void VideoWindow::uploadFrame(FrameData* frame) {
     // qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame);
-
-    // pass frame data to QML for pixel value display
-    if (frame) {
-        QVariantMap frameData;
-        auto frameMeta = m_renderer->getFrameMeta();
-        if (frameMeta) {
-            frameData["yWidth"] = frameMeta->yWidth();
-            frameData["yHeight"] = frameMeta->yHeight();
-            frameData["uvWidth"] = frameMeta->uvWidth();
-            frameData["uvHeight"] = frameMeta->uvHeight();
-            frameData["format"] = frameMeta->format();
-
-            // pass actual YUV data
-            uint8_t* yPtr = frame->yPtr();
-            uint8_t* uPtr = frame->uPtr();
-            uint8_t* vPtr = frame->vPtr();
-
-            int ySize = frameMeta->yWidth() * frameMeta->yHeight();
-            int uvSize = frameMeta->uvWidth() * frameMeta->uvHeight();
-
-            QVariantList yData, uData, vData;
-
-            // copy Y data
-            for (int i = 0; i < ySize; ++i) {
-                yData.append(yPtr[i]);
-            }
-
-            // copy U data
-            for (int i = 0; i < uvSize; ++i) {
-                uData.append(uPtr[i]);
-            }
-
-            // copy V data
-            for (int i = 0; i < uvSize; ++i) {
-                vData.append(vPtr[i]);
-            }
-
-            frameData["yData"] = yData;
-            frameData["uData"] = uData;
-            frameData["vData"] = vData;
-
-            emit frameDataUpdated(frameData);
-        }
-    }
+    emit frameReady();
 }
 
 void VideoWindow::renderFrame() {
@@ -150,25 +107,6 @@ void VideoWindow::setMaxZoom(qreal zoom) {
         return;
     m_maxZoom = zoom;
     emit maxZoomChanged();
-}
-
-QVariantList VideoWindow::getFrameData() const {
-    QVariantList result;
-    if (!m_renderer) {
-        return result;
-    }
-
-    auto frameMeta = m_renderer->getFrameMeta();
-    if (!frameMeta) {
-        return result;
-    }
-
-    result.append(QVariant::fromValue(frameMeta->yWidth()));
-    result.append(QVariant::fromValue(frameMeta->yHeight()));
-    result.append(QVariant::fromValue(frameMeta->uvWidth()));
-    result.append(QVariant::fromValue(frameMeta->uvHeight()));
-
-    return result;
 }
 
 QVariantMap VideoWindow::getFrameMeta() const {
@@ -347,4 +285,41 @@ void VideoWindow::pan(const QPointF& delta) {
     m_renderer->setZoomAndOffset(m_zoom, m_centerX, m_centerY);
     emit zoomChanged();
     update();
+}
+
+int VideoWindow::getYValue(int x, int y) const {
+    if (!m_renderer)
+        return -1;
+    FrameData* frame = m_renderer->getCurrentFrame();
+    auto meta = m_renderer->getFrameMeta();
+    if (!frame || !meta)
+        return -1;
+    int w = meta->yWidth(), h = meta->yHeight();
+    if (x < 0 || y < 0 || x >= w || y >= h)
+        return -1;
+    return frame->yPtr()[y * w + x];
+}
+int VideoWindow::getUValue(int x, int y) const {
+    if (!m_renderer)
+        return -1;
+    FrameData* frame = m_renderer->getCurrentFrame();
+    auto meta = m_renderer->getFrameMeta();
+    if (!frame || !meta)
+        return -1;
+    int w = meta->uvWidth(), h = meta->uvHeight();
+    if (x < 0 || y < 0 || x >= w || y >= h)
+        return -1;
+    return frame->uPtr()[y * w + x];
+}
+int VideoWindow::getVValue(int x, int y) const {
+    if (!m_renderer)
+        return -1;
+    FrameData* frame = m_renderer->getCurrentFrame();
+    auto meta = m_renderer->getFrameMeta();
+    if (!frame || !meta)
+        return -1;
+    int w = meta->uvWidth(), h = meta->uvHeight();
+    if (x < 0 || y < 0 || x >= w || y >= h)
+        return -1;
+    return frame->vPtr()[y * w + x];
 }

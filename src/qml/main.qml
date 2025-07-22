@@ -266,35 +266,21 @@ ColumnLayout {
             z: 2
             visible: true
 
-            property var currentFrameData: null
             property var frameMeta: null
-
             property var pixelValueThreshold: 10
 
             // connect to VideoWindow signals
             Connections {
                 target: videoWindow
-                function onFrameDataUpdated(frameData) {
-                    pixelValuesCanvas.pixelValueThreshold = frameData.yWidth * 0.1;
-                    pixelValuesCanvas.currentFrameData = frameData
-                    pixelValuesCanvas.frameMeta = {
-                        yWidth: frameData.yWidth,
-                        yHeight: frameData.yHeight,
-                        uvWidth: frameData.uvWidth,
-                        uvHeight: frameData.uvHeight,
-                        format: frameData.format
-                    }
+                function onFrameReady() {
                     pixelValuesCanvas.requestPaint()
                 }
-                
                 function onZoomChanged() {
                     pixelValuesCanvas.requestPaint()
                 }
-                
                 function onCenterXChanged() {
                     pixelValuesCanvas.requestPaint()
                 }
-                
                 function onCenterYChanged() {
                     pixelValuesCanvas.requestPaint()
                 }
@@ -307,65 +293,44 @@ ColumnLayout {
                     
                     ctx.clearRect(0, 0, width, height);
                     
-                    // pixel value threshold not working
-                    if (!currentFrameData || !currentFrameData.yData || videoWindow.zoom < pixelValuesCanvas.pixelValueThreshold) {
-                        return;
-                    }
-                    
-                    var videoRect = getVideoRect();
+                    // get frame meta
+                    var meta = videoWindow.getFrameMeta();
+                    if (!meta || !meta.yWidth || !meta.yHeight) return;
+                    var yWidth = meta.yWidth;
+                    var yHeight = meta.yHeight;
+                    var uvWidth = meta.uvWidth;
+                    var uvHeight = meta.uvHeight;
+                    var format = meta.format;
 
-                    
-                    var yWidth = currentFrameData.yWidth;
-                    var yHeight = currentFrameData.yHeight;
-                    
+                    // threshold logic
+                    var threshold = Math.round(yWidth / 15);
+                    if (videoWindow.zoom < threshold) return;
+
+                    var videoRect = getVideoRect();
                     var pixelSpacing = Math.max(1, Math.floor(40 / videoWindow.zoom));
-                    
-                    var viewWidth = yWidth / videoWindow.zoom;
-                    var viewHeight = yHeight / videoWindow.zoom;
-                    
                     var startX = Math.max(0, Math.floor((videoWindow.centerX - 0.6 / videoWindow.zoom) * yWidth));
                     var endX = Math.min(yWidth, Math.ceil((videoWindow.centerX + 0.6 / videoWindow.zoom) * yWidth));
                     var startY = Math.max(0, Math.floor((videoWindow.centerY - 0.6 / videoWindow.zoom) * yHeight));
                     var endY = Math.min(yHeight, Math.ceil((videoWindow.centerY + 0.6 / videoWindow.zoom) * yHeight));
-                    
-                    // iterate over visible pixels and display YUV values
+
                     for (var y = startY; y < endY; y += pixelSpacing) {
                         for (var x = startX; x < endX; x += pixelSpacing) {
                             if (x >= yWidth || y >= yHeight) continue;
-                            
-                            var yIndex = y * yWidth + x;
-                            if (yIndex >= currentFrameData.yData.length) continue;
-                            var yValue = currentFrameData.yData[yIndex];
-                            
-                            // get U, V values (YUV420 format, U, V are 2x2 sampled)
-                            // TODO: add support for 444 422 formats
+                            var yValue = videoWindow.getYValue(x, y);
+                            // YUV420 sampling
                             var ux = Math.floor(x / 2);
                             var uy = Math.floor(y / 2);
                             var uValue = 0, vValue = 0;
-                            
-                            if (ux < currentFrameData.uvWidth && uy < currentFrameData.uvHeight) {
-                                var uvIndex = uy * currentFrameData.uvWidth + ux;
-                                if (uvIndex < currentFrameData.uData.length) {
-                                    uValue = currentFrameData.uData[uvIndex];
-                                }
-                                if (uvIndex < currentFrameData.vData.length) {
-                                    vValue = currentFrameData.vData[uvIndex];
-                                }
+                            if (ux < uvWidth && uy < uvHeight) {
+                                uValue = videoWindow.getUValue(ux, uy);
+                                vValue = videoWindow.getVValue(ux, uy);
                             }
-                            
-                            // calculate normalized coordinates of pixel in video (pixel center)
                             var normalizedX = (x + 0.5) / yWidth;
                             var normalizedY = (y + 0.5) / yHeight;
-                            
-                            // apply scaling and translation
                             var transformedX = (normalizedX - videoWindow.centerX) * videoWindow.zoom + 0.5;
                             var transformedY = (normalizedY - videoWindow.centerY) * videoWindow.zoom + 0.5;
-                            
-                            // convert to screen coordinates
                             var screenX = videoRect.x + transformedX * videoRect.width;
                             var screenY = videoRect.y + transformedY * videoRect.height;
-                            
-                            // check if in screen range
                             if (screenX >= 0 && screenX < width && screenY >= 0 && screenY < height) {
                                 drawPixelValue(ctx, screenX, screenY, yValue, uValue, vValue);
                             }

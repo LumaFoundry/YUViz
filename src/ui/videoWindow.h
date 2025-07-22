@@ -30,6 +30,9 @@ class VideoWindow : public QQuickItem {
     qreal zoom() const { return m_zoom; }
     qreal centerX() const { return m_centerX; }
     qreal centerY() const { return m_centerY; }
+    Q_INVOKABLE int getYValue(int x, int y) const;
+    Q_INVOKABLE int getUValue(int x, int y) const;
+    Q_INVOKABLE int getVValue(int x, int y) const;
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -44,7 +47,6 @@ class VideoWindow : public QQuickItem {
     void zoomToSelection();
     void resetZoom();
     void pan(const QPointF& delta);
-    QVariantList getFrameData() const;
     QVariantMap getFrameMeta() const;
 
   signals:
@@ -56,7 +58,7 @@ class VideoWindow : public QQuickItem {
     void maxZoomChanged();
     void centerXChanged();
     void centerYChanged();
-    void frameDataUpdated(QVariantMap frameData);
+    void frameReady();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;

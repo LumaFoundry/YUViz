@@ -128,6 +128,7 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
         return;
     }
 
+    m_currentFrame = frame;
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc;
