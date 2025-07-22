@@ -58,23 +58,24 @@ Popup {
                 parentWindow: mainWindow
                 options: FileDialog.DontUseNativeDialog
                 nameFilters: ["All Video Files (*.yuv *.y4m *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "Raw YUV Files (*.yuv *.y4m)", "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "All Files (*)"]
+
                 onAccepted: {
                     importPopup.selectedFile = selectedFile.toString().replace("file://", "");
                     const file = importPopup.selectedFile.split('/').pop();
 
-                    // Extract resolution
-                    const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
-                    if (resMatch) {
-                        resolutionInput.text = resMatch[0];
+                    // Strict match: resolution followed by underscore/dash and FPS
+                    const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
+                    if (match) {
+                        resolutionInput.text = match[1] + "x" + match[2];
+                        fpsInput.text = match[3];
                     } else {
-                        resolutionInput.text = "";
-                    }
-
-                    // Extract FPS
-                    const fpsMatch = file.match(/(?:^|_|-)(\d{2,3}(?:\.\d{1,2})?)(?=_|\-|x|\D|\.yuv|$)/i);
-                    if (fpsMatch) {
-                        fpsInput.text = fpsMatch[1];
-                    } else {
+                        // Fallback: just try to extract resolution anywhere
+                        const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
+                        if (resMatch) {
+                            resolutionInput.text = resMatch[0];
+                        } else {
+                            resolutionInput.text = "";
+                        }
                         fpsInput.text = "";
                     }
                 }
