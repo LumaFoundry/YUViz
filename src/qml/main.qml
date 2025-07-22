@@ -32,14 +32,7 @@ ApplicationWindow {
 
     ImportPopup {
         id: importDialog
-        onVideoImported: function (filePath, width, height, fps, add) {
-            importedFilePath = filePath;
-            importedWidth = width;
-            importedHeight = height;
-            importedFps = fps;
-            importedAdd = add;
-            videoLoaded = true; // triggers loader
-        }
+        onVideoImported: importVideoFromParams(filePath, width, height, fps, add)
     }
     Timer {
         id: resizeDebounce
@@ -513,6 +506,15 @@ ApplicationWindow {
         } else {
             mainWindow.visibility = Window.FullScreen;
         }
+    }
+
+    function importVideoFromParams(filePath, width, height, fps, add) {
+        importedFilePath = filePath;
+        importedWidth = width;
+        importedHeight = height;
+        importedFps = fps;
+        importedAdd = add;
+        videoLoaded = true;
     }
 
     Text {

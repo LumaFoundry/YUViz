@@ -9,7 +9,14 @@ VideoLoader::VideoLoader(QQmlApplicationEngine* engine, QObject* parent, std::sh
 }
 
 void VideoLoader::loadVideo(const QString& filePath, int width, int height, double fps, bool add) {
-    QString path = QUrl(filePath).toLocalFile();
+    QString path;
+
+    if (filePath.startsWith("file://")) {
+        path = QUrl(filePath).toLocalFile();
+    } else {
+        qDebug() << "inside else";
+        path = filePath;
+    }
     // QString path = filePath;
 
     if (!QFile::exists(path)) {
