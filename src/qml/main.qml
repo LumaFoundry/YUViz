@@ -28,11 +28,14 @@ ApplicationWindow {
     property int importedWidth: 0
     property int importedHeight: 0
     property double importedFps: 0
+    property string importedFormat: ""
     property bool importedAdd: false
 
     ImportPopup {
         id: importDialog
-        onVideoImported: importVideoFromParams(filePath, width, height, fps, add)
+        onVideoImported: function (filePath, width, height, fps, format, add) {
+            importVideoFromParams(filePath, width, height, fps, format, add);
+        }
     }
     Timer {
         id: resizeDebounce
@@ -199,7 +202,7 @@ ApplicationWindow {
                             videoController.removeVideo(0);
                             videoLoaded = false;
                         });
-                        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, true);
+                        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
                         keyHandler.focus = true;
                     }
                 }
@@ -510,11 +513,12 @@ ApplicationWindow {
         }
     }
 
-    function importVideoFromParams(filePath, width, height, fps, add) {
+    function importVideoFromParams(filePath, width, height, fps, format, add) {
         importedFilePath = filePath;
         importedWidth = width;
         importedHeight = height;
         importedFps = fps;
+        importedFormat = format;
         importedAdd = add;
         videoLoaded = true;
     }

@@ -3,7 +3,6 @@
 #include <QDebug>
 #include <QFile>
 #include <QGuiApplication>
-#include <QMessageBox>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QSurface>
@@ -35,14 +34,20 @@ int main(int argc, char* argv[]) {
     int width = 1920;
     int height = 1080;
     double framerate = 25.0;
+    QString yuvFormat = "420P"; // Default to 420
 
     QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
     parser.addOption(debugOption);
+
     QCommandLineOption framerateOption({"f", "framerate"}, QLatin1String("Framerate"), QLatin1String("framerate"));
     parser.addOption(framerateOption);
+
     QCommandLineOption resolutionOption(
         {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
     parser.addOption(resolutionOption);
+
+    QCommandLineOption yuvFormatOption({"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
+    parser.addOption(yuvFormatOption);
 
     parser.process(app);
     const QStringList args = parser.positionalArguments();
@@ -61,11 +66,17 @@ int main(int argc, char* argv[]) {
         height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
         if (!ok1 || !ok2) {
             qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-            QMessageBox::critical(nullptr,
-                                  "Error",
-                                  QString("Invalid dimensions for video: %1 x %2")
-                                      .arg(parser.value(resolutionOption).split("x")[0])
-                                      .arg(parser.value(resolutionOption).split("x")[1]));
+            ErrorReporter::instance().report(
+                QString("Invalid dimensions for video: %1").arg(parser.value(resolutionOption)), LogLevel::Error);
+            return -1;
+        }
+    }
+
+    if (parser.isSet(yuvFormatOption)) {
+        yuvFormat = parser.value(yuvFormatOption);
+        if (yuvFormat != "420P" && yuvFormat != "422P" && yuvFormat != "444P") {
+            qWarning() << "Invalid YUV format:" << yuvFormat;
+            ErrorReporter::instance().report(QString("Invalid YUV format: %1").arg(yuvFormat), LogLevel::Error);
             return -1;
         }
     }
@@ -88,15 +99,27 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
-    if (!args.isEmpty() && parser.isSet("r") && parser.isSet("f")) {
+    if (!args.isEmpty()) {
         QString filename = args.first();
+
+        if (filename.toLower().endsWith(".yuv")) {
+            bool hasAllFlags =
+                parser.isSet(framerateOption) && parser.isSet(resolutionOption) && parser.isSet(yuvFormatOption);
+
+            if (!hasAllFlags) {
+                qWarning() << "For .yuv files, all required flags must be specified";
+                ErrorReporter::instance().report("For .yuv files, all required flags must be specified",
+                                                 LogLevel::Error);
+                return -1;
+            }
+        }
 
         qDebug() << "Parsed command-line options. File: " << filename
                  << "Resolution: " << parser.value(resolutionOption) << "Framerate: " << parser.value(framerateOption);
 
         if (!QFile::exists(filename)) {
             qWarning() << "YUV file does not exist:" << filename;
-            QMessageBox::critical(nullptr, "Error", QString("YUV file does not exist: %1").arg(filename));
+            ErrorReporter::instance().report(QString("YUV file does not exist: %1").arg(filename), LogLevel::Error);
             return -1;
         }
 
@@ -109,7 +132,8 @@ int main(int argc, char* argv[]) {
                                   Q_ARG(QVariant, width),
                                   Q_ARG(QVariant, height),
                                   Q_ARG(QVariant, framerate),
-                                  Q_ARG(QVariant, true)); // or false, as appropriate
+                                  Q_ARG(QVariant, yuvFormat),
+                                  Q_ARG(QVariant, true));
     }
 
     qDebug() << "Number of video files to play:" << videoFiles.size();

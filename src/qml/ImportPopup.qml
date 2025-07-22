@@ -6,7 +6,7 @@ import QtQuick.Dialogs 6.2
 Popup {
     id: importPopup
     width: 420
-    height: 360
+    height: 420
     modal: true
     focus: true
     clip: true
@@ -17,7 +17,7 @@ Popup {
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
     property var mainWindow
-    signal videoImported(string filePath, int width, int height, double fps, bool add)
+    signal videoImported(string filePath, int width, int height, double fps, string pixelFormat, bool add)
     signal accepted
 
     function openFileDialog() {
@@ -123,6 +123,21 @@ Popup {
             }
         }
 
+        Label {
+            visible: isYUV
+            text: "Format"
+            Layout.fillWidth: true
+        }
+
+        ComboBox {
+            id: formatInput
+            visible: isYUV
+            model: ["420P", "422P", "444P"]
+            Layout.fillWidth: true
+            currentIndex: 0
+            displayText: model[currentIndex]
+        }
+
         Item {
             Layout.fillHeight: true
         }  // Spacer to push buttons to the bottom
@@ -145,8 +160,10 @@ Popup {
                     let width = isYUV ? parseInt(res[0]) : 0;
                     let height = isYUV ? parseInt(res[1]) : 0;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 0;
+                    let format = isYUV ? formatInput.currentText : "AV_PIX_FMT_NONE";
+                    console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     let add = mode === "add";
-                    importPopup.videoImported(filePath, width, height, fps, add);
+                    importPopup.videoImported(filePath, width, height, fps, format, add);
                     importPopup.close();
                 }
             }
