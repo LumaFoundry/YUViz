@@ -5,6 +5,7 @@ import Window 1.0
 VideoWindow {
     id: videoWindow
     property var videoId: ""
+    property bool assigned: false
     objectName: "videoWindow_" + videoId
     signal requestRemove
 
