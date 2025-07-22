@@ -269,10 +269,13 @@ ColumnLayout {
             property var currentFrameData: null
             property var frameMeta: null
 
+            property var pixelValueThreshold: 10
+
             // connect to VideoWindow signals
             Connections {
                 target: videoWindow
                 function onFrameDataUpdated(frameData) {
+                    pixelValuesCanvas.pixelValueThreshold = frameData.yWidth * 0.1;
                     pixelValuesCanvas.currentFrameData = frameData
                     pixelValuesCanvas.frameMeta = {
                         yWidth: frameData.yWidth,
@@ -305,7 +308,7 @@ ColumnLayout {
                     ctx.clearRect(0, 0, width, height);
                     
                     // pixel value threshold not working
-                    if (!currentFrameData || !currentFrameData.yData || videoWindow.zoom < videoWindow.pixelValueThreshold) {
+                    if (!currentFrameData || !currentFrameData.yData || videoWindow.zoom < pixelValuesCanvas.pixelValueThreshold) {
                         return;
                     }
                     
@@ -397,8 +400,8 @@ ColumnLayout {
             
             function drawPixelValue(ctx, x, y, yVal, uVal, vVal) {
                 try {
-                    var fontSize = Math.max(10, Math.min(16, 14 / videoWindow.zoom));
-                    var padding = Math.max(3, Math.min(10, 6 / videoWindow.zoom));
+                    var fontSize = Math.max(10, Math.min(15, 0.8 * videoWindow.zoom));
+                    var padding = Math.max(3, Math.min(9, 0.3 * videoWindow.zoom));
                     var lineHeight = fontSize + 2;
                     
                     var text = "U" + uVal + "\nY" + yVal + "\nV" + vVal;

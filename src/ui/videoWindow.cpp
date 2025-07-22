@@ -152,22 +152,6 @@ void VideoWindow::setMaxZoom(qreal zoom) {
     emit maxZoomChanged();
 }
 
-void VideoWindow::setShowPixelValues(bool show) {
-    if (m_showPixelValues != show) {
-        m_showPixelValues = show;
-        emit showPixelValuesChanged();
-        update();
-    }
-}
-
-void VideoWindow::setPixelValueThreshold(qreal threshold) {
-    if (!qFuzzyCompare(m_pixelValueThreshold, threshold) && threshold > 0) {
-        m_pixelValueThreshold = threshold;
-        emit pixelValueThresholdChanged();
-        update();
-    }
-}
-
 QVariantList VideoWindow::getFrameData() const {
     QVariantList result;
     if (!m_renderer) {
