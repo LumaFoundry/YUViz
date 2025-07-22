@@ -11,6 +11,7 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     m_Decoder->setFileName(videoFileInfo.filename.toStdString());
     m_Decoder->setDimensions(videoFileInfo.width, videoFileInfo.height);
     m_Decoder->setFramerate(videoFileInfo.framerate);
+    m_Decoder->setFormat(videoFileInfo.pixelFormat);
     m_Decoder->openFile();
 
     m_frameMeta = std::make_shared<FrameMeta>(m_Decoder->getMetaData());
