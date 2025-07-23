@@ -17,17 +17,24 @@ VideoWindow {
 
         ComboBox {
             width: 0
-            height: 30
+            height: 40
             model: ["Don't remove this ComboBox"]
             indicator: Canvas {}
         }
         
         Button {
             id: menuButton
-            text: "⋮"
-            width: 30
-            height: 30
-
+            width: 40
+            height: 40
+            background: Rectangle {
+                color: "transparent"
+            }
+            contentItem: Image {
+                source: "qrc:/gear.png"
+                anchors.centerIn: parent
+                fillMode: Image.PreserveAspectFit
+                opacity: 1
+            }
             onClicked: menu.open()
 
             Menu {
