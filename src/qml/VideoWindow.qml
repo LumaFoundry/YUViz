@@ -9,15 +9,68 @@ VideoWindow {
     objectName: "videoWindow_" + videoId
     signal requestRemove(int videoId)
 
-    Button {
-        text: "✕"
-        width: 30
-        height: 30
+    Row {
         anchors.top: parent.top
         anchors.right: parent.right
-        onClicked: {
-            videoWindow.requestRemove(videoId);
-            console.log("Requesting removal of video window with ID:", videoId);
+        spacing: 8
+
+        ComboBox {
+            id: colorSpaceSelector
+            model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
+            width: 140
+            height: 30
+            currentIndex: 0
+
+            onCurrentIndexChanged: {
+                let colorSpaceMap = [
+                    {
+                        space: 1,
+                        range: 1
+                    }  // BT709 MPEG
+                    ,
+                    {
+                        space: 1,
+                        range: 2
+                    }  // BT709 Full
+                    ,
+                    {
+                        space: 5,
+                        range: 1
+                    }  // BT470BG MPEG
+                    ,
+                    {
+                        space: 5,
+                        range: 2
+                    }  // BT470BG Full
+                    ,
+                    {
+                        space: 10,
+                        range: 1
+                    } // BT2020_CL MPEG
+                    ,
+                    {
+                        space: 10,
+                        range: 2
+                    }  // BT2020_CL Full
+                ];
+
+                let selected = colorSpaceMap[currentIndex];
+                videoWindow.setColorParams(selected.space, selected.range);
+                keyHandler.forceActiveFocus();
+            }
+
+            onActivated: {
+                keyHandler.forceActiveFocus();
+            }
+        }
+
+        Button {
+            text: "✕"
+            width: 30
+            height: 30
+            onClicked: {
+                videoWindow.requestRemove();
+            }
         }
     }
 
