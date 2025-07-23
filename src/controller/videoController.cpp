@@ -61,10 +61,10 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     m_frameControllers.push_back(std::move(frameController));
     // qDebug() << "FrameController count now:" << m_frameControllers.size();
 
-    m_videoCount++;
-
     m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
     setUpTimer();
+    m_frameControllers[m_videoCount]->start();
+    m_videoCount++;
 }
 
 void VideoController::setUpTimer() {
@@ -117,8 +117,7 @@ void VideoController::removeVideo(int index) {
 
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
-
-    start();
+    m_readyCount--;
 }
 
 void VideoController::start() {

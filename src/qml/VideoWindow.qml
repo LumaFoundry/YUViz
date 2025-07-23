@@ -69,7 +69,7 @@ VideoWindow {
             width: 30
             height: 30
             onClicked: {
-                videoWindow.requestRemove();
+                videoWindow.requestRemove(videoWindow.videoId);
             }
         }
     }

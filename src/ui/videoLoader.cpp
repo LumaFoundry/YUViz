@@ -79,7 +79,4 @@ void VideoLoader::loadVideo(
         qDebug() << "resetting video" << info.filename;
         // m_vcPtr->resetVideo(info);
     }
-
-    qDebug() << "starting vc";
-    m_vcPtr->start();
 }

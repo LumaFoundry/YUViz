@@ -19,6 +19,7 @@ ApplicationWindow {
                 videoId: index,
                 assigned: false
             });
+            console.log("[qmlBridge] createVideoWindow called with index:", index);
             if (obj !== null) {
                 obj.objectName = "videoWindow_" + index;
                 mainWindow.videoCount += 1;
