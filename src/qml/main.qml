@@ -217,7 +217,6 @@ ApplicationWindow {
                             videoController.removeVideo(0);
                             videoLoaded = false;
                         });
-                        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
                         keyHandler.focus = true;
                     }
                 }
@@ -542,7 +541,9 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
         videoLoaded = true;
+        keyHandler.forceActiveFocus();
     }
 
     Text {
