@@ -32,6 +32,8 @@ void VideoDecoder::setFramerate(double framerate) {
 
 void VideoDecoder::setFormat(AVPixelFormat format) {
     m_format = format;
+    const char* pixFmtString = av_get_pix_fmt_name(m_format);
+    av_dict_set(&inputOptions, "pixel_format", pixFmtString, 0);
 }
 
 void VideoDecoder::setFileName(const std::string& fileName) {
@@ -49,11 +51,21 @@ void VideoDecoder::openFile() {
     // Close any previously opened file
     closeFile();
 
+    // For raw YUV files, we need to specify the input format
+    const AVInputFormat* inputFormat = nullptr;
+    
+    // Check if this is likely a raw YUV file based on file extension
+    std::string fileName = m_fileName;
+    if (fileName.find(".yuv") != std::string::npos || fileName.find(".raw") != std::string::npos) {
+        inputFormat = av_find_input_format("rawvideo");
+        qDebug() << "VideoDecoder: Detected raw YUV file, using rawvideo input format";
+    }
+
     // av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
     // av_dict_set(&input_options, "pixel_format", "yuv420p", 0);
 
     // Open input file
-    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, &inputOptions) < 0) {
+    if (avformat_open_input(&formatContext, m_fileName.c_str(), inputFormat, &inputOptions) < 0) {
         ErrorReporter::instance().report("Could not open input file " + m_fileName, LogLevel::Error);
         return;
     }
@@ -98,6 +110,12 @@ void VideoDecoder::openFile() {
         return;
     }
 
+    if (isYUV(codecContext->codec_id)) {
+        codecContext->pix_fmt = m_format;
+        // codecContext->width = m_width;
+        // codecContext->height = m_height;
+    }
+
     // Open codec
     if (avcodec_open2(codecContext, codec, nullptr) < 0) {
         ErrorReporter::instance().report("Could not open codec", LogLevel::Error);
@@ -106,12 +124,13 @@ void VideoDecoder::openFile() {
     }
 
     AVRational timeBase;
-    // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate
-    // (fps)
-    if (isYUV(codecContext->codec_id) || !videoStream->time_base.num || !videoStream->time_base.den) {
-        timeBase = av_d2q(1.0 / m_framerate, 1000000);
-    } else {
-        timeBase = videoStream->time_base;
+    AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+    qDebug() << "TIMEBASE: " << videoStream->time_base.num << "/" << videoStream->time_base.den;
+    qDebug() << "TARGET TIMEBASE: " << targetTimebase.num << "/" << targetTimebase.den;
+    // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
+    if (timeBase.den != targetTimebase.den) {
+        //timeBase = targetTimebase;
+        m_needsTimebaseConversion = true;
     }
 
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
@@ -126,7 +145,7 @@ void VideoDecoder::openFile() {
     metadata.setUVWidth(uvWidth);
     metadata.setUVHeight(uvHeight);
     metadata.setPixelFormat(codecContext->pix_fmt);
-    metadata.setTimeBase(timeBase);
+    metadata.setTimeBase(targetTimebase);
     metadata.setSampleAspectRatio(videoStream->sample_aspect_ratio);
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
@@ -136,7 +155,7 @@ void VideoDecoder::openFile() {
 
     if (isYUV(codecContext->codec_id)) {
         int ySize = m_width * m_height;
-        int uvSize = ySize / 4;
+        int uvSize = uvWidth * uvHeight;
         int frameSize = ySize + 2 * uvSize;
 
         QFileInfo info(QString::fromStdString(m_fileName));
@@ -166,10 +185,6 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         emit framesLoaded(true);
         return;
     }
-    if (num_frames == 0) {
-        emit framesLoaded(true);
-        return;
-    }
     // qDebug() << "VideoDecoder::loadFrame called with frameData: " << frameData;
 
     if (!formatContext || !codecContext) {
@@ -186,6 +201,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         if (currentFrameIndex == 0) {
             qDebug() << "At the beginning of the video, cannot seek backward";
             m_frameQueue->updateTail(0);
+            ErrorReporter::instance().report("Cannot seek backward", LogLevel::Warning);
             emit framesLoaded(false);
             return;
         }
@@ -194,9 +210,12 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             currentFrameIndex = 0;
         }
         seekTo(currentFrameIndex);
+        qDebug() << "VideoDecoder::seeking to " << currentFrameIndex;
         // Make sure we don't load more than half of the queue size
         num_frames = std::min(num_frames, m_frameQueue->getSize() / 2);
     }
+
+    localTail = currentFrameIndex;
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -310,21 +329,31 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
             ret = avcodec_receive_frame(codecContext, tempFrame);
             pts = tempFrame->pts;
-            qDebug() << "VideoDecoder:: pts from avcodec: " << pts;
-            FrameData* frameData = m_frameQueue->getTailFrame(pts);
+
+            if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
+                AVStream* videoStream = formatContext->streams[videoStreamIndex];
+                AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+                pts = av_rescale_q(pts, videoStream->time_base, targetTimebase);
+            }
+
+            FrameData* frameData = m_frameQueue->getTailFrame(currentFrameIndex);
 
             if (ret == 0) {
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
+                
+                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+                int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+
                 uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
-                int dstLinesize[4] = {width, width / 2, width / 2, 0};
+                int dstLinesize[4] = {width, uvWidth, uvWidth, 0};
 
                 SwsContext* swsCtx = sws_getContext(codecContext->width,
                                                     codecContext->height,
                                                     (AVPixelFormat)tempFrame->format,
                                                     width,
                                                     height,
-                                                    AV_PIX_FMT_YUV420P,
+                                                    codecContext->pix_fmt, // Use the same format as codec context
                                                     SWS_BILINEAR,
                                                     nullptr,
                                                     nullptr,
@@ -340,7 +369,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
-                    frameData->setPts(tempFrame->pts);
+                    // Use currentFrameIndex for consistent frame numbering with timer
+                    frameData->setPts(currentFrameIndex);
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
@@ -349,7 +379,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
-                return pts;
+                return currentFrameIndex - 1;  // Return the frame number we just processed
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -371,7 +401,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 /**
  * @brief Copies the decoded frame data into the provided FrameData structure.
  *
- * This function handles the conversion of the decoded frame data into a planar YUV format
+ * This function handles the copying of raw YUV frame data while preserving the original format
  * and populates the FrameData structure with the Y, U, and V plane pointers.
  *
  * @param tempPacket Pointer to the AVPacket containing the decoded frame data.
@@ -382,42 +412,29 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     retFlag = 1;
     uint8_t* packetData = tempPacket->data;
 
-    AVPixelFormat srcFmt = metadata.format();
+    AVPixelFormat srcFmt = codecContext->pix_fmt;
     int width = metadata.yWidth();
     int height = metadata.yHeight();
 
-    // Prepare source pointers and line sizes
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(srcFmt);
+    if (!pixDesc) {
+        ErrorReporter::instance().report("Failed to get pixel format descriptor", LogLevel::Error);
+        av_packet_unref(tempPacket);
+        retFlag = 2;
+        return;
+    }
+
+    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+
     uint8_t* srcData[4] = {nullptr};
     int srcLinesize[4] = {};
     av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-
-    // Prepare destination pointers and line sizes (planar YUV420P)
     uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
-    int dstLinesize[4] = {width, width / 2, width / 2, 0};
-    SwsContext* swsCtx =
-        sws_getContext(width, height, srcFmt, width, height, AV_PIX_FMT_YUV420P, SWS_POINT, nullptr, nullptr, nullptr);
 
-    if (!swsCtx) {
-        ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
-        av_packet_unref(tempPacket);
-        {
-            retFlag = 2;
-            return;
-        };
-    }
-
-    // Scale and convert the YUV frame
-    int res = sws_scale(swsCtx, srcData, srcLinesize, 0, height, dstData, dstLinesize);
-    sws_freeContext(swsCtx);
-
-    if (res <= 0) {
-        ErrorReporter::instance().report("sws_scale failed to convert/copy YUV frame", LogLevel::Error);
-        av_packet_unref(tempPacket);
-        {
-            retFlag = 2;
-            return;
-        };
-    }
+    memcpy(dstData[0], srcData[0], width * height);
+    memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
+    memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
 
     frameData->setPts(currentFrameIndex);
 
@@ -435,7 +452,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     currentFrameIndex++;
 
     av_packet_unref(tempPacket);
-
     av_packet_free(&tempPacket);
 }
 
@@ -481,7 +497,16 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         targetPts = 0;
     }
 
-    int ret = av_seek_frame(formatContext, videoStreamIndex, targetPts, AVSEEK_FLAG_BACKWARD);
+    int64_t seek_timestamp = targetPts;
+    if (m_needsTimebaseConversion) {
+        AVStream* videoStream = formatContext->streams[videoStreamIndex];
+        double timestamp_seconds = targetPts / m_framerate;
+        seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
+        
+        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts" << seek_timestamp;
+    }
+
+    int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
 
     if (ret < 0) {
         ErrorReporter::instance().report("Failed to seek to timestamp: " + std::to_string(targetPts), LogLevel::Error);

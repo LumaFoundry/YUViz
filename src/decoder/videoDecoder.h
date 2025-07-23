@@ -54,6 +54,7 @@ class VideoDecoder : public QObject {
 
     FrameMeta metadata;
     int currentFrameIndex = 0;
+    int localTail = -1;
 
     int m_width;
     int m_height;
@@ -72,6 +73,8 @@ class VideoDecoder : public QObject {
     int64_t loadCompressedFrame();
 
     bool m_hitEndFrame = false;
+	  bool m_needsTimebaseConversion = false;
+
 
     void seekTo(int64_t targetPts);
 };
