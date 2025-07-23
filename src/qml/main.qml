@@ -425,12 +425,11 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
-                            videoWindowLoader.item.resetZoom();
+                            sharedViewProperties.reset(); 
                             selectionStart = Qt.point(0, 0);
                             selectionEnd = Qt.point(0, 0);
                             isSelecting = false;
                             isProcessingSelection = false;
-                            videoWindowLoader.item.resetSelectionCanvas();
                             keyHandler.focus = true;
                         }
                     }

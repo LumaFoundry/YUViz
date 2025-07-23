@@ -2,10 +2,14 @@
 #include <QDebug>
 #include <QQmlContext>
 
-VideoLoader::VideoLoader(QQmlApplicationEngine* engine, QObject* parent, std::shared_ptr<VideoController> vcPtr) :
+VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
+                         QObject* parent,
+                         std::shared_ptr<VideoController> vcPtr,
+                         SharedViewProperties* sharedView) :
     QObject(parent),
     m_engine(engine),
-    m_vcPtr(vcPtr) {
+    m_vcPtr(vcPtr),
+    m_sharedView(sharedView) {
 }
 
 void VideoLoader::loadVideo(const QString& filePath, int width, int height, double fps, bool add) {
@@ -41,6 +45,7 @@ void VideoLoader::loadVideo(const QString& filePath, int width, int height, doub
         windowPtr = qobject_cast<VideoWindow*>(obj);
         if (windowPtr && !windowPtr->property("assigned").toBool()) {
             windowPtr->setProperty("assigned", true);
+            windowPtr->setSharedView(m_sharedView);
             break;
         }
         ++index;

@@ -16,6 +16,7 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
+#include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
 
 int main(int argc, char* argv[]) {
@@ -45,11 +46,15 @@ int main(int argc, char* argv[]) {
     }
 
     QQmlApplicationEngine engine;
+
+    SharedViewProperties sharedViewProperties;
+    engine.rootContext()->setContextProperty("sharedViewProperties", &sharedViewProperties);
+
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
 
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr);
-    VideoLoader videoLoader(&engine, nullptr, videoController);
+    VideoLoader videoLoader(&engine, nullptr, videoController, &sharedViewProperties);
 
     std::vector<VideoFileInfo> videoFiles;
     engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
