@@ -99,7 +99,6 @@ void VideoController::start() {
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
-    qDebug() << "VideoController::Tick Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
