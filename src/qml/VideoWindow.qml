@@ -1,6 +1,7 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
 import Window 1.0
+import QtQuick.Layouts 1.15
 
 VideoWindow {
     id: videoWindow
@@ -15,61 +16,55 @@ VideoWindow {
         spacing: 8
 
         ComboBox {
-            id: colorSpaceSelector
-            model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
-            width: 140
+            width: 0
             height: 30
-            currentIndex: 0
-
-            onCurrentIndexChanged: {
-                let colorSpaceMap = [
-                    {
-                        space: 1,
-                        range: 1
-                    }  // BT709 MPEG
-                    ,
-                    {
-                        space: 1,
-                        range: 2
-                    }  // BT709 Full
-                    ,
-                    {
-                        space: 5,
-                        range: 1
-                    }  // BT470BG MPEG
-                    ,
-                    {
-                        space: 5,
-                        range: 2
-                    }  // BT470BG Full
-                    ,
-                    {
-                        space: 10,
-                        range: 1
-                    } // BT2020_CL MPEG
-                    ,
-                    {
-                        space: 10,
-                        range: 2
-                    }  // BT2020_CL Full
-                ];
-
-                let selected = colorSpaceMap[currentIndex];
-                videoWindow.setColorParams(selected.space, selected.range);
-                keyHandler.forceActiveFocus();
-            }
-
-            onActivated: {
-                keyHandler.forceActiveFocus();
-            }
+            model: ["Don't remove this ComboBox"]
+            indicator: Canvas {}
         }
-
+        
         Button {
-            text: "✕"
+            id: menuButton
+            text: "⋮"
             width: 30
             height: 30
-            onClicked: {
-                videoWindow.requestRemove();
+
+            onClicked: menu.open()
+
+            Menu {
+                id: menu
+                y: menuButton.height
+
+                MenuItem {
+                    contentItem: ComboBox {
+                        id: colorSpaceSelector
+                        model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
+                        width: 160
+                        currentIndex: 0
+
+                        onCurrentIndexChanged: {
+                            let colorSpaceMap = [
+                                { space: 1, range: 1 },  // BT709 MPEG
+                                { space: 1, range: 2 },  // BT709 Full
+                                { space: 5, range: 1 },  // BT470BG MPEG
+                                { space: 5, range: 2 },  // BT470BG Full
+                                { space: 10, range: 1 }, // BT2020_CL MPEG
+                                { space: 10, range: 2 }  // BT2020_CL Full
+                            ];
+                            let selected = colorSpaceMap[currentIndex];
+                            videoWindow.setColorParams(selected.space, selected.range);
+                            keyHandler.forceActiveFocus();
+                        }
+
+                        onActivated: keyHandler.forceActiveFocus()
+                    }
+                }
+
+                MenuSeparator {}
+
+                MenuItem {
+                    text: "Close the Video"
+                    onTriggered: videoWindow.requestRemove()
+                }
             }
         }
     }
