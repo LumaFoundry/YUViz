@@ -157,9 +157,9 @@ Popup {
                 onClicked: {
                     const res = resolutionInput.text.split("x");
                     const filePath = fileDialog.selectedFile;
-                    let width = isYUV ? parseInt(res[0]) : 0;
-                    let height = isYUV ? parseInt(res[1]) : 0;
-                    let fps = isYUV ? parseFloat(fpsInput.text) : 0;
+                    let width = isYUV ? parseInt(res[0]) : 1920;
+                    let height = isYUV ? parseInt(res[1]) : 1080;
+                    let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
                     let format = isYUV ? formatInput.currentText : "AV_PIX_FMT_NONE";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     let add = mode === "add";
