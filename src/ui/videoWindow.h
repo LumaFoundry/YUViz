@@ -15,6 +15,14 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
     Q_PROPERTY(qreal maxZoom READ maxZoom WRITE setMaxZoom NOTIFY maxZoomChanged)
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
+    Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
+    Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
+    Q_PROPERTY(int totalFrames READ totalFrames NOTIFY totalFramesChanged)
+    Q_PROPERTY(QString pixelFormat READ pixelFormat NOTIFY pixelFormatChanged)
+    Q_PROPERTY(QString timeBase READ timeBase NOTIFY timeBaseChanged)
+    Q_PROPERTY(double aspectRatio READ aspectRatio NOTIFY aspectRatioChanged)
+    Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
+    Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
@@ -28,6 +36,17 @@ class VideoWindow : public QQuickItem {
     void setMaxZoom(qreal zoom);
     void syncColorSpaceMenu();
     Q_INVOKABLE QVariant getYUV(int x, int y) const;
+
+    // OSD-related methods
+    int osdState() const { return m_osdState; }
+    void setOsdState(int state);
+    int currentFrame() const;
+    int totalFrames() const;
+    QString pixelFormat() const;
+    QString timeBase() const;
+    double aspectRatio() const;
+    qint64 duration() const;
+    double currentTimeMs() const;
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -43,6 +62,8 @@ class VideoWindow : public QQuickItem {
     Q_INVOKABLE void resetView();
     Q_INVOKABLE void pan(const QPointF& delta);
     QVariantMap getFrameMeta() const;
+    void toggleOsd();
+    void updateFrameInfo(int currentFrame, double currentTimeMs);
 
   signals:
     void batchUploaded(bool success);
@@ -53,6 +74,14 @@ class VideoWindow : public QQuickItem {
     void maxZoomChanged();
     void sharedViewChanged();
     void frameReady();
+    void osdStateChanged();
+    void currentFrameChanged();
+    void totalFramesChanged();
+    void pixelFormatChanged();
+    void timeBaseChanged();
+    void aspectRatioChanged();
+    void durationChanged();
+    void currentTimeMsChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
@@ -66,6 +95,12 @@ class VideoWindow : public QQuickItem {
     qreal m_videoAspectRatio = 16.0 / 9.0;
     qreal m_maxZoom = 10000.0;
     SharedViewProperties* m_sharedView = nullptr;
+
+    // OSD-related members
+    int m_osdState = 0; // 0: hidden, 1: basic info, 2: detailed info
+    std::shared_ptr<FrameMeta> m_frameMeta;
+    int m_currentFrame = 0;
+    double m_currentTimeMs = 0.0;
 
     QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;

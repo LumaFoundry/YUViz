@@ -463,12 +463,13 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
 }
 
 int VideoDecoder::getTotalFrames() {
-    if (!formatContext || videoStreamIndex < 0) {
-        return -1;
-    }
 
     if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
         return yuvTotalFrames;
+    }
+
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
     }
 
     AVStream* videoStream = formatContext->streams[videoStreamIndex];

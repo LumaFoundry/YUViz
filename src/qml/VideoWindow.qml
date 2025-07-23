@@ -40,7 +40,7 @@ VideoWindow {
             model: ["Don't remove this ComboBox"]
             indicator: Canvas {}
         }
-        
+
         Button {
             id: menuButton
             width: 40
@@ -391,5 +391,56 @@ VideoWindow {
 
     function resetSelectionCanvas() {
         selectionCanvas.requestPaint();
+    }
+
+    // OSD Overlay
+    Rectangle {
+        visible: videoWindow.osdState > 0
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.margins: 10
+        width: osdText.width + 20
+        height: osdText.height + 20
+        color: "black"
+        opacity: 0.8
+        radius: 5
+        z: 100 // Ensure it's on top
+
+        Text {
+            id: osdText
+            anchors.centerIn: parent
+            color: "white"
+            font.family: "monospace"
+            font.pixelSize: 12
+            text: {
+                if (videoWindow.osdState === 1) {
+                    // Basic info: duration and current frame / total frames
+                    var durationSec = Math.floor(videoWindow.duration / 1000);
+                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
+                    var durationMin = Math.floor(durationSec / 60);
+                    var currentMin = Math.floor(currentSec / 60);
+                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                    return "Time: " + currentStr + " / " + durationStr + "\n" +
+                           "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames;
+                } else if (videoWindow.osdState === 2) {
+                    // Detailed info: add pixel format, timebase/pts, aspect ratio
+                    var durationSec = Math.floor(videoWindow.duration / 1000);
+                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
+                    var durationMin = Math.floor(durationSec / 60);
+                    var currentMin = Math.floor(currentSec / 60);
+                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                    return "Time: " + currentStr + " / " + durationStr + "\n" +
+                           "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames + "\n" +
+                           "Format: " + videoWindow.pixelFormat + "\n" +
+                           "Timebase: " + videoWindow.timeBase + "\n" +
+                           "Aspect: " + videoWindow.aspectRatio.toFixed(3);
+                }
+                return "";
+            }
+        }
     }
 }

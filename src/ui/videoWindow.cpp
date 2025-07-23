@@ -7,6 +7,10 @@
 #include "rendering/videoRenderNode.h"
 #include "rendering/videoRenderer.h"
 
+extern "C" {
+#include <libavutil/pixdesc.h>
+}
+
 VideoWindow::VideoWindow(QQuickItem* parent) :
     QQuickItem(parent) {
     setFlag(ItemHasContents, true);
@@ -15,6 +19,7 @@ VideoWindow::VideoWindow(QQuickItem* parent) :
 }
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
+    m_frameMeta = metaPtr; // Store the frameMeta for OSD access
     m_renderer = new VideoRenderer(this, metaPtr);
     if (window()) {
         update();
@@ -24,6 +29,13 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
             update();
         });
     }
+
+    // Emit initial metadata signals
+    emit totalFramesChanged();
+    emit pixelFormatChanged();
+    emit timeBaseChanged();
+    emit aspectRatioChanged();
+    emit durationChanged();
 }
 
 void VideoWindow::setAspectRatio(int width, int height) {
@@ -191,6 +203,74 @@ void VideoWindow::syncColorSpaceMenu() {
                               "setColorSpaceIndex",
                               Q_RETURN_ARG(QVariant, foo),
                               Q_ARG(QVariant, idx));
+}
+
+// OSD-related implementations
+void VideoWindow::setOsdState(int state) {
+    if (m_osdState != state) {
+        m_osdState = state;
+        emit osdStateChanged();
+    }
+}
+
+void VideoWindow::toggleOsd() {
+    m_osdState = (m_osdState + 1) % 3; // Cycle through 0, 1, 2
+    emit osdStateChanged();
+}
+
+void VideoWindow::updateFrameInfo(int currentFrame, double currentTimeMs) {
+    if (m_currentFrame != currentFrame) {
+        m_currentFrame = currentFrame;
+        emit currentFrameChanged();
+    }
+    if (m_currentTimeMs != currentTimeMs) {
+        m_currentTimeMs = currentTimeMs;
+        emit currentTimeMsChanged();
+    }
+}
+
+int VideoWindow::currentFrame() const {
+    return m_currentFrame;
+}
+
+int VideoWindow::totalFrames() const {
+    return m_frameMeta ? m_frameMeta->totalFrames() : 0;
+}
+
+QString VideoWindow::pixelFormat() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVPixelFormat fmt = m_frameMeta->format();
+    const char* name = av_get_pix_fmt_name(fmt);
+    return name ? QString(name) : QString("Unknown");
+}
+
+QString VideoWindow::timeBase() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVRational timeBase = m_frameMeta->timeBase();
+    return QString("%1/%2").arg(timeBase.num).arg(timeBase.den);
+}
+
+double VideoWindow::aspectRatio() const {
+    if (!m_frameMeta) {
+        return 1.0;
+    }
+    AVRational sampleAspectRatio = m_frameMeta->sampleAspectRatio();
+    double pixelAspectRatio = static_cast<double>(sampleAspectRatio.num) / sampleAspectRatio.den;
+    double displayAspectRatio =
+        (static_cast<double>(m_frameMeta->yWidth()) / m_frameMeta->yHeight()) * pixelAspectRatio;
+    return displayAspectRatio;
+}
+
+qint64 VideoWindow::duration() const {
+    return m_frameMeta ? m_frameMeta->duration() : 0;
+}
+
+double VideoWindow::currentTimeMs() const {
+    return m_currentTimeMs;
 }
 
 QVariant VideoWindow::getYUV(int x, int y) const {

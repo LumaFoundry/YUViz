@@ -102,6 +102,11 @@ void FrameController::start() {
 void FrameController::onTimerTick(int64_t pts, int direction) {
     qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
+    // Update VideoWindow with current frame info
+    AVRational timeBase = getTimeBase();
+    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
+    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
+
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
@@ -153,6 +158,11 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         emit endOfVideo(m_index);
         return;
     }
+
+    // Update VideoWindow with current frame info
+    AVRational timeBase = getTimeBase();
+    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
+    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
     m_stepping = pts;
 

@@ -146,6 +146,22 @@ ApplicationWindow {
                 isCtrlPressed = true;
                 event.accepted = true;
             }
+
+            if (event.key === Qt.Key_O) {
+                console.log("O key pressed, trying to toggle OSD");
+                // Toggle OSD for all videos in the container
+                console.log("VideoWindowContainer has", videoWindowContainer.children.length, "children");
+                for (var i = 0; i < videoWindowContainer.children.length; i++) {
+                    var videoWindow = videoWindowContainer.children[i];
+                    if (videoWindow && videoWindow.toggleOsd) {
+                        console.log("Toggling OSD for video window", i);
+                        videoWindow.toggleOsd();
+                    } else {
+                        console.log("Video window", i, "does not have toggleOsd method");
+                    }
+                }
+                event.accepted = true;
+            }
         }
 
         Keys.onReleased: event => {
