@@ -7,19 +7,21 @@
 #include <memory>
 #include "frames/frameData.h"
 #include "rendering/videoRenderer.h"
+#include "utils/sharedViewProperties.h"
 
 class VideoWindow : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(bool isZoomed READ isZoomed NOTIFY zoomChanged)
     Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
     Q_PROPERTY(qreal maxZoom READ maxZoom WRITE setMaxZoom NOTIFY maxZoomChanged)
+    Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
+    SharedViewProperties* sharedView() const;
+    void setSharedView(SharedViewProperties* view);
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
     VideoRenderer* m_renderer = nullptr;
-    bool isZoomed() const { return m_isZoomed; }
     void setAspectRatio(int width, int height);
     qreal getAspectRatio() const;
     qreal maxZoom() const;
@@ -32,12 +34,12 @@ class VideoWindow : public QQuickItem {
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
-    void zoomAt(qreal factor, const QPointF& centerPoint);
+    Q_INVOKABLE void zoomAt(qreal factor, const QPointF& centerPoint);
     void setSelectionRect(const QRectF& rect);
     void clearSelection();
-    void zoomToSelection();
-    void resetZoom();
-    void pan(const QPointF& delta);
+    Q_INVOKABLE void zoomToSelection(const QRectF& rect);
+    Q_INVOKABLE void resetView();
+    Q_INVOKABLE void pan(const QPointF& delta);
 
   signals:
     void batchUploaded(bool success);
@@ -46,6 +48,7 @@ class VideoWindow : public QQuickItem {
     void selectionChanged(const QRectF& rect);
     void zoomChanged();
     void maxZoomChanged();
+    void sharedViewChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
@@ -56,13 +59,10 @@ class VideoWindow : public QQuickItem {
     QPointF m_selectionStart;
     QPointF m_selectionEnd;
     bool m_isSelecting = false;
-    bool m_isZoomed = false;
     qreal m_videoAspectRatio = 16.0 / 9.0;
     qreal m_maxZoom = 10000.0;
-    // Track current zoom and center point
-    float m_zoom = 1.0f;
-    float m_centerX = 0.5f;
-    float m_centerY = 0.5f;
+    SharedViewProperties* m_sharedView = nullptr;
 
+    QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;
 };
