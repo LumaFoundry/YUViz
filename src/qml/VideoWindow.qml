@@ -6,6 +6,7 @@ VideoWindow {
     id: videoWindow
     property int videoId: -1
     property bool assigned: false
+    property bool isZoomed: sharedView ? sharedView.isZoomed : false
     objectName: "videoWindow_" + videoId
     signal requestRemove(int videoId)
 
@@ -189,8 +190,7 @@ VideoWindow {
 
                 // console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
 
-                videoWindow.setSelectionRect(rect);
-                videoWindow.zoomToSelection();
+                videoWindow.zoomToSelection(rect);
 
                 // Clear selection state, make rectangle disappear
                 selectionStart = Qt.point(0, 0);
