@@ -1,5 +1,8 @@
 <!DOCTYPE RCC><RCC version="1.0">
 <qresource prefix="/">
     <file>main.qml</file>
+    <file>ImportPopup.qml</file>
+    <file>VideoWindow.qml</file>
+    <file>Theme.qml</file>
 </qresource>
 </RCC>

@@ -20,7 +20,7 @@
 class VideoController : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(qint64 duration READ duration CONSTANT)
+    Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
     Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
@@ -35,6 +35,9 @@ class VideoController : public QObject {
     double currentTimeMs() const { return m_currentTimeMs; }
     bool isForward() const { return m_uiDirection == 1; }
 
+    void addVideo(VideoFileInfo videoFileInfo);
+    void setUpTimer();
+
   public slots:
     void onReady(int index);
     void onFCEndOfVideo(int index);
@@ -48,6 +51,7 @@ class VideoController : public QObject {
     void seekTo(double timeMs);
     void setSpeed(float speed);
     void toggleDirection();
+    void removeVideo(int index);
 
   signals:
     void playTimer();
@@ -63,9 +67,13 @@ class VideoController : public QObject {
     void playBackwardTimer();
     void playForwardTimer();
     void directionChanged();
+    void durationChanged();
 
   private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
+    std::vector<AVRational> m_timeBases;
+
+    int m_videoCount = 0;
 
     std::shared_ptr<Timer> m_timer;
 
@@ -73,6 +81,7 @@ class VideoController : public QObject {
 
     // Ensure all FC have uploaded initial frame before starting timer
     int m_readyCount = 0;
+    bool m_ready = false;
 
     int m_endCount = 0;
 
