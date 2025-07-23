@@ -117,6 +117,12 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
         int colorSpace, colorRange, padding[2];
     };
     ColorParams cp = {space, range, {0, 0}};
+    
+    if (!m_rhi) {
+        qWarning() << "VideoRenderer::setColorParams called but RHI is null - renderer may not be initialized";
+        return;
+    }
+    
     m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
     m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
 }
@@ -124,6 +130,12 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
 void VideoRenderer::uploadFrame(FrameData* frame) {
     if (!frame) {
         qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
+        emit rendererError();
+        return;
+    }
+
+    if (!m_rhi) {
+        qWarning() << "VideoRenderer::uploadFrame called but RHI is null - renderer may be destroyed";
         emit rendererError();
         return;
     }
@@ -215,6 +227,11 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
         };
 
         ResizeParams rp{scaleX, scaleY, offsetX, offsetY};
+
+        if (!m_rhi) {
+            qWarning() << "VideoRenderer::renderFrame called but RHI is null during resize params update";
+            return;
+        }
 
         m_resizeParamsBatch = m_rhi->nextResourceUpdateBatch();
         m_resizeParamsBatch->updateDynamicBuffer(m_resizeParams.get(), 0, sizeof(rp), &rp);

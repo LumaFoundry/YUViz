@@ -17,6 +17,7 @@ class VideoRenderer : public QObject {
     void uploadFrame(FrameData* frame);
     void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
     void releaseBatch();
+    bool isInitialized() const { return m_rhi != nullptr; }
 
   signals:
     void batchIsFull();
