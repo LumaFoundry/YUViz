@@ -6,17 +6,23 @@ import Theme 1.0
 
 ApplicationWindow {
     id: mainWindow
+
     property int videoCount: 0
+    property var videoWindows: []
+
     QtObject {
         id: qmlBridge
         objectName: "qmlBridge"
 
         function createVideoWindow(index) {
-            let obj = videoWindowComponent.createObject(videoWindowContainer);
+            let obj = videoWindowComponent.createObject(videoWindowContainer, {
+                videoId: index,
+                assigned: false
+            });
             if (obj !== null) {
                 obj.objectName = "videoWindow_" + index;
-                obj.assigned = false;
                 mainWindow.videoCount += 1;
+                obj.requestRemove.connect(mainWindow.removeVideoWindowById);
             }
             return obj;
         }
@@ -206,21 +212,6 @@ ApplicationWindow {
             id: videoArea
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            Loader {
-                id: videoWindowLoader
-                anchors.fill: parent
-                sourceComponent: videoWindowContainer.children.length === 0 ? videoWindowComponent : null
-                onItemChanged: {
-                    if (item !== null) {
-                        item.requestRemove.connect(function () {
-                            videoController.removeVideo(0);
-                            videoLoaded = false;
-                        });
-                        keyHandler.focus = true;
-                    }
-                }
-            }
 
             Grid {
                 id: videoWindowContainer
@@ -553,5 +544,14 @@ ApplicationWindow {
         color: Theme.textColor
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: Theme.fontSizeNormal
+    }
+
+    function removeVideoWindowById(id) {
+        console.log("[removeVideoWindowById] Called with id:", id);
+        if (videoWindowContainer.children[id]) {
+            videoWindowContainer.children[id].destroy();
+            videoCount--;
+        }
+        videoController.removeVideo(id);
     }
 }

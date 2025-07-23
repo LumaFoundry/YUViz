@@ -57,6 +57,7 @@ void VideoLoader::loadVideo(
         windowPtr = qobject_cast<VideoWindow*>(obj);
         if (windowPtr && !windowPtr->property("assigned").toBool()) {
             windowPtr->setProperty("assigned", true);
+            windowPtr->setProperty("videoId", index);
             break;
         }
         ++index;

@@ -4,10 +4,10 @@ import Window 1.0
 
 VideoWindow {
     id: videoWindow
-    property var videoId: ""
+    property int videoId: -1
     property bool assigned: false
     objectName: "videoWindow_" + videoId
-    signal requestRemove
+    signal requestRemove(int videoId)
 
     Button {
         text: "✕"
@@ -16,7 +16,8 @@ VideoWindow {
         anchors.top: parent.top
         anchors.right: parent.right
         onClicked: {
-            videoWindow.requestRemove();
+            videoWindow.requestRemove(videoId);
+            console.log("Requesting removal of video window with ID:", videoId);
         }
     }
 

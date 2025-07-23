@@ -10,6 +10,8 @@ VideoRenderNode::VideoRenderNode(QQuickItem* item, VideoRenderer* renderer) :
 }
 
 QRectF VideoRenderNode::rect() const {
+    if (!m_item)
+        return QRectF();
     return QRectF(0, 0, m_item->width(), m_item->height());
 }
 

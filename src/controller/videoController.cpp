@@ -35,7 +35,7 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
         m_timer.reset();
     }
 
-    qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << m_videoCount;
+    // qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << m_videoCount;
 
     // qDebug() << "Decoder opened file:" << videoFile.filename;
     auto frameController = std::make_unique<FrameController>(nullptr, videoFile, m_videoCount);
@@ -43,14 +43,14 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
     // Connect each FC's upload signal to VC's slot
     connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
-    qDebug() << "Connected FrameController::ready to VideoController::onReady";
+    // qDebug() << "Connected FrameController::ready to VideoController::onReady";
 
     connect(frameController.get(),
             &FrameController::endOfVideo,
             this,
             &VideoController::onFCEndOfVideo,
             Qt::AutoConnection);
-    qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
+    // qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
 
     m_timeBases.push_back(frameController->getTimeBase());
 
@@ -59,7 +59,7 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     emit durationChanged();
 
     m_frameControllers.push_back(std::move(frameController));
-    qDebug() << "FrameController count now:" << m_frameControllers.size();
+    // qDebug() << "FrameController count now:" << m_frameControllers.size();
 
     m_videoCount++;
 
@@ -69,38 +69,38 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
 void VideoController::setUpTimer() {
     m_timer->moveToThread(&m_timerThread);
-    qDebug() << "Move timer to thread" << &m_timerThread;
+    // qDebug() << "Move timer to thread" << &m_timerThread;
 
     // Connect with timer
     connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::AutoConnection);
-    qDebug() << "Connected Timer::tick to VideoController::onTick";
+    // qDebug() << "Connected Timer::tick to VideoController::onTick";
 
     connect(m_timer.get(), &Timer::step, this, &VideoController::onStep, Qt::AutoConnection);
-    qDebug() << "Connected Timer::step to VideoController::onStep";
+    // qDebug() << "Connected Timer::step to VideoController::onStep";
 
     connect(this, &VideoController::playTimer, m_timer.get(), &Timer::play, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::playTimer to Timer::play";
+    // qDebug() << "Connected VideoController::playTimer to Timer::play";
 
     connect(this, &VideoController::pauseTimer, m_timer.get(), &Timer::pause, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::pauseTimer to Timer::pause";
+    // qDebug() << "Connected VideoController::pauseTimer to Timer::pause";
 
     connect(this, &VideoController::stepForwardTimer, m_timer.get(), &Timer::stepForward, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::stepForwardTimer to Timer::stepForward";
+    // qDebug() << "Connected VideoController::stepForwardTimer to Timer::stepForward";
 
     connect(this, &VideoController::stepBackwardTimer, m_timer.get(), &Timer::stepBackward, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::stepBackwardTimer to Timer::stepBackward";
+    // qDebug() << "Connected VideoController::stepBackwardTimer to Timer::stepBackward";
 
     connect(this, &VideoController::seekTimer, m_timer.get(), &Timer::seek, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::seekTimer to Timer::seek";
+    // qDebug() << "Connected VideoController::seekTimer to Timer::seek";
 
     connect(this, &VideoController::setSpeedTimer, m_timer.get(), &Timer::setSpeed, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::setSpeedTimer to Timer::setSpeed";
+    // qDebug() << "Connected VideoController::setSpeedTimer to Timer::setSpeed";
 
     connect(this, &VideoController::playForwardTimer, m_timer.get(), &Timer::playForward, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::playForwardTimer to Timer::playForward";
+    // qDebug() << "Connected VideoController::playForwardTimer to Timer::playForward";
 
     connect(this, &VideoController::playBackwardTimer, m_timer.get(), &Timer::playBackward, Qt::AutoConnection);
-    qDebug() << "Connected VideoController::playBackwardTimer to Timer::playBackward";
+    // qDebug() << "Connected VideoController::playBackwardTimer to Timer::playBackward";
 
     // Start timer thread
     m_timerThread.start();
@@ -116,35 +116,25 @@ void VideoController::removeVideo(int index) {
     }
 
     // Remove the FrameController at the specified index
-    m_frameControllers.erase(m_frameControllers.begin() + index);
-    m_timeBases.erase(m_timeBases.begin() + index);
-    m_videoCount--;
-    m_readyCount--;
+    m_frameControllers[index].reset();
 
-    // Destroy current timer and reset
-    if (m_timer) {
-        m_timer.reset();
-    }
-
-    if (!m_frameControllers.empty()) {
-        m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
-        setUpTimer();
-        start();
-    }
+    start();
 }
 
 void VideoController::start() {
     // Start all FC - IMPORTANT: This must be done after all FCs are added !
     for (auto& fc : m_frameControllers) {
-        // qDebug() << "Starting FrameController with index: " << fc->m_index;
-        fc->start();
+        if (fc) {
+            // qDebug() << "Starting FrameController with index: " << fc->m_index;
+            fc->start();
+        }
     }
 }
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
-        if (update[i]) {
+        if (update[i] && m_frameControllers[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
             // qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
         }
@@ -161,7 +151,7 @@ void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update,
     // qDebug() << "VideoController: onTick called";
     qDebug() << "VideoController::Step Direcetion:" << m_direction;
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
-        if (update[i]) {
+        if (update[i] && m_frameControllers[i]) {
             m_frameControllers[i]->onTimerStep(pts[i], m_direction);
             // qDebug() << "Emitted onTimerStep for FrameController index" << i << "with PTS" << pts[i];
         }
@@ -298,7 +288,10 @@ void VideoController::seekTo(double timeMs) {
         int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
         // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
         // Call seek on the FC
-        fc->onSeek(pts);
+        if (fc) {
+            // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
+            fc->onSeek(pts);
+        }
         seekPts.push_back(pts);
     }
     // send signal to timer to seek
