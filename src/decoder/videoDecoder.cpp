@@ -1,4 +1,6 @@
 #include "videoDecoder.h"
+#include <chrono>
+#include <thread>
 
 VideoDecoder::VideoDecoder(QObject* parent) :
     QObject(parent),
@@ -53,7 +55,7 @@ void VideoDecoder::openFile() {
 
     // For raw YUV files, we need to specify the input format
     const AVInputFormat* inputFormat = nullptr;
-    
+
     // Check if this is likely a raw YUV file based on file extension
     std::string fileName = m_fileName;
     if (fileName.find(".yuv") != std::string::npos || fileName.find(".raw") != std::string::npos) {
@@ -129,7 +131,7 @@ void VideoDecoder::openFile() {
     qDebug() << "TARGET TIMEBASE: " << targetTimebase.num << "/" << targetTimebase.den;
     // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
     if (timeBase.den != targetTimebase.den) {
-        //timeBase = targetTimebase;
+        // timeBase = targetTimebase;
         m_needsTimebaseConversion = true;
     }
 
@@ -181,6 +183,11 @@ void VideoDecoder::openFile() {
  * @note Emits the frameLoaded(bool) signal to indicate success or failure.
  */
 void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
+    if (m_wait) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        m_wait = false;
+    }
+
     if (num_frames == 0) {
         emit framesLoaded(true);
         return;
@@ -341,7 +348,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
             if (ret == 0) {
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
-                
+
                 const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
                 int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
 
@@ -379,7 +386,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 av_frame_free(&tempFrame);
                 av_packet_unref(tempPacket);
-                return currentFrameIndex - 1;  // Return the frame number we just processed
+                return currentFrameIndex - 1; // Return the frame number we just processed
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
@@ -502,8 +509,9 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         AVStream* videoStream = formatContext->streams[videoStreamIndex];
         double timestamp_seconds = targetPts / m_framerate;
         seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
-        
-        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts" << seek_timestamp;
+
+        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
+                 << seek_timestamp;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
