@@ -32,6 +32,8 @@ void VideoDecoder::setFramerate(double framerate) {
 
 void VideoDecoder::setFormat(AVPixelFormat format) {
     m_format = format;
+    const char* pixFmtString = av_get_pix_fmt_name(m_format);
+    av_dict_set(&inputOptions, "pixel_format", pixFmtString, 0);
 }
 
 void VideoDecoder::setFileName(const std::string& fileName) {
@@ -49,11 +51,21 @@ void VideoDecoder::openFile() {
     // Close any previously opened file
     closeFile();
 
+    // For raw YUV files, we need to specify the input format
+    const AVInputFormat* inputFormat = nullptr;
+    
+    // Check if this is likely a raw YUV file based on file extension
+    std::string fileName = m_fileName;
+    if (fileName.find(".yuv") != std::string::npos || fileName.find(".raw") != std::string::npos) {
+        inputFormat = av_find_input_format("rawvideo");
+        qDebug() << "VideoDecoder: Detected raw YUV file, using rawvideo input format";
+    }
+
     // av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
     // av_dict_set(&input_options, "pixel_format", "yuv420p", 0);
 
     // Open input file
-    if (avformat_open_input(&formatContext, m_fileName.c_str(), nullptr, &inputOptions) < 0) {
+    if (avformat_open_input(&formatContext, m_fileName.c_str(), inputFormat, &inputOptions) < 0) {
         ErrorReporter::instance().report("Could not open input file " + m_fileName, LogLevel::Error);
         return;
     }
@@ -98,6 +110,12 @@ void VideoDecoder::openFile() {
         return;
     }
 
+    if (isYUV(codecContext->codec_id)) {
+        codecContext->pix_fmt = m_format;
+        // codecContext->width = m_width;
+        // codecContext->height = m_height;
+    }
+
     // Open codec
     if (avcodec_open2(codecContext, codec, nullptr) < 0) {
         ErrorReporter::instance().report("Could not open codec", LogLevel::Error);
@@ -137,7 +155,7 @@ void VideoDecoder::openFile() {
 
     if (isYUV(codecContext->codec_id)) {
         int ySize = m_width * m_height;
-        int uvSize = ySize / 4;
+        int uvSize = uvWidth * uvHeight;
         int frameSize = ySize + 2 * uvSize;
 
         QFileInfo info(QString::fromStdString(m_fileName));
@@ -323,15 +341,19 @@ int64_t VideoDecoder::loadCompressedFrame() {
             if (ret == 0) {
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
+                
+                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+                int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+
                 uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
-                int dstLinesize[4] = {width, width / 2, width / 2, 0};
+                int dstLinesize[4] = {width, uvWidth, uvWidth, 0};
 
                 SwsContext* swsCtx = sws_getContext(codecContext->width,
                                                     codecContext->height,
                                                     (AVPixelFormat)tempFrame->format,
                                                     width,
                                                     height,
-                                                    AV_PIX_FMT_YUV420P,
+                                                    codecContext->pix_fmt, // Use the same format as codec context
                                                     SWS_BILINEAR,
                                                     nullptr,
                                                     nullptr,
@@ -379,7 +401,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 /**
  * @brief Copies the decoded frame data into the provided FrameData structure.
  *
- * This function handles the conversion of the decoded frame data into a planar YUV format
+ * This function handles the copying of raw YUV frame data while preserving the original format
  * and populates the FrameData structure with the Y, U, and V plane pointers.
  *
  * @param tempPacket Pointer to the AVPacket containing the decoded frame data.
@@ -390,42 +412,29 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     retFlag = 1;
     uint8_t* packetData = tempPacket->data;
 
-    AVPixelFormat srcFmt = metadata.format();
+    AVPixelFormat srcFmt = codecContext->pix_fmt;
     int width = metadata.yWidth();
     int height = metadata.yHeight();
 
-    // Prepare source pointers and line sizes
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(srcFmt);
+    if (!pixDesc) {
+        ErrorReporter::instance().report("Failed to get pixel format descriptor", LogLevel::Error);
+        av_packet_unref(tempPacket);
+        retFlag = 2;
+        return;
+    }
+
+    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+
     uint8_t* srcData[4] = {nullptr};
     int srcLinesize[4] = {};
     av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-
-    // Prepare destination pointers and line sizes (planar YUV420P)
     uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
-    int dstLinesize[4] = {width, width / 2, width / 2, 0};
-    SwsContext* swsCtx =
-        sws_getContext(width, height, srcFmt, width, height, AV_PIX_FMT_YUV420P, SWS_POINT, nullptr, nullptr, nullptr);
 
-    if (!swsCtx) {
-        ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
-        av_packet_unref(tempPacket);
-        {
-            retFlag = 2;
-            return;
-        };
-    }
-
-    // Scale and convert the YUV frame
-    int res = sws_scale(swsCtx, srcData, srcLinesize, 0, height, dstData, dstLinesize);
-    sws_freeContext(swsCtx);
-
-    if (res <= 0) {
-        ErrorReporter::instance().report("sws_scale failed to convert/copy YUV frame", LogLevel::Error);
-        av_packet_unref(tempPacket);
-        {
-            retFlag = 2;
-            return;
-        };
-    }
+    memcpy(dstData[0], srcData[0], width * height);
+    memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
+    memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
 
     frameData->setPts(currentFrameIndex);
 
@@ -443,7 +452,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     currentFrameIndex++;
 
     av_packet_unref(tempPacket);
-
     av_packet_free(&tempPacket);
 }
 
