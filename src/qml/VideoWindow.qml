@@ -92,7 +92,7 @@ VideoWindow {
 
                 MenuItem {
                     text: "Close the Video"
-                    onTriggered: videoWindow.requestRemove()
+                    onTriggered: videoWindow.requestRemove(videoId)
                 }
             }
         }
