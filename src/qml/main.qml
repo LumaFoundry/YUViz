@@ -49,12 +49,20 @@ ApplicationWindow {
     property string importedFormat: ""
     property bool importedAdd: false
 
+    property var diffPopupInstance: null
+
     ImportPopup {
         id: importDialog
         onVideoImported: function (filePath, width, height, fps, format, add) {
             importVideoFromParams(filePath, width, height, fps, format, add);
         }
     }
+
+    Component {
+        id: diffPopupComponent
+        DiffWindow {}
+    }
+
     Timer {
         id: resizeDebounce
         interval: 100
@@ -398,6 +406,36 @@ ApplicationWindow {
                         }
                     }
 
+                    Button {
+                        text: "Diff"
+                        Layout.preferredWidth: Theme.buttonWidth
+                        Layout.preferredHeight: Theme.buttonHeight
+                        font.pixelSize: Theme.fontSizeSmall
+                        enabled: videoWindowContainer.children.length == 2
+
+                        onClicked: {
+                            // Only one diff at a time
+                            if (diffPopupInstance && diffPopupInstance.visible) {
+                                diffPopupInstance.raise();
+                                return;
+                            }
+                            // Pass video IDs
+                            diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
+                                leftVideoId: videoWindowContainer.children[0].videoId,
+                                rightVideoId: videoWindowContainer.children[1].videoId
+                            });
+                            diffPopupInstance.visible = true;
+
+                            // Cleanup when window closes
+                            diffPopupInstance.onVisibleChanged.connect(function () {
+                                if (!diffPopupInstance.visible) {
+                                    diffPopupInstance.destroy();
+                                    diffPopupInstance = null;
+                                }
+                            });
+                        }
+                    }
+
                     // Fullscreen toggle
                     Button {
                         id: fullscreenButton
@@ -525,6 +563,9 @@ ApplicationWindow {
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
+        if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
+            diffPopupInstance.visible = false;
+        }
         for (let i = 0; i < videoWindowContainer.children.length; ++i) {
             let child = videoWindowContainer.children[i];
             if (child.videoId === id) {

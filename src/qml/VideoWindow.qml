@@ -28,7 +28,6 @@ VideoWindow {
         }
     }
 
-
     Row {
         anchors.top: parent.top
         anchors.right: parent.right
@@ -46,7 +45,7 @@ VideoWindow {
             width: 40
             height: 40
             text: "⚙"
-            font.pixelSize: 40
+            font.pixelSize: 30
             background: Rectangle {
                 color: "transparent"
             }
@@ -73,12 +72,35 @@ VideoWindow {
 
                         onCurrentIndexChanged: {
                             let colorSpaceMap = [
-                                { space: 1, range: 1 },  // BT709 MPEG
-                                { space: 1, range: 2 },  // BT709 Full
-                                { space: 5, range: 1 },  // BT470BG MPEG
-                                { space: 5, range: 2 },  // BT470BG Full
-                                { space: 10, range: 1 }, // BT2020_CL MPEG
-                                { space: 10, range: 2 }  // BT2020_CL Full
+                                {
+                                    space: 1,
+                                    range: 1
+                                }  // BT709 MPEG
+                                ,
+                                {
+                                    space: 1,
+                                    range: 2
+                                }  // BT709 Full
+                                ,
+                                {
+                                    space: 5,
+                                    range: 1
+                                }  // BT470BG MPEG
+                                ,
+                                {
+                                    space: 5,
+                                    range: 2
+                                }  // BT470BG Full
+                                ,
+                                {
+                                    space: 10,
+                                    range: 1
+                                } // BT2020_CL MPEG
+                                ,
+                                {
+                                    space: 10,
+                                    range: 2
+                                }  // BT2020_CL Full
                             ];
                             let selected = colorSpaceMap[currentIndex];
                             videoWindow.setColorParams(selected.space, selected.range);
@@ -174,7 +196,7 @@ VideoWindow {
             if (mainWindow.isCtrlPressed)
                 return Qt.CrossCursor;
             if (videoWindow.isZoomed) {
-               return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+                return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
             }
             return Qt.ArrowCursor;
         }
@@ -258,26 +280,28 @@ VideoWindow {
         Connections {
             target: sharedViewProperties
             function onViewChanged() {
-                pixelValuesCanvas.requestPaint()
+                pixelValuesCanvas.requestPaint();
             }
         }
         Connections {
             target: videoWindow
             function onFrameReady() {
-                pixelValuesCanvas.requestPaint()
+                pixelValuesCanvas.requestPaint();
             }
         }
 
         onPaint: {
             try {
                 var ctx = getContext("2d");
-                if (!ctx) return;
+                if (!ctx)
+                    return;
 
                 ctx.clearRect(0, 0, width, height);
 
                 // get frame meta
                 var meta = videoWindow.getFrameMeta();
-                if (!meta || !meta.yWidth || !meta.yHeight) return;
+                if (!meta || !meta.yWidth || !meta.yHeight)
+                    return;
                 var yWidth = meta.yWidth;
                 var yHeight = meta.yHeight;
                 var uvWidth = meta.uvWidth;
@@ -286,7 +310,8 @@ VideoWindow {
 
                 // threshold logic
                 var threshold = Math.round(yWidth / 10);
-                if (videoWindow.sharedView.zoom < threshold) return;
+                if (videoWindow.sharedView.zoom < threshold)
+                    return;
 
                 var videoRect = getVideoRect();
                 var pixelSpacing = Math.max(1, Math.floor(40 / videoWindow.sharedView.zoom));
@@ -297,9 +322,11 @@ VideoWindow {
 
                 for (var y = startY; y < endY; y += pixelSpacing) {
                     for (var x = startX; x < endX; x += pixelSpacing) {
-                        if (x >= yWidth || y >= yHeight) continue;
+                        if (x >= yWidth || y >= yHeight)
+                            continue;
                         var yuv = videoWindow.getYUV(x, y);
-                        if (!yuv || yuv.length !== 3) continue;
+                        if (!yuv || yuv.length !== 3)
+                            continue;
                         var yValue = yuv[0];
                         var uValue = yuv[1];
                         var vValue = yuv[2];
@@ -313,15 +340,23 @@ VideoWindow {
                             drawPixelValue(ctx, screenX, screenY, yValue, uValue, vValue);
                         }
                     }
-                }             
+                }
             } catch (error) {
                 console.log("QML: Canvas onPaint error:", error);
             }
         }
 
         function getVideoRect() {
-            var itemRect = {width: width, height: height};
-            var videoRect = {x: 0, y: 0, width: itemRect.width, height: itemRect.height};
+            var itemRect = {
+                width: width,
+                height: height
+            };
+            var videoRect = {
+                x: 0,
+                y: 0,
+                width: itemRect.width,
+                height: itemRect.height
+            };
             var windowAspect = itemRect.width / itemRect.height;
             var videoAspect = videoWindow.getAspectRatio;
 
@@ -362,14 +397,14 @@ VideoWindow {
                 var bgWidth = maxWidth + padding * 2;
                 var bgHeight = lines.length * lineHeight + padding * 2;
                 ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-                ctx.fillRect(x - bgWidth/2, y - bgHeight/2, bgWidth, bgHeight);
+                ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
 
                 // draw text
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
 
                 for (var i = 0; i < lines.length; i++) {
-                    var textY = y - bgHeight/2 + padding + i * lineHeight + lineHeight/2;
+                    var textY = y - bgHeight / 2 + padding + i * lineHeight + lineHeight / 2;
 
                     // draw black stroke
                     ctx.strokeStyle = "black";
@@ -422,8 +457,7 @@ VideoWindow {
                     var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
-                    return "Time: " + currentStr + " / " + durationStr + "\n" +
-                           "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames;
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames;
                 } else if (videoWindow.osdState === 2) {
                     // Detailed info: add pixel format, timebase/pts, aspect ratio
                     var durationSec = Math.floor(videoWindow.duration / 1000);
@@ -433,12 +467,7 @@ VideoWindow {
                     var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
-                    return "Time: " + currentStr + " / " + durationStr + "\n" +
-                           "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames + "\n" +
-                           "Format: " + videoWindow.pixelFormat + "\n" +
-                           "Timebase: " + videoWindow.timeBase + "\n" +
-                           "Aspect: " + videoWindow.aspectRatio.toFixed(3) + "\n" +
-                           "Color Space: " + videoWindow.colorSpace;
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames + "\n" + "Format: " + videoWindow.pixelFormat + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: " + videoWindow.aspectRatio.toFixed(3) + "\n" + "Color Space: " + videoWindow.colorSpace;
                 }
                 return "";
             }

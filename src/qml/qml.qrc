@@ -3,6 +3,7 @@
     <file>main.qml</file>
     <file>ImportPopup.qml</file>
     <file>VideoWindow.qml</file>
+    <file>DiffWindow.qml</file>
     <file>Theme.qml</file>
 </qresource>
 </RCC>
