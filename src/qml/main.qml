@@ -6,17 +6,24 @@ import Theme 1.0
 
 ApplicationWindow {
     id: mainWindow
+
     property int videoCount: 0
+    property var videoWindows: []
+
     QtObject {
         id: qmlBridge
         objectName: "qmlBridge"
 
         function createVideoWindow(index) {
-            let obj = videoWindowComponent.createObject(videoWindowContainer);
+            console.log("[qmlBridge] createVideoWindow called with index:", index);
+            let obj = videoWindowComponent.createObject(videoWindowContainer, {
+                videoId: index,
+                assigned: false
+            });
             if (obj !== null) {
                 obj.objectName = "videoWindow_" + index;
-                obj.assigned = false;
                 mainWindow.videoCount += 1;
+                obj.requestRemove.connect(mainWindow.removeVideoWindowById);
             }
             return obj;
         }
@@ -138,9 +145,22 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
-                    importDialog.mode = "new";
-                    importDialog.open();
-                    importDialog.openFileDialog();
+                    function destroyAllVideoWindows() {
+                        if (videoWindowContainer.children.length > 0) {
+                            let child = videoWindowContainer.children[videoWindowContainer.children.length - 1];
+                            if (child && child.videoId !== undefined) {
+                                mainWindow.removeVideoWindowById(child.videoId);
+                                // Defer next destruction
+                                Qt.callLater(destroyAllVideoWindows);
+                                return;
+                            }
+                        }
+                        // All windows destroyed, now open dialog
+                        importDialog.mode = "new";
+                        importDialog.open();
+                        importDialog.openFileDialog();
+                    }
+                    destroyAllVideoWindows();
                 }
             }
             Action {
@@ -206,21 +226,6 @@ ApplicationWindow {
             id: videoArea
             Layout.fillWidth: true
             Layout.fillHeight: true
-
-            Loader {
-                id: videoWindowLoader
-                anchors.fill: parent
-                sourceComponent: videoWindowContainer.children.length === 0 ? videoWindowComponent : null
-                onItemChanged: {
-                    if (item !== null) {
-                        item.requestRemove.connect(function () {
-                            videoController.removeVideo(0);
-                            videoLoaded = false;
-                        });
-                        keyHandler.focus = true;
-                    }
-                }
-            }
 
             Grid {
                 id: videoWindowContainer
@@ -351,69 +356,6 @@ ApplicationWindow {
                             }
                         }
                     }
-
-                    // Color Space selector combobox
-                    RowLayout {
-                        spacing: 6
-                        Text {
-                            text: "Color Space:"
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-                        ComboBox {
-                            id: colorSpaceSelector
-                            model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
-                            currentIndex: 0
-                            Layout.preferredWidth: 140
-                            Layout.preferredHeight: Theme.comboBoxHeight
-                            font.pixelSize: Theme.fontSizeSmall
-                            displayText: model[currentIndex]
-
-                            onCurrentIndexChanged: {
-                                // define color space and range mapping
-                                let colorSpaceMap = [
-                                    {
-                                        space: 1,
-                                        range: 1
-                                    }  // BT709 MPEG
-                                    ,
-                                    {
-                                        space: 1,
-                                        range: 2
-                                    }  // BT709 Full
-                                    ,
-                                    {
-                                        space: 5,
-                                        range: 1
-                                    }  // BT470BG MPEG
-                                    ,
-                                    {
-                                        space: 5,
-                                        range: 2
-                                    }  // BT470BG Full
-                                    ,
-                                    {
-                                        space: 10,
-                                        range: 1
-                                    } // BT2020_CL MPEG
-                                    ,
-                                    {
-                                        space: 10,
-                                        range: 2
-                                    }  // BT2020_CL Full
-                                ];
-
-                                let selected = colorSpaceMap[currentIndex];
-                                videoWindowLoader.item.setColorParams(selected.space, selected.range);
-                                keyHandler.forceActiveFocus();
-                            }
-
-                            onActivated: {
-                                keyHandler.forceActiveFocus();
-                            }
-                        }
-                    }
-
                     // Reset View Button
                     Button {
                         text: "Reset View"
@@ -541,6 +483,7 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
+        console.log("[importVideoFromParams] calling videoLoader");
         videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
@@ -553,5 +496,19 @@ ApplicationWindow {
         color: Theme.textColor
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: Theme.fontSizeNormal
+    }
+
+    function removeVideoWindowById(id) {
+        console.log("[removeVideoWindowById] Called with id:", id);
+        for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+            let child = videoWindowContainer.children[i];
+            if (child.videoId === id) {
+                child.destroy();
+                mainWindow.videoCount--;
+                break;
+            }
+        }
+        videoController.removeVideo(id);
+        keyHandler.forceActiveFocus();
     }
 }

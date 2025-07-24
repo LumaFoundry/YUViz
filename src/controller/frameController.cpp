@@ -31,40 +31,40 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
 
     // Request & Receive signals for decoding
     connect(this, &FrameController::requestDecode, m_Decoder.get(), &VideoDecoder::loadFrames, Qt::AutoConnection);
-    qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
+    // qDebug() << "Connected requestDecode to VideoDecoder::loadFrames";
 
     connect(m_Decoder.get(), &VideoDecoder::framesLoaded, this, &FrameController::onFrameDecoded, Qt::AutoConnection);
-    qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
+    // qDebug() << "Connected VideoDecoder::framesLoaded to FrameController::onFrameDecoded";
 
     connect(this, &FrameController::requestSeek, m_Decoder.get(), &VideoDecoder::seek, Qt::AutoConnection);
-    qDebug() << "Connected requestSeek to VideoDecoder::seek";
+    // qDebug() << "Connected requestSeek to VideoDecoder::seek";
 
     connect(m_Decoder.get(), &VideoDecoder::frameSeeked, this, &FrameController::onFrameSeeked, Qt::AutoConnection);
-    qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
+    // qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
 
     // Request & Receive signals for uploading texture to buffer
     connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::AutoConnection);
-    qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
+    // qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
 
     connect(
         m_window->m_renderer, &VideoRenderer::batchIsFull, this, &FrameController::onFrameUploaded, Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
+    // qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
 
     // Request & Receive for uploading to GPU and rendering frames
     connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::AutoConnection);
-    qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
+    // qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
 
     connect(m_window->m_renderer,
             &VideoRenderer::batchIsEmpty,
             this,
             &FrameController::onFrameRendered,
             Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
+    // qDebug() << "Connected VideoRenderer::gpuUploaded to FrameController::onFrameRendered";
 
     // Error handling for renderer
     connect(
         m_window->m_renderer, &VideoRenderer::rendererError, this, &FrameController::onRenderError, Qt::AutoConnection);
-    qDebug() << "Connected VideoRenderer::errorOccurred to FrameController::onRenderError";
+    // qDebug() << "Connected VideoRenderer::errorOccurred to FrameController::onRenderError";
 
     m_decodeThread.start();
 }
