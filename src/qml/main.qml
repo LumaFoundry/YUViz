@@ -71,6 +71,28 @@ ApplicationWindow {
         }
     }
 
+    Timer {
+        id: destroyTimer
+        interval: 100
+        repeat: true
+        running: false
+        property int destroyIndex: -1
+        onTriggered: {
+            if (destroyIndex >= 0) {
+                let child = videoWindowContainer.children[destroyIndex];
+                if (child && child.videoId !== undefined) {
+                    mainWindow.removeVideoWindowById(child.videoId);
+                }
+                destroyIndex--;
+            } else {
+                destroyTimer.stop();
+                importDialog.mode = "new";
+                importDialog.open();
+                importDialog.openFileDialog();
+            }
+        }
+    }
+
     onWidthChanged: {
         if (!resizing) {
             resizing = true;
@@ -145,22 +167,8 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
-                    function destroyAllVideoWindows() {
-                        if (videoWindowContainer.children.length > 0) {
-                            let child = videoWindowContainer.children[videoWindowContainer.children.length - 1];
-                            if (child && child.videoId !== undefined) {
-                                mainWindow.removeVideoWindowById(child.videoId);
-                                // Defer next destruction
-                                Qt.callLater(destroyAllVideoWindows);
-                                return;
-                            }
-                        }
-                        // All windows destroyed, now open dialog
-                        importDialog.mode = "new";
-                        importDialog.open();
-                        importDialog.openFileDialog();
-                    }
-                    destroyAllVideoWindows();
+                    destroyTimer.destroyIndex = videoWindowContainer.children.length - 1;
+                    destroyTimer.start();
                 }
             }
             Action {
@@ -363,7 +371,7 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
-                            sharedViewProperties.reset(); 
+                            sharedViewProperties.reset();
                             selectionStart = Qt.point(0, 0);
                             selectionEnd = Qt.point(0, 0);
                             isSelecting = false;
