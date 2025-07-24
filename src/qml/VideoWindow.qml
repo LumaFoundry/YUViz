@@ -44,14 +44,17 @@ VideoWindow {
             id: menuButton
             width: 40
             height: 40
+            text: "⚙"
+            font.pixelSize: 40
             background: Rectangle {
                 color: "transparent"
             }
-            contentItem: Image {
-                source: "qrc:/gear.svg"
-                anchors.centerIn: parent
-                fillMode: Image.PreserveAspectFit
-                opacity: 1
+            contentItem: Text {
+                text: menuButton.text
+                font.pixelSize: menuButton.font.pixelSize
+                color: "white"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
             }
             onClicked: menu.open()
 
