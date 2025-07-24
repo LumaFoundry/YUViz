@@ -107,7 +107,6 @@ void VideoController::setUpTimer() {
 }
 
 void VideoController::removeVideo(int index) {
-    seekTo(0.0);
     qDebug() << "Removing video at index" << index;
 
     if (index < 0 || index >= m_frameControllers.size()) {
@@ -282,15 +281,18 @@ void VideoController::seekTo(double timeMs) {
     std::vector<int64_t> seekPts;
 
     for (auto& fc : m_frameControllers) {
+        if (!fc) {
+            continue;
+        }
         // Convert timeMs to PTS using the FC's timebase
         AVRational timebase = fc->getTimeBase();
         int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
         // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
         // Call seek on the FC
-        if (fc) {
-            // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
-            fc->onSeek(pts);
-        }
+
+        // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
+        fc->onSeek(pts);
+
         seekPts.push_back(pts);
     }
     // send signal to timer to seek

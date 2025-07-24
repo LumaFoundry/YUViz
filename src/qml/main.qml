@@ -15,11 +15,11 @@ ApplicationWindow {
         objectName: "qmlBridge"
 
         function createVideoWindow(index) {
+            console.log("[qmlBridge] createVideoWindow called with index:", index);
             let obj = videoWindowComponent.createObject(videoWindowContainer, {
                 videoId: index,
                 assigned: false
             });
-            console.log("[qmlBridge] createVideoWindow called with index:", index);
             if (obj !== null) {
                 obj.objectName = "videoWindow_" + index;
                 mainWindow.videoCount += 1;
@@ -470,6 +470,7 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
+        console.log("[importVideoFromParams] calling videoLoader");
         videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
@@ -486,10 +487,15 @@ ApplicationWindow {
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
-        if (videoWindowContainer.children[id]) {
-            videoWindowContainer.children[id].destroy();
-            videoCount--;
+        for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+            let child = videoWindowContainer.children[i];
+            if (child.videoId === id) {
+                child.destroy();
+                videoCount--;
+                break;
+            }
         }
         videoController.removeVideo(id);
+        keyHandler.forceActiveFocus();
     }
 }

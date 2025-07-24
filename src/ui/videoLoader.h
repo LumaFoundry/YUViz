@@ -20,4 +20,5 @@ class VideoLoader : public QObject {
   private:
     QQmlApplicationEngine* m_engine;
     std::shared_ptr<VideoController> m_vcPtr;
+    int index = 0;
 };
