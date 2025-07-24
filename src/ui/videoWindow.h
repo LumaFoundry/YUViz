@@ -25,6 +25,9 @@ class VideoWindow : public QQuickItem {
     qreal maxZoom() const;
     void setMaxZoom(qreal zoom);
 
+    // Get frame metadata for color space and range
+    void syncColorSpaceMenu();
+
   public slots:
     void uploadFrame(FrameData* frame);
     void renderFrame();

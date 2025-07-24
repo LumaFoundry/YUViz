@@ -10,6 +10,20 @@ VideoWindow {
     objectName: "videoWindow_" + videoId
     signal requestRemove
 
+    
+
+
+    QtObject {
+        id: videoBridge
+        objectName: "videoBridge"
+
+        function setColorSpaceIndex(index) {
+            colorSpaceSelector.currentIndex = index;
+            return 0;
+        }
+    }
+
+
     Row {
         anchors.top: parent.top
         anchors.right: parent.right
@@ -44,6 +58,7 @@ VideoWindow {
                 MenuItem {
                     contentItem: ComboBox {
                         id: colorSpaceSelector
+                        objectName: "colorSpaceSelector"
                         model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
                         width: 160
                         currentIndex: 0
