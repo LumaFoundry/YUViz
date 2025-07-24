@@ -4,6 +4,6 @@
     <file>ImportPopup.qml</file>
     <file>VideoWindow.qml</file>
     <file>Theme.qml</file>
-    <file>gear.png</file>
+    <file>gear.svg</file>
 </qresource>
 </RCC>

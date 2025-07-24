@@ -30,10 +30,10 @@ VideoWindow {
                 color: "transparent"
             }
             contentItem: Image {
-                source: "qrc:/gear.png"
+                source: "qrc:/gear.svg"
                 anchors.centerIn: parent
                 fillMode: Image.PreserveAspectFit
-                opacity: 1
+                opacity: 0.8
             }
             onClicked: menu.open()
 
