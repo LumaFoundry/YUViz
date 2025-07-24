@@ -27,6 +27,7 @@ class VideoWindow : public QQuickItem {
     qreal maxZoom() const;
     void setMaxZoom(qreal zoom);
     void syncColorSpaceMenu();
+    Q_INVOKABLE QVariant getYUV(int x, int y) const;
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -41,6 +42,7 @@ class VideoWindow : public QQuickItem {
     Q_INVOKABLE void zoomToSelection(const QRectF& rect);
     Q_INVOKABLE void resetView();
     Q_INVOKABLE void pan(const QPointF& delta);
+    QVariantMap getFrameMeta() const;
 
   signals:
     void batchUploaded(bool success);
@@ -50,6 +52,7 @@ class VideoWindow : public QQuickItem {
     void zoomChanged();
     void maxZoomChanged();
     void sharedViewChanged();
+    void frameReady();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;

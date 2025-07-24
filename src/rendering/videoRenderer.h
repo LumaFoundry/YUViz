@@ -28,9 +28,11 @@ class VideoRenderer : public QObject {
 
   public:
     std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
+    FrameData* getCurrentFrame() const { return m_currentFrame; }
 
   private:
     std::shared_ptr<FrameMeta> m_metaPtr;
+    FrameData* m_currentFrame = nullptr;
     QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
