@@ -23,6 +23,7 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(double aspectRatio READ aspectRatio NOTIFY aspectRatioChanged)
     Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
+    Q_PROPERTY(QString colorSpace READ colorSpace NOTIFY colorSpaceChanged)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
@@ -47,6 +48,7 @@ class VideoWindow : public QQuickItem {
     double aspectRatio() const;
     qint64 duration() const;
     double currentTimeMs() const;
+    QString colorSpace() const;
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -82,6 +84,7 @@ class VideoWindow : public QQuickItem {
     void aspectRatioChanged();
     void durationChanged();
     void currentTimeMsChanged();
+    void colorSpaceChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;

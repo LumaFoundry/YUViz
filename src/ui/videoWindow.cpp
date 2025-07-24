@@ -36,6 +36,7 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     emit timeBaseChanged();
     emit aspectRatioChanged();
     emit durationChanged();
+    emit colorSpaceChanged();
 }
 
 void VideoWindow::setAspectRatio(int width, int height) {
@@ -271,6 +272,43 @@ qint64 VideoWindow::duration() const {
 
 double VideoWindow::currentTimeMs() const {
     return m_currentTimeMs;
+}
+
+QString VideoWindow::colorSpace() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVColorSpace colorSpace = m_frameMeta->colorSpace();
+
+    // Convert AVColorSpace enum to readable string
+    switch (colorSpace) {
+    case AVCOL_SPC_BT709:
+        return QString("BT.709");
+    case AVCOL_SPC_BT470BG:
+        return QString("BT.470BG");
+    case AVCOL_SPC_SMPTE170M:
+        return QString("SMPTE 170M");
+    case AVCOL_SPC_SMPTE240M:
+        return QString("SMPTE 240M");
+    case AVCOL_SPC_BT2020_NCL:
+        return QString("BT.2020 NCL");
+    case AVCOL_SPC_BT2020_CL:
+        return QString("BT.2020 CL");
+    case AVCOL_SPC_SMPTE2085:
+        return QString("SMPTE 2085");
+    case AVCOL_SPC_CHROMA_DERIVED_NCL:
+        return QString("Chroma Derived NCL");
+    case AVCOL_SPC_CHROMA_DERIVED_CL:
+        return QString("Chroma Derived CL");
+    case AVCOL_SPC_ICTCP:
+        return QString("ICtCp");
+    case AVCOL_SPC_RGB:
+        return QString("RGB");
+    case AVCOL_SPC_UNSPECIFIED:
+        return QString("Unspecified");
+    default:
+        return QString("Unknown (%1)").arg(static_cast<int>(colorSpace));
+    }
 }
 
 QVariant VideoWindow::getYUV(int x, int y) const {

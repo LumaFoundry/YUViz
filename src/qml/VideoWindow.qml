@@ -437,7 +437,8 @@ VideoWindow {
                            "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames + "\n" +
                            "Format: " + videoWindow.pixelFormat + "\n" +
                            "Timebase: " + videoWindow.timeBase + "\n" +
-                           "Aspect: " + videoWindow.aspectRatio.toFixed(3);
+                           "Aspect: " + videoWindow.aspectRatio.toFixed(3) + "\n" +
+                           "Color Space: " + videoWindow.colorSpace;
                 }
                 return "";
             }
