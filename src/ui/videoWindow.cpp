@@ -16,12 +16,10 @@ VideoWindow::VideoWindow(QQuickItem* parent) :
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     m_renderer = new VideoRenderer(this, metaPtr);
     if (window()) {
-        syncColorSpaceMenu();
         update();
     } else {
         connect(this, &QQuickItem::windowChanged, this, [=](QQuickWindow* win) {
             qDebug() << "[VideoWindow] window became available, calling update()";
-            syncColorSpaceMenu();
             update();
         });
     }
