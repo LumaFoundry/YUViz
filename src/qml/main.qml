@@ -145,13 +145,22 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
-                    for (let i = 0; i < videoWindowContainer.children.length; ++i) {
-                        mainWindow.removeVideoWindowById(videoWindowContainer.children[i].videoId);
+                    function destroyAllVideoWindows() {
+                        if (videoWindowContainer.children.length > 0) {
+                            let child = videoWindowContainer.children[videoWindowContainer.children.length - 1];
+                            if (child && child.videoId !== undefined) {
+                                mainWindow.removeVideoWindowById(child.videoId);
+                                // Defer next destruction
+                                Qt.callLater(destroyAllVideoWindows);
+                                return;
+                            }
+                        }
+                        // All windows destroyed, now open dialog
+                        importDialog.mode = "new";
+                        importDialog.open();
+                        importDialog.openFileDialog();
                     }
-                    mainWindow.videoCount = 0;
-                    importDialog.mode = "new";
-                    importDialog.open();
-                    importDialog.openFileDialog();
+                    destroyAllVideoWindows();
                 }
             }
             Action {
