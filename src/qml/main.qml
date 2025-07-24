@@ -6,6 +6,28 @@ import Theme 1.0
 
 ApplicationWindow {
     id: mainWindow
+
+    property int videoCount: 0
+    property var videoWindows: []
+
+    QtObject {
+        id: qmlBridge
+        objectName: "qmlBridge"
+
+        function createVideoWindow(index) {
+            console.log("[qmlBridge] createVideoWindow called with index:", index);
+            let obj = videoWindowComponent.createObject(videoWindowContainer, {
+                videoId: index,
+                assigned: false
+            });
+            if (obj !== null) {
+                obj.objectName = "videoWindow_" + index;
+                mainWindow.videoCount += 1;
+                obj.requestRemove.connect(mainWindow.removeVideoWindowById);
+            }
+            return obj;
+        }
+    }
     title: "videoplayer"
     width: 800
     height: 600
@@ -18,10 +40,6 @@ ApplicationWindow {
     property bool isCtrlPressed: false
     property bool isSelecting: false
     property bool wasPlayingBeforeResize: false
-    property point selectionStart: Qt.point(0, 0)
-    property point selectionEnd: Qt.point(0, 0)
-    property bool isProcessingSelection: false
-    property bool isMouseDown: false
     property bool resizing: false
 
     property string importedFilePath: ""
@@ -46,6 +64,34 @@ ApplicationWindow {
             if (wasPlayingBeforeResize) {
                 videoController.play();
             }
+        }
+    }
+
+    Timer {
+        id: destroyTimer
+        interval: 100
+        repeat: true
+        running: false
+        property int destroyIndex: -1
+        onTriggered: {
+            if (destroyIndex >= 0) {
+                let child = videoWindowContainer.children[destroyIndex];
+                if (child && child.videoId !== undefined) {
+                    mainWindow.removeVideoWindowById(child.videoId);
+                }
+                destroyIndex--;
+            } else {
+                destroyTimer.stop();
+                importDialog.mode = "new";
+                importDialog.open();
+                importDialog.openFileDialog();
+            }
+            sharedViewProperties.reset();
+            selectionStart = Qt.point(0, 0);
+            selectionEnd = Qt.point(0, 0);
+            isSelecting = false;
+            isProcessingSelection = false;
+            keyHandler.focus = true;
         }
     }
 
@@ -76,7 +122,7 @@ ApplicationWindow {
         id: keyHandler
         anchors.fill: parent
         focus: true
-        enabled: videoLoaded
+        enabled: videoWindowContainer.children.length > 0
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Space) {
                 // console.log("Space key pressed");
@@ -123,9 +169,8 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
-                    importDialog.mode = "new";
-                    importDialog.open();
-                    importDialog.openFileDialog();
+                    destroyTimer.destroyIndex = videoWindowContainer.children.length - 1;
+                    destroyTimer.start();
                 }
             }
             Action {
@@ -192,28 +237,19 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            Loader {
-                id: videoWindowLoader
+            Grid {
+                id: videoWindowContainer
                 anchors.fill: parent
-                sourceComponent: videoLoaded ? videoWindowComponent : null
-                onItemChanged: {
-                    if (item !== null) {
-                        item.requestRemove.connect(function () {
-                            videoController.removeVideo(0);
-                            videoLoaded = false;
-                        });
-                        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
-                        keyHandler.focus = true;
-                    }
-                }
+                spacing: 0
+                columns: Math.ceil(Math.sqrt(mainWindow.videoCount))
             }
 
             Component {
                 id: videoWindowComponent
                 VideoWindow {
-                    id: videoWindow_0
-                    objectName: "videoWindow_0"
-                    anchors.fill: parent
+                    id: videoWindowInstance
+                    width: (videoArea.width / videoWindowContainer.columns)
+                    height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
                 }
             }
 
@@ -221,7 +257,7 @@ ApplicationWindow {
                 id: placeholder
                 anchors.fill: parent
                 color: "#181818"
-                visible: !videoLoaded
+                visible: videoWindowContainer.children.length === 0
                 z: -1
                 Text {
                     anchors.centerIn: parent
@@ -235,7 +271,7 @@ ApplicationWindow {
             background: Rectangle {
                 color: "#5d383838"
             }
-            enabled: videoLoaded
+            enabled: videoWindowContainer.children.length > 0
             Layout.fillWidth: true
             ColumnLayout {
                 id: panel
@@ -330,69 +366,6 @@ ApplicationWindow {
                             }
                         }
                     }
-
-                    // Color Space selector combobox
-                    RowLayout {
-                        spacing: 6
-                        Text {
-                            text: "Color Space:"
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-                        ComboBox {
-                            id: colorSpaceSelector
-                            model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
-                            currentIndex: 0
-                            Layout.preferredWidth: 140
-                            Layout.preferredHeight: Theme.comboBoxHeight
-                            font.pixelSize: Theme.fontSizeSmall
-                            displayText: model[currentIndex]
-
-                            onCurrentIndexChanged: {
-                                // define color space and range mapping
-                                let colorSpaceMap = [
-                                    {
-                                        space: 1,
-                                        range: 1
-                                    }  // BT709 MPEG
-                                    ,
-                                    {
-                                        space: 1,
-                                        range: 2
-                                    }  // BT709 Full
-                                    ,
-                                    {
-                                        space: 5,
-                                        range: 1
-                                    }  // BT470BG MPEG
-                                    ,
-                                    {
-                                        space: 5,
-                                        range: 2
-                                    }  // BT470BG Full
-                                    ,
-                                    {
-                                        space: 10,
-                                        range: 1
-                                    } // BT2020_CL MPEG
-                                    ,
-                                    {
-                                        space: 10,
-                                        range: 2
-                                    }  // BT2020_CL Full
-                                ];
-
-                                let selected = colorSpaceMap[currentIndex];
-                                videoWindowLoader.item.setColorParams(selected.space, selected.range);
-                                keyHandler.forceActiveFocus();
-                            }
-
-                            onActivated: {
-                                keyHandler.forceActiveFocus();
-                            }
-                        }
-                    }
-
                     // Reset View Button
                     Button {
                         text: "Reset View"
@@ -400,12 +373,11 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
-                            videoWindowLoader.item.resetZoom();
+                            sharedViewProperties.reset();
                             selectionStart = Qt.point(0, 0);
                             selectionEnd = Qt.point(0, 0);
                             isSelecting = false;
                             isProcessingSelection = false;
-                            videoWindowLoader.item.resetSelectionCanvas();
                             keyHandler.focus = true;
                         }
                     }
@@ -520,7 +492,10 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
+        console.log("[importVideoFromParams] calling videoLoader");
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
         videoLoaded = true;
+        keyHandler.forceActiveFocus();
     }
 
     Text {
@@ -530,5 +505,19 @@ ApplicationWindow {
         color: Theme.textColor
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: Theme.fontSizeNormal
+    }
+
+    function removeVideoWindowById(id) {
+        console.log("[removeVideoWindowById] Called with id:", id);
+        for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+            let child = videoWindowContainer.children[i];
+            if (child.videoId === id) {
+                child.destroy();
+                mainWindow.videoCount--;
+                break;
+            }
+        }
+        videoController.removeVideo(id);
+        keyHandler.forceActiveFocus();
     }
 }

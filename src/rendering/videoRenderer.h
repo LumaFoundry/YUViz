@@ -26,6 +26,9 @@ class VideoRenderer : public QObject {
   public slots:
     void setZoomAndOffset(const float zoom, const float centerX, const float centerY);
 
+  public:
+    std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
+
   private:
     std::shared_ptr<FrameMeta> m_metaPtr;
     QRhi* m_rhi = nullptr;

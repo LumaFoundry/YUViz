@@ -10,6 +10,8 @@ VideoRenderNode::VideoRenderNode(QQuickItem* item, VideoRenderer* renderer) :
 }
 
 QRectF VideoRenderNode::rect() const {
+    if (!m_item)
+        return QRectF();
     return QRectF(0, 0, m_item->width(), m_item->height());
 }
 
@@ -18,6 +20,9 @@ void VideoRenderNode::prepare() {
         return;
     }
     QRhi* rhi = m_item->window()->rhi();
+    if (!rhi) {
+        return;
+    }
     QRhiRenderPassDescriptor* rp = renderTarget()->renderPassDescriptor();
     m_renderer->initialize(rhi, rp);
     m_initialized = true;

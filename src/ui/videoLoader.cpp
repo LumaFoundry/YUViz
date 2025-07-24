@@ -2,10 +2,14 @@
 #include <QDebug>
 #include <QQmlContext>
 
-VideoLoader::VideoLoader(QQmlApplicationEngine* engine, QObject* parent, std::shared_ptr<VideoController> vcPtr) :
+VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
+                         QObject* parent,
+                         std::shared_ptr<VideoController> vcPtr,
+                         SharedViewProperties* sharedView) :
     QObject(parent),
     m_engine(engine),
-    m_vcPtr(vcPtr) {
+    m_vcPtr(vcPtr),
+    m_sharedView(sharedView) {
 }
 
 void VideoLoader::loadVideo(
@@ -34,10 +38,33 @@ void VideoLoader::loadVideo(
     }
 
     QObject* root = m_engine->rootObjects().first();
-    auto* windowPtr = root->findChild<VideoWindow*>("videoWindow_0");
-    if (!windowPtr) {
-        qWarning() << "Could not find VideoWindow with id 'videoWindow_0'";
-        return;
+    int index = 0;
+    VideoWindow* windowPtr = nullptr;
+    while (true) {
+        QString objectName = QString("videoWindow_%1").arg(index);
+        QObject* obj = root->findChild<QObject*>(objectName);
+        if (!obj) {
+            QObject* qmlBridge = root->findChild<QObject*>("qmlBridge");
+            if (!qmlBridge) {
+                qWarning() << "Could not find qmlBridge";
+                return;
+            }
+            QVariant returnedValue;
+            bool ok = QMetaObject::invokeMethod(
+                qmlBridge, "createVideoWindow", Q_RETURN_ARG(QVariant, returnedValue), Q_ARG(QVariant, index));
+            if (!ok || !returnedValue.isValid()) {
+                qWarning() << "Failed to create VideoWindow with index" << index;
+                return;
+            }
+            obj = returnedValue.value<QObject*>();
+        }
+        windowPtr = qobject_cast<VideoWindow*>(obj);
+        if (windowPtr && !windowPtr->property("assigned").toBool()) {
+            windowPtr->setProperty("assigned", true);
+            windowPtr->setSharedView(m_sharedView);
+            break;
+        }
+        ++index;
     }
 
     windowPtr->setAspectRatio(width, height);
@@ -57,7 +84,4 @@ void VideoLoader::loadVideo(
         qDebug() << "resetting video" << info.filename;
         // m_vcPtr->resetVideo(info);
     }
-
-    qDebug() << "starting vc";
-    m_vcPtr->start();
 }

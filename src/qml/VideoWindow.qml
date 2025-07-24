@@ -1,21 +1,100 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
 import Window 1.0
+import QtQuick.Layouts 1.15
 
 VideoWindow {
     id: videoWindow
-    property var videoId: ""
+    property int videoId: -1
+    property bool assigned: false
+    property bool isSelecting: false
+    property point selectionStart: Qt.point(0, 0)
+    property point selectionEnd: Qt.point(0, 0)
+    property bool isProcessingSelection: false
+    property bool isMouseDown: false
+    property bool isCtrlPressed: keyHandler.isCtrlPressed
+    property bool isZoomed: sharedView ? sharedView.isZoomed : false
     objectName: "videoWindow_" + videoId
-    signal requestRemove
+    signal requestRemove(int videoId)
 
-    Button {
-        text: "✕"
-        width: 30
-        height: 30
+    QtObject {
+        id: videoBridge
+        objectName: "videoBridge"
+
+        function setColorSpaceIndex(index) {
+            colorSpaceSelector.currentIndex = index;
+            return 0;
+        }
+    }
+
+
+    Row {
         anchors.top: parent.top
         anchors.right: parent.right
-        onClicked: {
-            videoWindow.requestRemove();
+        spacing: 8
+
+        ComboBox {
+            width: 0
+            height: 40
+            model: ["Don't remove this ComboBox"]
+            indicator: Canvas {}
+        }
+        
+        Button {
+            id: menuButton
+            width: 40
+            height: 40
+            text: "⚙"
+            font.pixelSize: 40
+            background: Rectangle {
+                color: "transparent"
+            }
+            contentItem: Text {
+                text: menuButton.text
+                font.pixelSize: menuButton.font.pixelSize
+                color: "white"
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+            }
+            onClicked: menu.open()
+
+            Menu {
+                id: menu
+                y: menuButton.height
+
+                MenuItem {
+                    contentItem: ComboBox {
+                        id: colorSpaceSelector
+                        objectName: "colorSpaceSelector"
+                        model: ["BT709", "BT709 Full", "BT470BG", "BT470BG Full", "BT2020", "BT2020 Full"]
+                        width: 160
+                        currentIndex: 0
+
+                        onCurrentIndexChanged: {
+                            let colorSpaceMap = [
+                                { space: 1, range: 1 },  // BT709 MPEG
+                                { space: 1, range: 2 },  // BT709 Full
+                                { space: 5, range: 1 },  // BT470BG MPEG
+                                { space: 5, range: 2 },  // BT470BG Full
+                                { space: 10, range: 1 }, // BT2020_CL MPEG
+                                { space: 10, range: 2 }  // BT2020_CL Full
+                            ];
+                            let selected = colorSpaceMap[currentIndex];
+                            videoWindow.setColorParams(selected.space, selected.range);
+                            keyHandler.forceActiveFocus();
+                        }
+
+                        onActivated: keyHandler.forceActiveFocus()
+                    }
+                }
+
+                MenuSeparator {}
+
+                MenuItem {
+                    text: "Close the Video"
+                    onTriggered: videoWindow.requestRemove()
+                }
+            }
         }
     }
 
@@ -42,7 +121,7 @@ VideoWindow {
         id: pointHandler
         acceptedButtons: Qt.LeftButton
         // Enable this handler only when zoomed and NOT doing a selection drag
-        enabled: videoWindow.isZoomed && !isCtrlPressed
+        enabled: videoWindow.isZoomed && !mainWindow.isCtrlPressed
 
         property point lastPosition: Qt.point(0, 0)
 
@@ -91,16 +170,16 @@ VideoWindow {
         hoverEnabled: true // Needed for cursor shape changes
 
         cursorShape: {
-            if (isCtrlPressed)
+            if (mainWindow.isCtrlPressed)
                 return Qt.CrossCursor;
             if (videoWindow.isZoomed) {
-                return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+               return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
             }
             return Qt.ArrowCursor;
         }
 
         onPressed: function (mouse) {
-            if (isCtrlPressed) {
+            if (mainWindow.isCtrlPressed) {
                 // Force reset processing state, ensure new selection can start
                 isProcessingSelection = false;
                 isSelecting = true;
@@ -112,7 +191,7 @@ VideoWindow {
         }
 
         onPositionChanged: function (mouse) {
-            if (isSelecting) {
+            if (videoWindow.isSelecting) {
                 var currentPos = Qt.point(mouse.x, mouse.y);
                 var deltaX = currentPos.x - selectionStart.x;
                 var deltaY = currentPos.y - selectionStart.y;
@@ -125,7 +204,7 @@ VideoWindow {
         }
 
         onReleased: function (mouse) {
-            if (isSelecting) {
+            if (videoWindow.isSelecting) {
                 isSelecting = false;
                 isProcessingSelection = true;
 
@@ -134,8 +213,7 @@ VideoWindow {
 
                 // console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
 
-                videoWindow.setSelectionRect(rect);
-                videoWindow.zoomToSelection();
+                videoWindow.zoomToSelection(rect);
 
                 // Clear selection state, make rectangle disappear
                 selectionStart = Qt.point(0, 0);
@@ -155,8 +233,8 @@ VideoWindow {
         onPaint: {
             var ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
-            if (isSelecting || (selectionStart.x !== 0 || selectionStart.y !== 0)) {
-                var rect = Qt.rect(Math.min(selectionStart.x, selectionEnd.x), Math.min(selectionStart.y, selectionEnd.y), Math.abs(selectionEnd.x - selectionStart.x), Math.abs(selectionEnd.y - selectionStart.y));
+            if (videoWindow.isSelecting || (videoWindow.selectionStart.x !== 0 || videoWindow.selectionStart.y !== 0)) {
+                var rect = Qt.rect(Math.min(videoWindow.selectionStart.x, videoWindow.selectionEnd.x), Math.min(videoWindow.selectionStart.y, videoWindow.selectionEnd.y), Math.abs(videoWindow.selectionEnd.x - videoWindow.selectionStart.x), Math.abs(videoWindow.selectionEnd.y - videoWindow.selectionStart.y));
                 ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
                 ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
                 ctx.strokeStyle = "blue";
