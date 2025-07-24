@@ -145,6 +145,10 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
+                    for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+                        mainWindow.removeVideoWindowById(videoWindowContainer.children[i].videoId);
+                    }
+                    mainWindow.videoCount = 0;
                     importDialog.mode = "new";
                     importDialog.open();
                     importDialog.openFileDialog();
@@ -491,7 +495,7 @@ ApplicationWindow {
             let child = videoWindowContainer.children[i];
             if (child.videoId === id) {
                 child.destroy();
-                videoCount--;
+                mainWindow.videoCount--;
                 break;
             }
         }

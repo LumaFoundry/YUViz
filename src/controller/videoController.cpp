@@ -116,7 +116,6 @@ void VideoController::removeVideo(int index) {
 
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
-    m_readyCount--;
 }
 
 void VideoController::start() {
@@ -162,7 +161,7 @@ void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update,
 
 void VideoController::onReady(int index) {
     m_readyCount++;
-    qDebug() << "Ready count =" << m_readyCount;
+    qDebug() << "Ready count =" << m_readyCount << "/ " << m_frameControllers.size();
     if (m_readyCount == m_frameControllers.size()) {
         // All frame controllers are ready, start playback
         qDebug() << "Ready = true";

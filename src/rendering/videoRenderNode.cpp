@@ -20,6 +20,9 @@ void VideoRenderNode::prepare() {
         return;
     }
     QRhi* rhi = m_item->window()->rhi();
+    if (!rhi) {
+        return;
+    }
     QRhiRenderPassDescriptor* rp = renderTarget()->renderPassDescriptor();
     m_renderer->initialize(rhi, rp);
     m_initialized = true;
