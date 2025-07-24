@@ -40,10 +40,6 @@ ApplicationWindow {
     property bool isCtrlPressed: false
     property bool isSelecting: false
     property bool wasPlayingBeforeResize: false
-    property point selectionStart: Qt.point(0, 0)
-    property point selectionEnd: Qt.point(0, 0)
-    property bool isProcessingSelection: false
-    property bool isMouseDown: false
     property bool resizing: false
 
     property string importedFilePath: ""

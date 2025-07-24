@@ -6,6 +6,12 @@ VideoWindow {
     id: videoWindow
     property int videoId: -1
     property bool assigned: false
+    property bool isSelecting: false
+    property point selectionStart: Qt.point(0, 0)
+    property point selectionEnd: Qt.point(0, 0)
+    property bool isProcessingSelection: false
+    property bool isMouseDown: false
+    property bool isCtrlPressed: keyHandler.isCtrlPressed
     property bool isZoomed: sharedView ? sharedView.isZoomed : false
     objectName: "videoWindow_" + videoId
     signal requestRemove(int videoId)
@@ -98,7 +104,7 @@ VideoWindow {
         id: pointHandler
         acceptedButtons: Qt.LeftButton
         // Enable this handler only when zoomed and NOT doing a selection drag
-        enabled: videoWindow.isZoomed && !isCtrlPressed
+        enabled: videoWindow.isZoomed && !mainWindow.isCtrlPressed
 
         property point lastPosition: Qt.point(0, 0)
 
@@ -147,16 +153,16 @@ VideoWindow {
         hoverEnabled: true // Needed for cursor shape changes
 
         cursorShape: {
-            if (isCtrlPressed)
+            if (mainWindow.isCtrlPressed)
                 return Qt.CrossCursor;
             if (videoWindow.isZoomed) {
-                return (isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+               return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
             }
             return Qt.ArrowCursor;
         }
 
         onPressed: function (mouse) {
-            if (isCtrlPressed) {
+            if (mainWindow.isCtrlPressed) {
                 // Force reset processing state, ensure new selection can start
                 isProcessingSelection = false;
                 isSelecting = true;
@@ -168,7 +174,7 @@ VideoWindow {
         }
 
         onPositionChanged: function (mouse) {
-            if (isSelecting) {
+            if (videoWindow.isSelecting) {
                 var currentPos = Qt.point(mouse.x, mouse.y);
                 var deltaX = currentPos.x - selectionStart.x;
                 var deltaY = currentPos.y - selectionStart.y;
@@ -181,7 +187,7 @@ VideoWindow {
         }
 
         onReleased: function (mouse) {
-            if (isSelecting) {
+            if (videoWindow.isSelecting) {
                 isSelecting = false;
                 isProcessingSelection = true;
 
@@ -210,8 +216,8 @@ VideoWindow {
         onPaint: {
             var ctx = getContext("2d");
             ctx.clearRect(0, 0, width, height);
-            if (isSelecting || (selectionStart.x !== 0 || selectionStart.y !== 0)) {
-                var rect = Qt.rect(Math.min(selectionStart.x, selectionEnd.x), Math.min(selectionStart.y, selectionEnd.y), Math.abs(selectionEnd.x - selectionStart.x), Math.abs(selectionEnd.y - selectionStart.y));
+            if (videoWindow.isSelecting || (videoWindow.selectionStart.x !== 0 || videoWindow.selectionStart.y !== 0)) {
+                var rect = Qt.rect(Math.min(videoWindow.selectionStart.x, videoWindow.selectionEnd.x), Math.min(videoWindow.selectionStart.y, videoWindow.selectionEnd.y), Math.abs(videoWindow.selectionEnd.x - videoWindow.selectionStart.x), Math.abs(videoWindow.selectionEnd.y - videoWindow.selectionStart.y));
                 ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
                 ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
                 ctx.strokeStyle = "blue";
