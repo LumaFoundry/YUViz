@@ -194,6 +194,7 @@ void FrameController::onFrameDecoded(bool success) {
 void FrameController::onFrameUploaded() {
     if (m_prefill) {
         m_prefill = false;
+        m_window->syncColorSpaceMenu();
         emit requestRender(0);
         emit ready(m_index);
     }

@@ -26,6 +26,7 @@ class VideoWindow : public QQuickItem {
     qreal getAspectRatio() const;
     qreal maxZoom() const;
     void setMaxZoom(qreal zoom);
+    void syncColorSpaceMenu();
 
   public slots:
     void uploadFrame(FrameData* frame);

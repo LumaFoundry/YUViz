@@ -86,6 +86,12 @@ ApplicationWindow {
                 importDialog.open();
                 importDialog.openFileDialog();
             }
+            sharedViewProperties.reset();
+            selectionStart = Qt.point(0, 0);
+            selectionEnd = Qt.point(0, 0);
+            isSelecting = false;
+            isProcessingSelection = false;
+            keyHandler.focus = true;
         }
     }
 

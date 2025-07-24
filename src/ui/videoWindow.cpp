@@ -166,3 +166,27 @@ void VideoWindow::pan(const QPointF& delta) {
         return;
     m_sharedView->applyPan(-delta.x() / width(), -delta.y() / height());
 }
+
+void VideoWindow::syncColorSpaceMenu() {
+    int colorSpace = 1;
+    int colorRange = 1;
+    if (m_renderer && m_renderer->getFrameMeta()) {
+        colorSpace = static_cast<int>(m_renderer->getFrameMeta()->colorSpace());
+        colorRange = static_cast<int>(m_renderer->getFrameMeta()->colorRange());
+    }
+    int idx = 0;
+    QVariant foo;
+    if (colorRange == 0)
+        colorRange = 2; // UNSPECIFIED
+    if (colorSpace == 1 || colorSpace == 2)
+        idx = (colorRange == 2 ? 1 : 0);
+    else if (colorSpace == 5 || colorSpace == 6)
+        idx = (colorRange == 2 ? 3 : 2);
+    else if (colorSpace == 10 || colorSpace == 9)
+        idx = (colorRange == 2 ? 5 : 4);
+
+    QMetaObject::invokeMethod(this->findChild<QObject*>("videoBridge"),
+                              "setColorSpaceIndex",
+                              Q_RETURN_ARG(QVariant, foo),
+                              Q_ARG(QVariant, idx));
+}
