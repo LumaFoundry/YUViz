@@ -24,6 +24,15 @@ ApplicationWindow {
                 obj.objectName = "videoWindow_" + index;
                 mainWindow.videoCount += 1;
                 obj.requestRemove.connect(mainWindow.removeVideoWindowById);
+                
+                // Sync OSD state with existing video windows
+                if (videoWindowContainer.children.length > 0) {
+                    let existingWindow = videoWindowContainer.children[0];
+                    if (existingWindow && existingWindow.osdState !== undefined) {
+                        obj.osdState = existingWindow.osdState;
+                        console.log("[qmlBridge] Synced OSD state to:", existingWindow.osdState);
+                    }
+                }
             }
             return obj;
         }
