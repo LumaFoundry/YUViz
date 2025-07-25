@@ -52,8 +52,8 @@ class FrameController : public QObject {
   signals:
     void ready(int index);
     void requestDecode(int numFrames, int direction);
-    void requestUpload(FrameData* frame);
-    void requestRender(FrameData* frame);
+    void requestUpload(FrameData* frame, int index);
+    void requestRender(int index);
     void endOfVideo(int index);
     void requestSeek(int64_t pts, int loadCount);
 

@@ -24,7 +24,7 @@ ApplicationWindow {
                 obj.objectName = "videoWindow_" + index;
                 mainWindow.videoCount += 1;
                 obj.requestRemove.connect(mainWindow.removeVideoWindowById);
-                
+
                 // Sync OSD state with existing video windows
                 if (videoWindowContainer.children.length > 0) {
                     let existingWindow = videoWindowContainer.children[0];
@@ -428,10 +428,16 @@ ApplicationWindow {
                                 diffPopupInstance.raise();
                                 return;
                             }
+
+                            let leftId = videoWindowContainer.children[0].videoId;
+                            let rightId = videoWindowContainer.children[1].videoId;
+
+                            videoController.setDiffMode(true, leftId, rightId);
+
                             // Pass video IDs
                             diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
-                                leftVideoId: videoWindowContainer.children[0].videoId,
-                                rightVideoId: videoWindowContainer.children[1].videoId
+                                leftVideoId: leftId,
+                                rightVideoId: rightId
                             });
                             diffPopupInstance.visible = true;
 
@@ -442,6 +448,7 @@ ApplicationWindow {
                                     diffPopupInstance = null;
                                 }
                             });
+                            keyHandler.forceActiveFocus();
                         }
                     }
 
@@ -573,6 +580,7 @@ ApplicationWindow {
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
+            videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             diffPopupInstance.visible = false;
         }
         for (let i = 0; i < videoWindowContainer.children.length; ++i) {

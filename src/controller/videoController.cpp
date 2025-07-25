@@ -340,3 +340,62 @@ void VideoController::toggleDirection() {
         play();
     }
 }
+
+void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
+
+    m_diffMode = diffMode;
+
+    if (m_diffMode) {
+        if (!m_compareController) {
+            m_compareController = std::make_unique<CompareController>(nullptr);
+        }
+        m_compareController->setVideoIds(id1, id2);
+        m_compareController->setMetadata(m_frameControllers[id1]->getFrameMeta(),
+                                         m_frameControllers[id2]->getFrameMeta());
+
+        // Connect compare controller to FCs
+        connect(m_frameControllers[id1].get(),
+                &FrameController::requestUpload,
+                m_compareController.get(),
+                &CompareController::onReceiveFrame);
+
+        connect(m_frameControllers[id1].get(),
+                &FrameController::requestRender,
+                m_compareController.get(),
+                &CompareController::onRequestRender);
+
+        connect(m_frameControllers[id2].get(),
+                &FrameController::requestUpload,
+                m_compareController.get(),
+                &CompareController::onReceiveFrame);
+
+        connect(m_frameControllers[id2].get(),
+                &FrameController::requestRender,
+                m_compareController.get(),
+                &CompareController::onRequestRender);
+
+    } else {
+        // Disconnect when diff mode is disabled
+        disconnect(m_frameControllers[id1].get(),
+                   &FrameController::requestUpload,
+                   m_compareController.get(),
+                   &CompareController::onReceiveFrame);
+
+        disconnect(m_frameControllers[id1].get(),
+                   &FrameController::requestRender,
+                   m_compareController.get(),
+                   &CompareController::onRequestRender);
+
+        disconnect(m_frameControllers[id2].get(),
+                   &FrameController::requestUpload,
+                   m_compareController.get(),
+                   &CompareController::onReceiveFrame);
+
+        disconnect(m_frameControllers[id2].get(),
+                   &FrameController::requestRender,
+                   m_compareController.get(),
+                   &CompareController::onRequestRender);
+
+        m_compareController->setVideoIds(-1, -1);
+    }
+}

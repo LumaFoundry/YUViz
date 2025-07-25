@@ -6,9 +6,10 @@
 #include <QtConcurrent>
 #include <map>
 
+#include "controller/compareController.h"
+#include "controller/frameController.h"
 #include "controller/timer.h"
 #include "decoder/videoDecoder.h"
-#include "frameController.h"
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
 #include "frames/frameQueue.h"
@@ -52,6 +53,7 @@ class VideoController : public QObject {
     void setSpeed(float speed);
     void toggleDirection();
     void removeVideo(int index);
+    void setDiffMode(bool diffMode, int id1, int id2);
 
   signals:
     void playTimer();
@@ -95,4 +97,8 @@ class VideoController : public QObject {
 
     bool m_isPlaying = false;
     bool m_reachedEnd = false;
+
+    bool m_diffMode = false;
+
+    std::unique_ptr<CompareController> m_compareController;
 };

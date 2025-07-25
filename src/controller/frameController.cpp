@@ -111,7 +111,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
         qDebug() << "Requested render for frame with PTS" << pts;
-        emit requestRender(target);
+        emit requestRender(m_index);
     } else {
         qWarning() << "Cannot render frame" << pts;
     }
@@ -132,7 +132,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
             // qDebug() << "End frame = False set by " << future->pts();
             m_endOfVideo = false;
         }
-        emit requestUpload(future);
+        emit requestUpload(future, m_index);
         qDebug() << "Requested upload for frame with PTS" << (pts + 1 * direction);
     } else {
         qWarning() << "Cannot upload frame" << (pts + 1 * direction);
@@ -170,7 +170,7 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
         // qDebug() << "Requested upload for frame with PTS" << pts;
-        emit requestUpload(target);
+        emit requestUpload(target, m_index);
     } else {
         if (direction == 1) {
             emit requestSeek(pts, m_frameQueue->getSize() / 2);
@@ -197,7 +197,7 @@ void FrameController::onFrameDecoded(bool success) {
     if (m_prefill) {
         qDebug() << "Prefill completed for index" << m_index;
         // Assume first frame has pts 0 and upload to buffer
-        emit requestUpload(m_frameQueue->getHeadFrame(0));
+        emit requestUpload(m_frameQueue->getHeadFrame(0), m_index);
     }
 }
 
@@ -205,7 +205,7 @@ void FrameController::onFrameUploaded() {
     if (m_prefill) {
         m_prefill = false;
         m_window->syncColorSpaceMenu();
-        emit requestRender(0);
+        emit requestRender(m_index);
         emit ready(m_index);
     }
 
@@ -217,7 +217,7 @@ void FrameController::onFrameUploaded() {
             qDebug() << "End frame reached after seeking, setting endOfVideo to true";
             m_endOfVideo = true;
         }
-        emit requestRender(target);
+        emit requestRender(m_index);
     }
 
     if (m_stepping != -1) {
@@ -227,7 +227,7 @@ void FrameController::onFrameUploaded() {
             qDebug() << "End frame reached after stepping, setting endOfVideo to true";
             m_endOfVideo = true;
         }
-        emit requestRender(target);
+        emit requestRender(m_index);
     }
 }
 
@@ -276,7 +276,7 @@ void FrameController::onFrameSeeked(int64_t pts) {
     if (!frameSeeked) {
         qDebug() << "Frame is not seeked";
     }
-    emit requestUpload(frameSeeked);
+    emit requestUpload(frameSeeked, m_index);
 }
 
 void FrameController::onRenderError() {

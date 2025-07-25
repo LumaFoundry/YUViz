@@ -48,6 +48,7 @@ set(SRC
         src/controller/frameController.cpp
         src/controller/videoController.cpp
         src/controller/timer.cpp
+        src/controller/compareController.cpp
         src/rendering/videoRenderer.cpp
         src/rendering/videoRenderNode.cpp
         src/decoder/videoDecoder.cpp
