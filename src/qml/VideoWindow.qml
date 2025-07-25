@@ -351,8 +351,7 @@ VideoWindow {
                 var maxWidth = 0;
 
                 // temporarily set font to calculate text width
-                var originalFont = ctx.font;
-                ctx.font = fontSize + "px Consolas";
+                ctx.font = Math.floor(fontSize) + "px Consolas";
 
                 for (var i = 0; i < lines.length; i++) {
                     var textWidth = ctx.measureText(lines[i]).width;
@@ -383,7 +382,7 @@ VideoWindow {
                 }
 
                 // restore original font
-                ctx.font = originalFont;
+                ctx.font = "12px monospace";
             } catch (error) {
                 console.log("QML: drawPixelValue error:", error);
             }
