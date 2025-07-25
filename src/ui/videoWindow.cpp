@@ -1,6 +1,7 @@
 #include "videoWindow.h"
 #include <QMouseEvent>
 #include <QtMath>
+#include <libavutil/pixfmt.h>
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
 #include "rendering/videoRenderNode.h"
@@ -39,6 +40,7 @@ void VideoWindow::uploadFrame(FrameData* frame) {
     // qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame);
+    emit frameReady();
 }
 
 void VideoWindow::renderFrame() {
@@ -189,4 +191,66 @@ void VideoWindow::syncColorSpaceMenu() {
                               "setColorSpaceIndex",
                               Q_RETURN_ARG(QVariant, foo),
                               Q_ARG(QVariant, idx));
+}
+
+QVariant VideoWindow::getYUV(int x, int y) const {
+    if (!m_renderer)
+        return QVariant();
+    FrameData* frame = m_renderer->getCurrentFrame();
+    auto meta = m_renderer->getFrameMeta();
+    if (!frame || !meta)
+        return QVariant();
+    int yW = meta->yWidth(), yH = meta->yHeight();
+    int uvW = meta->uvWidth(), uvH = meta->uvHeight();
+    if (x < 0 || y < 0 || x >= yW || y >= yH)
+        return QVariant();
+    int yVal = frame->yPtr()[y * yW + x];
+    int uVal = 0, vVal = 0;
+    int ux = 0, uy = 0;
+    AVPixelFormat fmt = meta->format();
+    switch (fmt) {
+    case AV_PIX_FMT_YUV420P:
+        ux = x / 2;
+        uy = y / 2;
+        break;
+    case AV_PIX_FMT_YUV422P:
+        ux = x / 2;
+        uy = y;
+        break;
+    case AV_PIX_FMT_YUV444P:
+        ux = x;
+        uy = y;
+        break;
+    default:
+        ux = x / 2;
+        uy = y / 2;
+        break;
+    }
+    if (ux >= 0 && uy >= 0 && ux < uvW && uy < uvH) {
+        uVal = frame->uPtr()[uy * uvW + ux];
+        vVal = frame->vPtr()[uy * uvW + ux];
+    }
+    QVariantList result;
+    result << yVal << uVal << vVal;
+    return result;
+}
+
+QVariantMap VideoWindow::getFrameMeta() const {
+    QVariantMap result;
+    if (!m_renderer) {
+        return result;
+    }
+
+    auto frameMeta = m_renderer->getFrameMeta();
+    if (!frameMeta) {
+        return result;
+    }
+
+    result["yWidth"] = frameMeta->yWidth();
+    result["yHeight"] = frameMeta->yHeight();
+    result["uvWidth"] = frameMeta->uvWidth();
+    result["uvHeight"] = frameMeta->uvHeight();
+    result["format"] = frameMeta->format();
+
+    return result;
 }
