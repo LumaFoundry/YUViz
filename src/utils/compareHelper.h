@@ -2,6 +2,7 @@
 #include "errorReporter.h"
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
+#include "psnrResult.h"
 
 
 extern "C" {
@@ -18,7 +19,7 @@ extern "C" {
 
 class CompareHelper {
   public:
-    double getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
+    PSNRResult getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
 
     double getVMAF(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
 

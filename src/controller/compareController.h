@@ -14,6 +14,9 @@ class CompareController : public QObject {
 
     void setVideoIds(int id1, int id2);
     void setMetadata(std::shared_ptr<FrameMeta> meta1, std::shared_ptr<FrameMeta> meta2);
+    
+    PSNRResult getPSNRResult() const { return m_psnrResult; }
+    double getPSNR() const { return m_psnr; } // For backward compatibility
 
   signals:
     void requestUpload(FrameData* frame1, FrameData* frame2);
@@ -41,4 +44,5 @@ class CompareController : public QObject {
     bool m_ready2 = false;
 
     double m_psnr = 0.0;
+    PSNRResult m_psnrResult;
 };

@@ -33,7 +33,8 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     if (m_frame1 && m_frame2) {
         // Emit signal to request compare and upload frames
         emit requestUpload(m_frame1.get(), m_frame2.get());
-        m_psnr = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
+        m_psnrResult = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
+        m_psnr = m_psnrResult.average; // Keep backward compatibility
     }
 }
 
@@ -61,7 +62,10 @@ void CompareController::onRequestRender(int index) {
         // Emit signal to render frames
         qDebug() << "Both frames ready";
         emit requestRender();
-        qDebug() << "PSNR:" << m_psnr;
+        qDebug() << "PSNR (Average):" << m_psnrResult.average
+                 << "Y:" << m_psnrResult.y 
+                 << "U:" << m_psnrResult.u 
+                 << "V:" << m_psnrResult.v;
         m_ready1 = false;
         m_ready2 = false;
     }
