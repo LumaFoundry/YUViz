@@ -5,10 +5,12 @@
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
                          QObject* parent,
                          std::shared_ptr<VideoController> vcPtr,
+                         std::shared_ptr<CompareController> ccPtr,
                          SharedViewProperties* sharedView) :
     QObject(parent),
     m_engine(engine),
     m_vcPtr(vcPtr),
+    m_ccPtr(ccPtr),
     m_sharedView(sharedView) {
 }
 
@@ -38,34 +40,34 @@ void VideoLoader::loadVideo(
     }
 
     QObject* root = m_engine->rootObjects().first();
-    int index = 0;
+
     VideoWindow* windowPtr = nullptr;
-    while (true) {
-        QString objectName = QString("videoWindow_%1").arg(index);
-        QObject* obj = root->findChild<QObject*>(objectName);
-        if (!obj) {
-            QObject* qmlBridge = root->findChild<QObject*>("qmlBridge");
-            if (!qmlBridge) {
-                qWarning() << "Could not find qmlBridge";
-                return;
-            }
-            QVariant returnedValue;
-            bool ok = QMetaObject::invokeMethod(
-                qmlBridge, "createVideoWindow", Q_RETURN_ARG(QVariant, returnedValue), Q_ARG(QVariant, index));
-            if (!ok || !returnedValue.isValid()) {
-                qWarning() << "Failed to create VideoWindow with index" << index;
-                return;
-            }
-            obj = returnedValue.value<QObject*>();
+
+    QString objectName = QString("videoWindow_%1").arg(index);
+    QObject* obj = root->findChild<QObject*>(objectName);
+    if (!obj) {
+        QObject* qmlBridge = root->findChild<QObject*>("qmlBridge");
+        if (!qmlBridge) {
+            qWarning() << "Could not find qmlBridge";
+            return;
         }
-        windowPtr = qobject_cast<VideoWindow*>(obj);
-        if (windowPtr && !windowPtr->property("assigned").toBool()) {
-            windowPtr->setProperty("assigned", true);
-            windowPtr->setSharedView(m_sharedView);
-            break;
+        QVariant returnedValue;
+        bool ok = QMetaObject::invokeMethod(
+            qmlBridge, "createVideoWindow", Q_RETURN_ARG(QVariant, returnedValue), Q_ARG(QVariant, index));
+        if (!ok || !returnedValue.isValid()) {
+            qWarning() << "Failed to create VideoWindow with index" << index;
+            return;
         }
-        ++index;
+        obj = returnedValue.value<QObject*>();
     }
+
+    windowPtr = qobject_cast<VideoWindow*>(obj);
+    if (windowPtr && !windowPtr->property("assigned").toBool()) {
+        windowPtr->setProperty("assigned", true);
+        windowPtr->setProperty("videoId", index);
+        windowPtr->setSharedView(m_sharedView);
+    }
+    ++index;
 
     windowPtr->setAspectRatio(width, height);
 
@@ -84,4 +86,40 @@ void VideoLoader::loadVideo(
         qDebug() << "resetting video" << info.filename;
         // m_vcPtr->resetVideo(info);
     }
+}
+
+void VideoLoader::setupDiffWindow(int leftId, int rightId) {
+    QObject* root = m_engine->rootObjects().first();
+    if (!root)
+        return;
+
+    // Find the created diff window instance
+    QObject* diffInstance = root->findChild<QObject*>("diffPopupInstance");
+
+    if (!diffInstance) {
+        qWarning() << "Diff popup instance not found";
+        return;
+    }
+
+    QObject* obj = diffInstance->findChild<QObject*>("diffWindow");
+    if (!obj) {
+        qWarning() << "Could not find VideoWindow in DiffWindow";
+        return;
+    }
+
+    VideoWindow* diffWindow = qobject_cast<VideoWindow*>(obj);
+    if (!diffWindow) {
+        qWarning() << "DiffWindow object is not a VideoWindow";
+        return;
+    }
+
+    diffWindow->setSharedView(m_sharedView);
+    diffWindow->setProperty("videoId", -1);
+    diffWindow->setProperty("assigned", true);
+
+    // Inject it into CompareController
+    m_ccPtr->setDiffWindow(diffWindow);
+
+    // Set up metadata and start diff mode
+    m_vcPtr->setDiffMode(true, leftId, rightId);
 }

@@ -90,17 +90,17 @@ AVRational FrameController::getTimeBase() {
 
 // Start the decode and render threads
 void FrameController::start() {
-    qDebug() << "FrameController::start called for index" << m_index;
+    // qDebug() << "FrameController::start called for index" << m_index;
 
     m_prefill = true;
     // Initial request to decode
     emit requestDecode(m_frameQueue->getSize() / 2, 1);
-    qDebug() << "Emitting initial requestDecode for prefill";
+    // qDebug() << "Emitting initial requestDecode for prefill";
 }
 
 // Slots Definitions
 void FrameController::onTimerTick(int64_t pts, int direction) {
-    qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
+    // qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
     // Update VideoWindow with current frame info
     AVRational timeBase = getTimeBase();
@@ -141,7 +141,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     if (!m_endOfVideo) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
-        qDebug() << "Frames to fill in queue:" << framesToFill;
+        // qDebug() << "Frames to fill in queue:" << framesToFill;
 
         emit requestDecode(framesToFill, direction);
     }
@@ -150,7 +150,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
 }
 
 void FrameController::onTimerStep(int64_t pts, int direction) {
-    qDebug() << "onTimerStep with pts" << pts << " for index" << m_index;
+    // qDebug() << "onTimerStep with pts" << pts << " for index" << m_index;
 
     // Safe guard
     if (pts < 0) {
@@ -169,7 +169,7 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
     // Upload requested Frame
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
-        // qDebug() << "Requested upload for frame with PTS" << pts;
+        qDebug() << "Requested upload for frame with PTS" << pts;
         emit requestUpload(target, m_index);
     } else {
         if (direction == 1) {
@@ -195,7 +195,7 @@ void FrameController::onFrameDecoded(bool success) {
     }
 
     if (m_prefill) {
-        qDebug() << "Prefill completed for index" << m_index;
+        // qDebug() << "Prefill completed for index" << m_index;
         // Assume first frame has pts 0 and upload to buffer
         emit requestUpload(m_frameQueue->getHeadFrame(0), m_index);
     }
@@ -214,7 +214,7 @@ void FrameController::onFrameUploaded() {
         FrameData* target = m_frameQueue->getHeadFrame(m_seeking);
 
         if (target->isEndFrame()) {
-            qDebug() << "End frame reached after seeking, setting endOfVideo to true";
+            // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
             m_endOfVideo = true;
         }
         emit requestRender(m_index);
@@ -224,7 +224,7 @@ void FrameController::onFrameUploaded() {
         // qDebug() << "FrameController::Stepping frame is rendered";
         FrameData* target = m_frameQueue->getHeadFrame(m_stepping);
         if (target->isEndFrame()) {
-            qDebug() << "End frame reached after stepping, setting endOfVideo to true";
+            // qDebug() << "End frame reached after stepping, setting endOfVideo to true";
             m_endOfVideo = true;
         }
         emit requestRender(m_index);
@@ -233,7 +233,7 @@ void FrameController::onFrameUploaded() {
 
 void FrameController::onFrameRendered() {
     if (m_seeking != -1) {
-        qDebug() << "FrameController::Seeked frame is rendered";
+        // qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
     }
 
@@ -243,14 +243,14 @@ void FrameController::onFrameRendered() {
     }
 
     if (m_endOfVideo) {
-        qDebug() << "FrameController::End of frame is rendered for index " << m_index;
+        // qDebug() << "FrameController::End of frame is rendered for index " << m_index;
         emit endOfVideo(m_index);
         return;
     }
 }
 
 void FrameController::onSeek(int64_t pts) {
-    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
+    // qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
     m_seeking = pts;
@@ -265,7 +265,7 @@ void FrameController::onSeek(int64_t pts) {
 }
 
 void FrameController::onFrameSeeked(int64_t pts) {
-    qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
+    // qDebug() << "FrameController::onFrameSeeked called for index" << m_index << "with PTS" << pts;
 
     int64_t targetPts = pts;
     if (m_stepping != -1) {
@@ -274,7 +274,7 @@ void FrameController::onFrameSeeked(int64_t pts) {
 
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(targetPts);
     if (!frameSeeked) {
-        qDebug() << "Frame is not seeked";
+        // qDebug() << "Frame is not seeked";
     }
     emit requestUpload(frameSeeked, m_index);
 }

@@ -27,7 +27,9 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
 
   public:
-    VideoController(QObject* parent, std::vector<VideoFileInfo> videoFiles = {});
+    VideoController(QObject* parent,
+                    std::shared_ptr<CompareController> compareController,
+                    std::vector<VideoFileInfo> videoFiles = {});
     ~VideoController();
     void start();
 
@@ -38,6 +40,8 @@ class VideoController : public QObject {
 
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
+
+    // void createDiffWindow();
 
   public slots:
     void onReady(int index);
@@ -75,7 +79,8 @@ class VideoController : public QObject {
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
     std::vector<AVRational> m_timeBases;
 
-    int m_videoCount = 0;
+    int m_fcIndex = 0;
+    int m_realCount = 0;
 
     std::shared_ptr<Timer> m_timer;
 
@@ -100,5 +105,5 @@ class VideoController : public QObject {
 
     bool m_diffMode = false;
 
-    std::unique_ptr<CompareController> m_compareController;
+    std::shared_ptr<CompareController> m_compareController;
 };

@@ -14,6 +14,13 @@ Window {
     property point dragPos
     property int leftVideoId: -1
     property int rightVideoId: -1
+    property int diffVideoId: -1
+
+    VideoWindow {
+        id: diffVideoWindow
+        objectName: "diffWindow"
+        anchors.fill: parent
+    }
 
     MouseArea {
         onPressed: function (mouse) {

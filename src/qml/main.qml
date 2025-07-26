@@ -36,7 +36,17 @@ ApplicationWindow {
             }
             return obj;
         }
+
+        function createDiffWindow() {
+            let obj = videoWindowComponent.createObject(diffPopupComponent, {
+                videoId: -1,
+                assigned: true
+            });
+            obj.objectName = "diffWindow";
+            return obj;
+        }
     }
+
     title: "videoplayer"
     width: 800
     height: 600
@@ -432,13 +442,14 @@ ApplicationWindow {
                             let leftId = videoWindowContainer.children[0].videoId;
                             let rightId = videoWindowContainer.children[1].videoId;
 
-                            videoController.setDiffMode(true, leftId, rightId);
-
                             // Pass video IDs
                             diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
                                 leftVideoId: leftId,
                                 rightVideoId: rightId
                             });
+                            diffPopupInstance.objectName = "diffPopupInstance";
+                            console.log("Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
+
                             diffPopupInstance.visible = true;
 
                             // Cleanup when window closes
@@ -448,6 +459,8 @@ ApplicationWindow {
                                     diffPopupInstance = null;
                                 }
                             });
+                            videoLoader.setupDiffWindow(leftId, rightId);
+
                             keyHandler.forceActiveFocus();
                         }
                     }

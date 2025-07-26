@@ -1,8 +1,11 @@
 #include "videoController.h"
 #include <QDebug>
 
-VideoController::VideoController(QObject* parent, std::vector<VideoFileInfo> videoFiles) :
-    QObject(parent) {
+VideoController::VideoController(QObject* parent,
+                                 std::shared_ptr<CompareController> compareController,
+                                 std::vector<VideoFileInfo> videoFiles) :
+    QObject(parent),
+    m_compareController(compareController) {
     qDebug() << "VideoController constructor invoked with" << videoFiles.size() << "videoFiles";
 
     // Creating FC for each video
@@ -35,11 +38,11 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
         m_timer.reset();
     }
 
-    // qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << m_videoCount;
+    // qDebug() << "Setting up FrameController for video:" << videoFile.filename << "index:" << m_fcIndex;
 
     // qDebug() << "Decoder opened file:" << videoFile.filename;
-    auto frameController = std::make_unique<FrameController>(nullptr, videoFile, m_videoCount);
-    qDebug() << "Created FrameController for index" << m_videoCount;
+    auto frameController = std::make_unique<FrameController>(nullptr, videoFile, m_fcIndex);
+    qDebug() << "Created FrameController for index" << m_fcIndex;
 
     // Connect each FC's upload signal to VC's slot
     connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
@@ -63,8 +66,9 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
     m_timer = std::make_unique<Timer>(nullptr, m_timeBases);
     setUpTimer();
-    m_frameControllers[m_videoCount]->start();
-    m_videoCount++;
+    m_frameControllers[m_fcIndex]->start();
+    m_fcIndex++;
+    m_realCount++;
 }
 
 void VideoController::setUpTimer() {
@@ -116,6 +120,7 @@ void VideoController::removeVideo(int index) {
 
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
+    m_realCount--;
 }
 
 void VideoController::start() {
@@ -346,9 +351,6 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
     m_diffMode = diffMode;
 
     if (m_diffMode) {
-        if (!m_compareController) {
-            m_compareController = std::make_unique<CompareController>(nullptr);
-        }
         m_compareController->setVideoIds(id1, id2);
         m_compareController->setMetadata(m_frameControllers[id1]->getFrameMeta(),
                                          m_frameControllers[id2]->getFrameMeta());
@@ -374,6 +376,8 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                 m_compareController.get(),
                 &CompareController::onRequestRender);
 
+        seekTo(m_currentTimeMs);
+
     } else {
         // Disconnect when diff mode is disabled
         disconnect(m_frameControllers[id1].get(),
@@ -397,5 +401,6 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                    &CompareController::onRequestRender);
 
         m_compareController->setVideoIds(-1, -1);
+        m_compareController->setMetadata(nullptr, nullptr);
     }
 }
