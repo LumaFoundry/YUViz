@@ -403,6 +403,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
     }
 
     av_packet_free(&tempPacket);
+    emit lastFrameLoaded();
     return -1;
 }
 

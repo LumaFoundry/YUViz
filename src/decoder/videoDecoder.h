@@ -45,6 +45,7 @@ class VideoDecoder : public QObject {
   signals:
     void framesLoaded(bool success);
     void frameSeeked(int64_t pts);
+    void lastFrameLoaded();
 
   private:
     AVFormatContext* formatContext;
