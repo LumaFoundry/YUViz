@@ -12,7 +12,7 @@ VideoWindow {
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
-    property bool isCtrlPressed: keyHandler.isCtrlPressed
+    property bool isCtrlPressed: mainWindow.isCtrlPressed
     property bool isZoomed: sharedView ? sharedView.isZoomed : false
     property var sharedView: sharedViewProperties
     objectName: "videoWindow_" + videoId
@@ -425,10 +425,10 @@ VideoWindow {
     }
 
     function resetSelectionCanvas() {
-        selectionStart = Qt.point(0, 0)
-        selectionEnd = Qt.point(0, 0)
-        isSelecting = false
-        isProcessingSelection = false
+        selectionStart = Qt.point(0, 0);
+        selectionEnd = Qt.point(0, 0);
+        isSelecting = false;
+        isProcessingSelection = false;
         selectionCanvas.requestPaint();
     }
 
