@@ -112,12 +112,10 @@ void VideoDecoder::openFile() {
         return;
     }
 
-    // Update dimensions from codec parameters for all video types
-    m_width = codecContext->width;
-    m_height = codecContext->height;
-
-    if (isYUV(codecContext->codec_id)) {
-        codecContext->pix_fmt = m_format;
+    if (!isYUV(codecContext->codec_id)) {
+        m_width = codecContext->width;
+        m_height = codecContext->height;
+        m_framerate = videoStream->avg_frame_rate.num / (double)videoStream->avg_frame_rate.den;
     }
 
     // Open codec

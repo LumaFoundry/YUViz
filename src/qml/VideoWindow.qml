@@ -16,6 +16,7 @@ VideoWindow {
     property bool isZoomed: sharedView ? sharedView.isZoomed : false
     property var sharedView: sharedViewProperties
     objectName: "videoWindow_" + videoId
+
     signal requestRemove(int videoId)
 
     QtObject {
@@ -37,7 +38,8 @@ VideoWindow {
             width: 0
             height: 40
             model: ["Don't remove this ComboBox"]
-            indicator: Canvas {}
+            indicator: Canvas {
+            }
         }
 
         Button {
@@ -111,7 +113,8 @@ VideoWindow {
                     }
                 }
 
-                MenuSeparator {}
+                MenuSeparator {
+                }
 
                 MenuItem {
                     text: "Close the Video"
@@ -279,12 +282,14 @@ VideoWindow {
         // connect to VideoWindow signals
         Connections {
             target: sharedViewProperties
+
             function onViewChanged() {
                 pixelValuesCanvas.requestPaint();
             }
         }
         Connections {
             target: videoWindow
+
             function onFrameReady() {
                 pixelValuesCanvas.requestPaint();
             }
@@ -435,9 +440,10 @@ VideoWindow {
     // OSD Overlay
     Rectangle {
         visible: videoWindow.osdState > 0
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.margins: 10
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.bottomMargin: 30
+        anchors.rightMargin: 10
         width: osdText.width + 20
         height: osdText.height + 20
         color: "black"
@@ -461,7 +467,8 @@ VideoWindow {
                     var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
-                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames;
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
+                        + " / " + videoWindow.totalFrames;
                 } else if (videoWindow.osdState === 2) {
                     // Detailed info: add pixel format, timebase/pts, aspect ratio
                     var durationSec = Math.floor(videoWindow.duration / 1000);
@@ -471,7 +478,10 @@ VideoWindow {
                     var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
-                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame + " / " + videoWindow.totalFrames + "\n" + "Format: " + videoWindow.pixelFormat + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: " + videoWindow.aspectRatio.toFixed(3) + "\n" + "Color Space: " + videoWindow.colorSpace;
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
+                        + " / " + videoWindow.totalFrames + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
+                        + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Color Space: "
+                        + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
                 }
                 return "";
             }

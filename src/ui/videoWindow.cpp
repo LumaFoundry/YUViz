@@ -29,14 +29,6 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
             update();
         });
     }
-
-    // Emit initial metadata signals
-    emit totalFramesChanged();
-    emit pixelFormatChanged();
-    emit timeBaseChanged();
-    emit aspectRatioChanged();
-    emit durationChanged();
-    emit colorSpaceChanged();
 }
 
 void VideoWindow::setAspectRatio(int width, int height) {
@@ -255,17 +247,6 @@ QString VideoWindow::timeBase() const {
     return QString("%1/%2").arg(timeBase.num).arg(timeBase.den);
 }
 
-double VideoWindow::aspectRatio() const {
-    if (!m_frameMeta) {
-        return 1.0;
-    }
-    AVRational sampleAspectRatio = m_frameMeta->sampleAspectRatio();
-    double pixelAspectRatio = static_cast<double>(sampleAspectRatio.num) / sampleAspectRatio.den;
-    double displayAspectRatio =
-        (static_cast<double>(m_frameMeta->yWidth()) / m_frameMeta->yHeight()) * pixelAspectRatio;
-    return displayAspectRatio;
-}
-
 qint64 VideoWindow::duration() const {
     return m_frameMeta ? m_frameMeta->duration() : 0;
 }
@@ -308,6 +289,19 @@ QString VideoWindow::colorSpace() const {
         return QString("Unspecified");
     default:
         return QString("Unknown (%1)").arg(static_cast<int>(colorSpace));
+    }
+}
+
+QString VideoWindow::colorRange() const {
+    AVColorRange colorRange = m_frameMeta->colorRange();
+
+    switch (colorRange) {
+    case AVCOL_RANGE_MPEG:
+        return QString("Limited");
+    case AVCOL_RANGE_JPEG:
+        return QString("Full");
+    default:
+        return QString("Unspecified");
     }
 }
 

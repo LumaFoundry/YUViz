@@ -17,13 +17,13 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
     Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
-    Q_PROPERTY(int totalFrames READ totalFrames NOTIFY totalFramesChanged)
-    Q_PROPERTY(QString pixelFormat READ pixelFormat NOTIFY pixelFormatChanged)
-    Q_PROPERTY(QString timeBase READ timeBase NOTIFY timeBaseChanged)
-    Q_PROPERTY(double aspectRatio READ aspectRatio NOTIFY aspectRatioChanged)
-    Q_PROPERTY(qint64 duration READ duration NOTIFY durationChanged)
+    Q_PROPERTY(int totalFrames READ totalFrames)
+    Q_PROPERTY(QString pixelFormat READ pixelFormat)
+    Q_PROPERTY(QString timeBase READ timeBase)
+    Q_PROPERTY(qint64 duration READ duration)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
-    Q_PROPERTY(QString colorSpace READ colorSpace NOTIFY colorSpaceChanged)
+    Q_PROPERTY(QString colorSpace READ colorSpace)
+    Q_PROPERTY(QString colorRange READ colorRange)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
@@ -45,10 +45,10 @@ class VideoWindow : public QQuickItem {
     int totalFrames() const;
     QString pixelFormat() const;
     QString timeBase() const;
-    double aspectRatio() const;
     qint64 duration() const;
     double currentTimeMs() const;
     QString colorSpace() const;
+    QString colorRange() const;
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -78,13 +78,7 @@ class VideoWindow : public QQuickItem {
     void frameReady();
     void osdStateChanged();
     void currentFrameChanged();
-    void totalFramesChanged();
-    void pixelFormatChanged();
-    void timeBaseChanged();
-    void aspectRatioChanged();
-    void durationChanged();
     void currentTimeMsChanged();
-    void colorSpaceChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
