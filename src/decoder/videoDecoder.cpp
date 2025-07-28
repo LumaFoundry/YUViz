@@ -2,18 +2,19 @@
 #include <chrono>
 #include <thread>
 
-VideoDecoder::VideoDecoder(QObject *parent) : QObject(parent),
-                                              formatContext(nullptr),
-                                              codecContext(nullptr),
-                                              inputOptions(nullptr),
-                                              videoStreamIndex(-1),
-                                              currentFrameIndex(0),
-                                              m_width(1920),
-                                              m_height(1080),
-                                              m_framerate(25.0),
-                                              m_format(AVPixelFormat::AV_PIX_FMT_YUV420P),
-                                              m_fileName(""),
-                                              metadata() {
+VideoDecoder::VideoDecoder(QObject* parent) :
+    QObject(parent),
+    formatContext(nullptr),
+    codecContext(nullptr),
+    inputOptions(nullptr),
+    videoStreamIndex(-1),
+    currentFrameIndex(0),
+    m_width(1920),
+    m_height(1080),
+    m_framerate(25.0),
+    m_format(AVPixelFormat::AV_PIX_FMT_YUV420P),
+    m_fileName(""),
+    metadata() {
 }
 
 VideoDecoder::~VideoDecoder() {
@@ -33,11 +34,11 @@ void VideoDecoder::setFramerate(double framerate) {
 
 void VideoDecoder::setFormat(AVPixelFormat format) {
     m_format = format;
-    const char *pixFmtString = av_get_pix_fmt_name(m_format);
+    const char* pixFmtString = av_get_pix_fmt_name(m_format);
     av_dict_set(&inputOptions, "pixel_format", pixFmtString, 0);
 }
 
-void VideoDecoder::setFileName(const std::string &fileName) {
+void VideoDecoder::setFileName(const std::string& fileName) {
     m_fileName = fileName;
 }
 
@@ -53,7 +54,7 @@ void VideoDecoder::openFile() {
     closeFile();
 
     // For raw YUV files, we need to specify the input format
-    const AVInputFormat *inputFormat = nullptr;
+    const AVInputFormat* inputFormat = nullptr;
 
     // Check if this is likely a raw YUV file based on file extension
     std::string fileName = m_fileName;
@@ -86,10 +87,10 @@ void VideoDecoder::openFile() {
         return;
     }
 
-    AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
 
     // Find decoder for the video stream
-    const AVCodec *codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    const AVCodec* codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
     if (!codec) {
         ErrorReporter::instance().report("Unsupported codec", LogLevel::Error);
         closeFile();
@@ -135,7 +136,7 @@ void VideoDecoder::openFile() {
     }
 
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
-    const AVPixFmtDescriptor *pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
     // int yWidth = codecContext->width;
     // int yHeight = codecContext->height;
     int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
@@ -266,16 +267,16 @@ void VideoDecoder::closeFile() {
 
 bool VideoDecoder::isYUV(AVCodecID codecId) {
     switch (codecId) {
-        case AV_CODEC_ID_RAWVIDEO:
-        case AV_CODEC_ID_YUV4:
-            return true;
-        default:
-            return false;
+    case AV_CODEC_ID_RAWVIDEO:
+    case AV_CODEC_ID_YUV4:
+        return true;
+    default:
+        return false;
     }
 }
 
 int64_t VideoDecoder::loadYUVFrame() {
-    AVPacket *tempPacket = av_packet_alloc();
+    AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit framesLoaded(false);
@@ -288,7 +289,7 @@ int64_t VideoDecoder::loadYUVFrame() {
         if (tempPacket->stream_index == videoStreamIndex) {
             int retFlag;
             pts = currentFrameIndex;
-            FrameData *frameData = m_frameQueue->getTailFrame(pts);
+            FrameData* frameData = m_frameQueue->getTailFrame(pts);
             copyFrame(tempPacket, frameData, retFlag);
             if (retFlag == 2)
                 break;
@@ -306,7 +307,7 @@ int64_t VideoDecoder::loadYUVFrame() {
 
 int64_t VideoDecoder::loadCompressedFrame() {
     // Allocate packet for decoding operation
-    AVPacket *tempPacket = av_packet_alloc();
+    AVPacket* tempPacket = av_packet_alloc();
     if (!tempPacket) {
         ErrorReporter::instance().report("Could not allocate packet", LogLevel::Error);
         emit framesLoaded(false);
@@ -327,7 +328,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
             }
 
             // Allocate a temporary frame for decoding
-            AVFrame *tempFrame = av_frame_alloc();
+            AVFrame* tempFrame = av_frame_alloc();
             if (!tempFrame) {
                 ErrorReporter::instance().report("Could not allocate temporary frame", LogLevel::Error);
                 av_packet_unref(tempPacket);
@@ -338,26 +339,26 @@ int64_t VideoDecoder::loadCompressedFrame() {
             pts = tempFrame->pts;
 
             if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
-                AVStream *videoStream = formatContext->streams[videoStreamIndex];
+                AVStream* videoStream = formatContext->streams[videoStreamIndex];
                 AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
                 pts = av_rescale_q(pts, videoStream->time_base, targetTimebase);
             }
 
-            FrameData *frameData = m_frameQueue->getTailFrame(currentFrameIndex);
+            FrameData* frameData = m_frameQueue->getTailFrame(currentFrameIndex);
 
             if (ret == 0) {
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
 
-                const AVPixFmtDescriptor *pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
                 int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
 
-                uint8_t *dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+                uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
                 int dstLinesize[4] = {width, uvWidth, uvWidth, 0};
 
-                SwsContext *swsCtx = sws_getContext(codecContext->width,
+                SwsContext* swsCtx = sws_getContext(codecContext->width,
                                                     codecContext->height,
-                                                    (AVPixelFormat) tempFrame->format,
+                                                    (AVPixelFormat)tempFrame->format,
                                                     width,
                                                     height,
                                                     codecContext->pix_fmt, // Use the same format as codec context
@@ -368,7 +369,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 if (swsCtx) {
                     sws_scale(swsCtx,
-                              (const uint8_t * const*) tempFrame->data,
+                              (const uint8_t* const*)tempFrame->data,
                               tempFrame->linesize,
                               0,
                               tempFrame->height,
@@ -415,15 +416,15 @@ int64_t VideoDecoder::loadCompressedFrame() {
  * @param frameData Pointer to the FrameData structure to populate.
  * @param retFlag Reference to an integer flag indicating success or failure of the operation.
  */
-void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &retFlag) {
+void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& retFlag) {
     retFlag = 1;
-    uint8_t *packetData = tempPacket->data;
+    uint8_t* packetData = tempPacket->data;
 
     AVPixelFormat srcFmt = codecContext->pix_fmt;
     int width = metadata.yWidth();
     int height = metadata.yHeight();
 
-    const AVPixFmtDescriptor *pixDesc = av_pix_fmt_desc_get(srcFmt);
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(srcFmt);
     if (!pixDesc) {
         ErrorReporter::instance().report("Failed to get pixel format descriptor", LogLevel::Error);
         av_packet_unref(tempPacket);
@@ -434,10 +435,10 @@ void VideoDecoder::copyFrame(AVPacket *&tempPacket, FrameData *frameData, int &r
     int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
     int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
 
-    uint8_t *srcData[4] = {nullptr};
+    uint8_t* srcData[4] = {nullptr};
     int srcLinesize[4] = {};
     av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-    uint8_t *dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+    uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
 
     memcpy(dstData[0], srcData[0], width * height);
     memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
@@ -471,7 +472,7 @@ int VideoDecoder::getTotalFrames() {
         return -1;
     }
 
-    AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
 
     if (videoStream->nb_frames > 0) {
         return static_cast<int>(videoStream->nb_frames);
@@ -485,7 +486,7 @@ int64_t VideoDecoder::getDurationMs() {
         return -1;
     }
 
-    AVStream *videoStream = formatContext->streams[videoStreamIndex];
+    AVStream* videoStream = formatContext->streams[videoStreamIndex];
     if (videoStream->duration != AV_NOPTS_VALUE) {
         return av_rescale_q(videoStream->duration, videoStream->time_base, AVRational{1, 1000});
     }
@@ -506,12 +507,12 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 
     int64_t seek_timestamp = targetPts;
     if (m_needsTimebaseConversion) {
-        AVStream *videoStream = formatContext->streams[videoStreamIndex];
+        AVStream* videoStream = formatContext->streams[videoStreamIndex];
         double timestamp_seconds = targetPts / m_framerate;
         seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
 
         qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
-                << seek_timestamp;
+                 << seek_timestamp;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);

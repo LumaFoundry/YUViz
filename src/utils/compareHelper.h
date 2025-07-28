@@ -4,7 +4,6 @@
 #include "frames/frameMeta.h"
 #include "psnrResult.h"
 
-
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
@@ -14,7 +13,6 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/imgutils.h>
 #include <libswscale/swscale.h>
-
 }
 
 class CompareHelper {

@@ -2,24 +2,25 @@
 #include <QDebug>
 #include <QString>
 
-
-PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMeta *metadata1, FrameMeta *metadata2) {
+PSNRResult CompareHelper::getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2) {
     if (!frame1 || !frame2) {
         ErrorReporter::instance().report("Invalid frame data for PSNR calculation", LogLevel::Error);
         return PSNRResult();
     }
 
-    AVFrame *avFrame1 = frameDataToAVFrame(frame1, metadata1);
-    AVFrame *avFrame2 = frameDataToAVFrame(frame2, metadata2);
+    AVFrame* avFrame1 = frameDataToAVFrame(frame1, metadata1);
+    AVFrame* avFrame2 = frameDataToAVFrame(frame2, metadata2);
 
     if (!avFrame1 || !avFrame2) {
-        if (avFrame1) av_frame_free(&avFrame1);
-        if (avFrame2) av_frame_free(&avFrame2);
+        if (avFrame1)
+            av_frame_free(&avFrame1);
+        if (avFrame2)
+            av_frame_free(&avFrame2);
         return PSNRResult();
     }
 
     // Create filter graph
-    AVFilterGraph *filterGraph = avfilter_graph_alloc();
+    AVFilterGraph* filterGraph = avfilter_graph_alloc();
     if (!filterGraph) {
         ErrorReporter::instance().report("Could not allocate filter graph", LogLevel::Error);
         av_frame_free(&avFrame1);
@@ -28,9 +29,9 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     }
 
     // Get filter references
-    const AVFilter *bufferSrc = avfilter_get_by_name("buffer");
-    const AVFilter *bufferSink = avfilter_get_by_name("buffersink");
-    const AVFilter *psnrFilter = avfilter_get_by_name("psnr");
+    const AVFilter* bufferSrc = avfilter_get_by_name("buffer");
+    const AVFilter* bufferSink = avfilter_get_by_name("buffersink");
+    const AVFilter* psnrFilter = avfilter_get_by_name("psnr");
 
     if (!bufferSrc || !bufferSink || !psnrFilter) {
         ErrorReporter::instance().report("Could not find required filters", LogLevel::Error);
@@ -40,29 +41,42 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
         return PSNRResult();
     }
 
-    AVFilterContext *bufferSrcCtx1 = nullptr;
-    AVFilterContext *bufferSrcCtx2 = nullptr;
-    AVFilterContext *bufferSinkCtx = nullptr;
-    AVFilterContext *psnrFilterCtx = nullptr;
+    AVFilterContext* bufferSrcCtx1 = nullptr;
+    AVFilterContext* bufferSrcCtx2 = nullptr;
+    AVFilterContext* bufferSinkCtx = nullptr;
+    AVFilterContext* psnrFilterCtx = nullptr;
 
     // Create buffer source arguments with proper format
     char args1[512];
     char args2[512];
-    snprintf(args1, sizeof(args1),
+    snprintf(args1,
+             sizeof(args1),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             avFrame1->width, avFrame1->height, avFrame1->format,
-             1, 25, 1, 1);
-    snprintf(args2, sizeof(args2),
+             avFrame1->width,
+             avFrame1->height,
+             avFrame1->format,
+             1,
+             25,
+             1,
+             1);
+    snprintf(args2,
+             sizeof(args2),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             avFrame2->width, avFrame2->height, avFrame2->format,
-             1, 25, 1, 1);
+             avFrame2->width,
+             avFrame2->height,
+             avFrame2->format,
+             1,
+             25,
+             1,
+             1);
 
     // Create source contexts with proper arguments
     int ret = avfilter_graph_create_filter(&bufferSrcCtx1, bufferSrc, "src1", args1, nullptr, filterGraph);
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not create buffer source 1: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not create buffer source 1: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -73,7 +87,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not create buffer source 2: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not create buffer source 2: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -95,7 +110,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not create PSNR filter: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(QString("Could not create PSNR filter: %1").arg(err_buf).toStdString().c_str(),
+                                         LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -135,7 +151,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not configure filter graph: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not configure filter graph: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -147,7 +164,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not add frame 1 to buffer source: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not add frame 1 to buffer source: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -158,7 +176,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not add frame 2 to buffer source: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not add frame 2 to buffer source: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(&filterGraph);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
@@ -170,14 +189,14 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
 
     // Get the result
-    AVFrame *resultFrame = av_frame_alloc();
+    AVFrame* resultFrame = av_frame_alloc();
     PSNRResult psnrResult;
 
     ret = av_buffersink_get_frame(bufferSinkCtx, resultFrame);
     if (ret >= 0) {
         // Extract PSNR values from frame metadata
-        AVDictionaryEntry *entry = nullptr;
-        
+        AVDictionaryEntry* entry = nullptr;
+
         // Get average PSNR - try multiple possible keys
         entry = av_dict_get(resultFrame->metadata, "lavfi.psnr.psnr.avg", nullptr, 0);
         if (entry && entry->value) {
@@ -204,7 +223,7 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
                 }
             }
         }
-        
+
         // Get Y component PSNR
         entry = av_dict_get(resultFrame->metadata, "lavfi.psnr.psnr.y", nullptr, 0);
         if (entry && entry->value) {
@@ -220,7 +239,7 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
                 }
             }
         }
-        
+
         // Get U component PSNR
         entry = av_dict_get(resultFrame->metadata, "lavfi.psnr.psnr.u", nullptr, 0);
         if (entry && entry->value) {
@@ -236,7 +255,7 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
                 }
             }
         }
-        
+
         // Get V component PSNR
         entry = av_dict_get(resultFrame->metadata, "lavfi.psnr.psnr.v", nullptr, 0);
         if (entry && entry->value) {
@@ -255,7 +274,8 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     } else {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
-        ErrorReporter::instance().report(QString("Could not get frame from sink: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not get frame from sink: %1").arg(err_buf).toStdString().c_str(), LogLevel::Error);
     }
 
     // Cleanup
@@ -267,20 +287,20 @@ PSNRResult CompareHelper::getPSNR(FrameData *frame1, FrameData *frame2, FrameMet
     return psnrResult;
 }
 
-double CompareHelper::getVMAF(FrameData *frame1, FrameData *frame2, FrameMeta *metadata1, FrameMeta *metadata2) {
+double CompareHelper::getVMAF(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2) {
     return calculateMetricWithFilter(frame1, frame2, metadata1, metadata2, "libvmaf");
 }
 
-double CompareHelper::getSSIM(FrameData *frame1, FrameData *frame2, FrameMeta *metadata1, FrameMeta *metadata2) {
+double CompareHelper::getSSIM(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2) {
     return calculateMetricWithFilter(frame1, frame2, metadata1, metadata2, "ssim");
 }
 
-AVFrame *CompareHelper::frameDataToAVFrame(FrameData *frameData, FrameMeta *metadata) {
+AVFrame* CompareHelper::frameDataToAVFrame(FrameData* frameData, FrameMeta* metadata) {
     if (!frameData) {
         return nullptr;
     }
 
-    AVFrame *frame = av_frame_alloc();
+    AVFrame* frame = av_frame_alloc();
     if (!frame) {
         ErrorReporter::instance().report("Could not allocate AVFrame", LogLevel::Error);
         return nullptr;
@@ -292,7 +312,7 @@ AVFrame *CompareHelper::frameDataToAVFrame(FrameData *frameData, FrameMeta *meta
     frame->pts = frameData->pts();
 
     // Calculate plane sizes
-    const AVPixFmtDescriptor *pixDesc = av_pix_fmt_desc_get((AVPixelFormat) frame->format);
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get((AVPixelFormat)frame->format);
     if (!pixDesc) {
         ErrorReporter::instance().report("Could not get pixel format descriptor", LogLevel::Error);
         av_frame_free(&frame);
@@ -319,46 +339,42 @@ AVFrame *CompareHelper::frameDataToAVFrame(FrameData *frameData, FrameMeta *meta
     // Copy data from FrameData to AVFrame with proper strides
     // Y plane
     for (int y = 0; y < frame->height; y++) {
-        memcpy(frame->data[0] + y * frame->linesize[0],
-               frameData->yPtr() + y * frame->width,
-               frame->width);
+        memcpy(frame->data[0] + y * frame->linesize[0], frameData->yPtr() + y * frame->width, frame->width);
     }
 
     // U plane
     for (int y = 0; y < uvHeight; y++) {
-        memcpy(frame->data[1] + y * frame->linesize[1],
-               frameData->uPtr() + y * uvWidth,
-               uvWidth);
+        memcpy(frame->data[1] + y * frame->linesize[1], frameData->uPtr() + y * uvWidth, uvWidth);
     }
 
     // V plane
     for (int y = 0; y < uvHeight; y++) {
-        memcpy(frame->data[2] + y * frame->linesize[2],
-               frameData->vPtr() + y * uvWidth,
-               uvWidth);
+        memcpy(frame->data[2] + y * frame->linesize[2], frameData->vPtr() + y * uvWidth, uvWidth);
     }
 
     return frame;
 }
 
-double CompareHelper::calculateMetricWithFilter(FrameData *frame1, FrameData *frame2, FrameMeta *metadata1,
-                                                FrameMeta *metadata2, const char *filterName) {
+double CompareHelper::calculateMetricWithFilter(
+    FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2, const char* filterName) {
     if (!frame1 || !frame2) {
         ErrorReporter::instance().report("Invalid frame data for metric calculation", LogLevel::Error);
         return -1.0;
     }
 
-    AVFrame *avFrame1 = frameDataToAVFrame(frame1, metadata1);
-    AVFrame *avFrame2 = frameDataToAVFrame(frame2, metadata2);
+    AVFrame* avFrame1 = frameDataToAVFrame(frame1, metadata1);
+    AVFrame* avFrame2 = frameDataToAVFrame(frame2, metadata2);
 
     if (!avFrame1 || !avFrame2) {
-        if (avFrame1) av_frame_free(&avFrame1);
-        if (avFrame2) av_frame_free(&avFrame2);
+        if (avFrame1)
+            av_frame_free(&avFrame1);
+        if (avFrame2)
+            av_frame_free(&avFrame2);
         return -1.0;
     }
 
     // Create filter graph
-    AVFilterGraph *filterGraph = avfilter_graph_alloc();
+    AVFilterGraph* filterGraph = avfilter_graph_alloc();
     if (!filterGraph) {
         ErrorReporter::instance().report("Could not allocate filter graph", LogLevel::Error);
         av_frame_free(&avFrame1);
@@ -367,9 +383,9 @@ double CompareHelper::calculateMetricWithFilter(FrameData *frame1, FrameData *fr
     }
 
     // Get filter references
-    const AVFilter *bufferSrc = avfilter_get_by_name("buffer");
-    const AVFilter *bufferSink = avfilter_get_by_name("buffersink");
-    const AVFilter *metricFilter = avfilter_get_by_name(filterName);
+    const AVFilter* bufferSrc = avfilter_get_by_name("buffer");
+    const AVFilter* bufferSink = avfilter_get_by_name("buffersink");
+    const AVFilter* metricFilter = avfilter_get_by_name(filterName);
 
     if (!bufferSrc || !bufferSink || !metricFilter) {
         ErrorReporter::instance().report("Could not find required filters", LogLevel::Error);
@@ -379,21 +395,33 @@ double CompareHelper::calculateMetricWithFilter(FrameData *frame1, FrameData *fr
         return -1.0;
     }
 
-    AVFilterContext *bufferSrcCtx1 = nullptr;
-    AVFilterContext *bufferSrcCtx2 = nullptr;
-    AVFilterContext *bufferSinkCtx = nullptr;
-    AVFilterContext *metricFilterCtx = nullptr;
+    AVFilterContext* bufferSrcCtx1 = nullptr;
+    AVFilterContext* bufferSrcCtx2 = nullptr;
+    AVFilterContext* bufferSinkCtx = nullptr;
+    AVFilterContext* metricFilterCtx = nullptr;
 
     char args1[512];
     char args2[512];
-    snprintf(args1, sizeof(args1),
+    snprintf(args1,
+             sizeof(args1),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             avFrame1->width, avFrame1->height, avFrame1->format,
-             1, 25, 1, 1);
-    snprintf(args2, sizeof(args2),
+             avFrame1->width,
+             avFrame1->height,
+             avFrame1->format,
+             1,
+             25,
+             1,
+             1);
+    snprintf(args2,
+             sizeof(args2),
              "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             avFrame2->width, avFrame2->height, avFrame2->format,
-             1, 25, 1, 1);
+             avFrame2->width,
+             avFrame2->height,
+             avFrame2->format,
+             1,
+             25,
+             1,
+             1);
 
     int ret = avfilter_graph_create_filter(&bufferSrcCtx1, bufferSrc, "src1", args1, nullptr, filterGraph);
     if (ret < 0) {
@@ -430,7 +458,7 @@ double CompareHelper::calculateMetricWithFilter(FrameData *frame1, FrameData *fr
     }
 
     // Create metric filter context
-    const char *filterArgs = nullptr;
+    const char* filterArgs = nullptr;
     if (strcmp(filterName, "libvmaf") == 0) {
         filterArgs = "log_path=/tmp/vmaf.log:log_fmt=json";
     }
@@ -519,13 +547,13 @@ double CompareHelper::calculateMetricWithFilter(FrameData *frame1, FrameData *fr
     av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
 
     // Get the result
-    AVFrame *resultFrame = av_frame_alloc();
+    AVFrame* resultFrame = av_frame_alloc();
     double metricValue = -1.0;
 
     ret = av_buffersink_get_frame(bufferSinkCtx, resultFrame);
     if (ret >= 0) {
         // Extract metric value from frame metadata
-        AVDictionaryEntry *entry = nullptr;
+        AVDictionaryEntry* entry = nullptr;
 
         if (strcmp(filterName, "psnr") == 0) {
             // Try different PSNR metadata keys
