@@ -116,8 +116,13 @@ void CompareController::onCompareRendered() {
         m_ready2 = false;
     }
 
-    qDebug() << "PSNR (Average):" << m_psnrResult.average << "Y:" << m_psnrResult.y << "U:" << m_psnrResult.u
-             << "V:" << m_psnrResult.v;
+    QString psnrInfo = "PSNR (Average): " + QString::number(m_psnrResult.average) +
+                       "\nY: " + QString::number(m_psnrResult.y) + "\nU: " + QString::number(m_psnrResult.u) +
+                       "\nV: " + QString::number(m_psnrResult.v);
+
+    emit psnrChanged(psnrInfo);
+
+    qDebug() << psnrInfo;
 }
 
 void CompareController::diff() {

@@ -26,6 +26,7 @@ class CompareController : public QObject {
   signals:
     void requestUpload(FrameData* frame);
     void requestRender();
+    void psnrChanged(const QString& psnrInfo);
 
   public slots:
     void onReceiveFrame(FrameData* frame, int index);

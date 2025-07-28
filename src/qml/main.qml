@@ -184,6 +184,10 @@ ApplicationWindow {
                         console.log("Video window", i, "does not have toggleOsd method");
                     }
                 }
+                if (diffPopupInstance) {
+                    console.log("Toggling OSD for diffPopupInstance");
+                    diffPopupInstance.diffVideoWindow.toggleOsd();
+                }
                 event.accepted = true;
             }
         }

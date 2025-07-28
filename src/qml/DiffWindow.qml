@@ -15,11 +15,61 @@ Window {
     property int leftVideoId: -1
     property int rightVideoId: -1
     property int diffVideoId: -1
+    property string psnrInfo: ""
+    property alias diffVideoWindow: diffVideoWindow
+
+    Connections {
+        target: compareController
+        function onPsnrChanged(psnrInfo) {
+            diffWindow.psnrInfo = psnrInfo;
+        }
+    }
 
     VideoWindow {
         id: diffVideoWindow
         objectName: "diffWindow"
         anchors.fill: parent
+
+        // OSD Overlay
+        Rectangle {
+            visible: diffVideoWindow.osdState > 0
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.margins: 10
+            width: osdText.width + 20
+            height: osdText.height + 20
+            color: "black"
+            opacity: 0.8
+            radius: 5
+            z: 100 // Ensure it's on top
+
+            Text {
+                id: osdText
+                anchors.centerIn: parent
+                color: "white"
+                font.family: "monospace"
+                font.pixelSize: 12
+                text: {
+                    var durationSec = Math.floor(diffVideoWindow.duration / 1000);
+                    var currentSec = Math.floor(diffVideoWindow.currentTimeMs / 1000);
+                    var durationMin = Math.floor(durationSec / 60);
+                    var currentMin = Math.floor(currentSec / 60);
+                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                    var osdStr = diffWindow.psnrInfo;
+
+                    if (diffVideoWindow.osdState === 1) {
+                        // Basic info: PSNR
+                        return osdStr;
+                    } else if (diffVideoWindow.osdState === 2) {
+                        // Detailed info: Could add later
+                        return osdStr;
+                    }
+                    return "";
+                }
+            }
+        }
     }
 
     MouseArea {
