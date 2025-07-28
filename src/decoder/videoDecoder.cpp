@@ -115,7 +115,7 @@ void VideoDecoder::openFile() {
     if (!isYUV(codecContext->codec_id)) {
         m_width = codecContext->width;
         m_height = codecContext->height;
-        m_framerate = videoStream->avg_frame_rate.num / (double)videoStream->avg_frame_rate.den;
+        setFramerate(videoStream->avg_frame_rate.num / (double)videoStream->avg_frame_rate.den);
     }
 
     // Open codec
