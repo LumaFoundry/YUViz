@@ -2,7 +2,13 @@
 #include <QDebug>
 #include <QString>
 
+extern "C" {
+#include <libavutil/log.h>
+}
+
 PSNRResult CompareHelper::getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2) {
+    // Set FFmpeg log level to only show errors
+    av_log_set_level(AV_LOG_ERROR);
     if (!frame1 || !frame2) {
         ErrorReporter::instance().report("Invalid frame data for PSNR calculation", LogLevel::Error);
         return PSNRResult();
@@ -357,6 +363,8 @@ AVFrame* CompareHelper::frameDataToAVFrame(FrameData* frameData, FrameMeta* meta
 
 double CompareHelper::calculateMetricWithFilter(
     FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2, const char* filterName) {
+    // Set FFmpeg log level to only show errors
+    av_log_set_level(AV_LOG_ERROR);
     if (!frame1 || !frame2) {
         ErrorReporter::instance().report("Invalid frame data for metric calculation", LogLevel::Error);
         return -1.0;
