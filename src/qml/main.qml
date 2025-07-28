@@ -57,7 +57,6 @@ ApplicationWindow {
 
     property bool videoLoaded: false
     property bool isCtrlPressed: false
-    property bool isSelecting: false
     property bool wasPlayingBeforeResize: false
     property bool resizing: false
 
@@ -116,8 +115,6 @@ ApplicationWindow {
             sharedViewProperties.reset();
             selectionStart = Qt.point(0, 0);
             selectionEnd = Qt.point(0, 0);
-            isSelecting = false;
-            isProcessingSelection = false;
             keyHandler.focus = true;
         }
     }
@@ -425,8 +422,6 @@ ApplicationWindow {
                                 }
                             }
 
-                            isSelecting = false;
-                            isProcessingSelection = false;
                             keyHandler.focus = true;
                         }
                     }
