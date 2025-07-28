@@ -1,5 +1,6 @@
 #include "videoController.h"
 #include <QDebug>
+#include <QTimer>
 
 VideoController::VideoController(QObject* parent,
                                  std::shared_ptr<CompareController> compareController,
@@ -286,14 +287,14 @@ void VideoController::seekTo(double timeMs) {
 
     for (auto& fc : m_frameControllers) {
         if (!fc) {
+            seekPts.push_back(0);
             continue;
         }
         // Convert timeMs to PTS using the FC's timebase
         AVRational timebase = fc->getTimeBase();
         int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
-        // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
-        // Call seek on the FC
 
+        // Call seek on the FC
         // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
         fc->onSeek(pts);
 
@@ -350,6 +351,16 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
     m_diffMode = diffMode;
 
+    if (id1 < 0 || id1 >= m_frameControllers.size()) {
+        qWarning() << "Invalid video ID1 for diff mode:" << id1;
+        return;
+    }
+
+    if (id2 < 0 || id2 >= m_frameControllers.size()) {
+        qWarning() << "Invalid video ID2 for diff mode:" << id2;
+        return;
+    }
+
     if (m_diffMode) {
         m_compareController->setVideoIds(id1, id2);
         m_compareController->setMetadata(m_frameControllers[id1]->getFrameMeta(),
@@ -376,7 +387,8 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                 m_compareController.get(),
                 &CompareController::onRequestRender);
 
-        seekTo(m_currentTimeMs);
+        // Defer the seek operation using QTimer
+        QTimer::singleShot(100, this, [this]() { seekTo(m_currentTimeMs); });
 
     } else {
         // Disconnect when diff mode is disabled

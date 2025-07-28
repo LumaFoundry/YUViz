@@ -414,7 +414,7 @@ ApplicationWindow {
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
                             sharedViewProperties.reset();
-                            
+
                             for (var i = 0; i < videoWindowContainer.children.length; ++i) {
                                 var child = videoWindowContainer.children[i];
                                 if (child && child.resetSelectionCanvas) {
@@ -442,6 +442,8 @@ ApplicationWindow {
 
                             let leftId = videoWindowContainer.children[0].videoId;
                             let rightId = videoWindowContainer.children[1].videoId;
+
+                            console.log("Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
 
                             // Pass video IDs
                             diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
