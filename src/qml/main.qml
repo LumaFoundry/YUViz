@@ -392,7 +392,7 @@ ApplicationWindow {
                         }
                         ComboBox {
                             id: speedSelector
-                            model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
+                            model: ["2.0x", "1.5x", "1.0x", "0.5x", "0.25x"]
                             currentIndex: 2
                             Layout.preferredWidth: 80
                             Layout.preferredHeight: Theme.comboBoxHeight
