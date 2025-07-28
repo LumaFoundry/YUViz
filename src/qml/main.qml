@@ -417,8 +417,14 @@ ApplicationWindow {
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
                             sharedViewProperties.reset();
-                            selectionStart = Qt.point(0, 0);
-                            selectionEnd = Qt.point(0, 0);
+                            
+                            for (var i = 0; i < videoWindowContainer.children.length; ++i) {
+                                var child = videoWindowContainer.children[i];
+                                if (child && child.resetSelectionCanvas) {
+                                    child.resetSelectionCanvas();
+                                }
+                            }
+
                             isSelecting = false;
                             isProcessingSelection = false;
                             keyHandler.focus = true;

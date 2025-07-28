@@ -425,6 +425,10 @@ VideoWindow {
     }
 
     function resetSelectionCanvas() {
+        selectionStart = Qt.point(0, 0)
+        selectionEnd = Qt.point(0, 0)
+        isSelecting = false
+        isProcessingSelection = false
         selectionCanvas.requestPaint();
     }
 
