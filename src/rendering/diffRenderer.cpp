@@ -119,6 +119,8 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         emit rendererError();
         return;
     }
+    m_currentFrame1 = frame1;
+    m_currentFrame2 = frame2;
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc1;

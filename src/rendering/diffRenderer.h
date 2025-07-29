@@ -28,10 +28,13 @@ class DiffRenderer : public QObject {
 
   public:
     std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
+    FrameData* getCurrentFrame1() const { return m_currentFrame1; }
+    FrameData* getCurrentFrame2() const { return m_currentFrame2; }
 
   private:
     std::shared_ptr<FrameMeta> m_metaPtr;
-    FrameData* m_currentFrame = nullptr;
+    FrameData* m_currentFrame1 = nullptr;
+    FrameData* m_currentFrame2 = nullptr;
     QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
