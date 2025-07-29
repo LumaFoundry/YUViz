@@ -19,10 +19,41 @@ Window {
     property string psnrInfo: compareController.psnrInfo
     property alias diffVideoWindow: diffVideoWindow
 
+    // Zoom and selection properties
+    property bool isSelecting: false
+    property point selectionStart: Qt.point(0, 0)
+    property point selectionEnd: Qt.point(0, 0)
+    property bool isProcessingSelection: false
+    property bool isMouseDown: false
+    property bool isZoomed: false  // 初始化为false，避免在初始化时访问sharedView
+    property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
+
     DiffWindow {
         id: diffVideoWindow
         objectName: "diffWindow"
         anchors.fill: parent
+
+        // Update isZoomed property when sharedView changes
+        Connections {
+            target: diffVideoWindow.sharedView
+            enabled: diffVideoWindow.sharedView !== null
+            function onIsZoomedChanged() {
+                if (diffVideoWindow.sharedView) {
+                    diffWindow.isZoomed = diffVideoWindow.sharedView.isZoomed;
+                }
+            }
+        }
+
+        // Update isCtrlPressed property when mainWindow changes
+        Connections {
+            target: mainWindow
+            enabled: mainWindow !== null
+            function onIsCtrlPressedChanged() {
+                if (mainWindow) {
+                    diffWindow.isCtrlPressed = mainWindow.isCtrlPressed;
+                }
+            }
+        }
 
         // Configuration menu
         Row {
@@ -148,6 +179,155 @@ Window {
             }
         }
 
+        // Zoom and pan handlers
+        PinchArea {
+            anchors.fill: parent
+            pinch.target: diffVideoWindow
+
+            property real lastPinchScale: 1.0
+
+            onPinchStarted: {
+                lastPinchScale = 1.0;
+            }
+
+            onPinchUpdated: {
+                let factor = pinch.scale / lastPinchScale;
+                if (factor !== 1.0) {
+                    diffVideoWindow.zoomAt(factor, pinch.center);
+                }
+                lastPinchScale = pinch.scale;
+            }
+        }
+
+        PointHandler {
+            id: pointHandler
+            acceptedButtons: Qt.LeftButton
+            // Enable this handler only when zoomed and NOT doing a selection drag
+            enabled: (diffWindow && diffWindow.isZoomed && !diffWindow.isCtrlPressed) || false
+
+            property point lastPosition: Qt.point(0, 0)
+
+            onActiveChanged: {
+                if (diffWindow) {
+                    diffWindow.isMouseDown = active;
+                }
+                if (active) {
+                    lastPosition = point.position;
+                }
+            }
+
+            onPointChanged: {
+                if (active) {
+                    var currentPosition = point.position;
+                    var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y);
+
+                    if (delta.x !== 0 || delta.y !== 0) {
+                        diffVideoWindow.pan(delta);
+                    }
+
+                    lastPosition = currentPosition;
+                }
+            }
+        }
+
+        WheelHandler {
+            id: wheelHandler
+            acceptedModifiers: Qt.ControlModifier
+
+            property real lastRotation: wheelHandler.rotation
+
+            onRotationChanged: {
+                let delta = wheelHandler.rotation - wheelHandler.lastRotation;
+
+                if (delta !== 0) {
+                    let factor = delta > 0 ? 1.2 : (1.0 / 1.2);
+                    diffVideoWindow.zoomAt(factor, wheelHandler.point.position);
+                }
+
+                wheelHandler.lastRotation = wheelHandler.rotation;
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton
+            hoverEnabled: true // Needed for cursor shape changes
+
+            cursorShape: {
+                if (diffWindow && diffWindow.isCtrlPressed)
+                    return Qt.CrossCursor;
+                if (diffWindow && diffWindow.isZoomed) {
+                    return (diffWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+                }
+                return Qt.ArrowCursor;
+            }
+
+            onPressed: function (mouse) {
+                if (diffWindow && diffWindow.isCtrlPressed) {
+                    // Force reset processing state, ensure new selection can start
+                    diffWindow.isProcessingSelection = false;
+                    diffWindow.isSelecting = true;
+                    diffWindow.selectionStart = Qt.point(mouse.x, mouse.y);
+                    diffWindow.selectionEnd = diffWindow.selectionStart;
+                } else {
+                    mouse.accepted = false;
+                }
+            }
+
+            onPositionChanged: function (mouse) {
+                if (diffWindow && diffWindow.isSelecting) {
+                    var currentPos = Qt.point(mouse.x, mouse.y);
+                    var deltaX = currentPos.x - diffWindow.selectionStart.x;
+                    var deltaY = currentPos.y - diffWindow.selectionStart.y;
+
+                    if (deltaX === 0 && deltaY === 0)
+                        return;
+                    diffWindow.selectionEnd = Qt.point(diffWindow.selectionStart.x + deltaX, diffWindow.selectionStart.y + deltaY);
+                    selectionCanvas.requestPaint();
+                }
+            }
+
+            onReleased: function (mouse) {
+                if (diffWindow && diffWindow.isSelecting) {
+                    diffWindow.isSelecting = false;
+                    diffWindow.isProcessingSelection = true;
+
+                    // Calculate rectangle area
+                    var rect = Qt.rect(Math.min(diffWindow.selectionStart.x, diffWindow.selectionEnd.x), Math.min(diffWindow.selectionStart.y, diffWindow.selectionEnd.y), Math.abs(diffWindow.selectionEnd.x - diffWindow.selectionStart.x), Math.abs(diffWindow.selectionEnd.y - diffWindow.selectionStart.y));
+
+                    // console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
+
+                    diffVideoWindow.zoomToSelection(rect);
+
+                    // Clear selection state, make rectangle disappear
+                    diffWindow.selectionStart = Qt.point(0, 0);
+                    diffWindow.selectionEnd = Qt.point(0, 0);
+                    selectionCanvas.requestPaint();
+                    diffWindow.isProcessingSelection = false;
+                }
+            }
+        }
+
+        // Draw selection rectangle
+        Canvas {
+            id: selectionCanvas
+            anchors.fill: parent
+            z: 1
+
+            onPaint: {
+                var ctx = getContext("2d");
+                ctx.clearRect(0, 0, width, height);
+                if (diffWindow && (diffWindow.isSelecting || (diffWindow.selectionStart.x !== 0 || diffWindow.selectionStart.y !== 0))) {
+                    var rect = Qt.rect(Math.min(diffWindow.selectionStart.x, diffWindow.selectionEnd.x), Math.min(diffWindow.selectionStart.y, diffWindow.selectionEnd.y), Math.abs(diffWindow.selectionEnd.x - diffWindow.selectionStart.x), Math.abs(diffWindow.selectionEnd.y - diffWindow.selectionStart.y));
+                    ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
+                    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+                    ctx.strokeStyle = "blue";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                }
+            }
+        }
+
         // Pixel difference values canvas
         Canvas {
             id: pixelValuesCanvas
@@ -181,6 +361,11 @@ Window {
                         return;
 
                     ctx.clearRect(0, 0, width, height);
+
+                    // Check if sharedView exists
+                    if (!diffVideoWindow.sharedView) {
+                        return;
+                    }
 
                     // get frame meta
                     var meta = diffVideoWindow.getFrameMeta();
@@ -365,5 +550,13 @@ Window {
                 diffWindow.y += mouse.y - dragPos.y;
             }
         }
+    }
+
+    function resetSelectionCanvas() {
+        selectionStart = Qt.point(0, 0);
+        selectionEnd = Qt.point(0, 0);
+        isSelecting = false;
+        isProcessingSelection = false;
+        selectionCanvas.requestPaint();
     }
 }
