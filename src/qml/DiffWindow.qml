@@ -16,15 +16,8 @@ Window {
     property int leftVideoId: -1
     property int rightVideoId: -1
     property int diffVideoId: -1
-    property string psnrInfo: ""
+    property string psnrInfo: compareController.psnrInfo
     property alias diffVideoWindow: diffVideoWindow
-
-    Connections {
-        target: compareController
-        function onPsnrChanged(psnrInfo) {
-            diffWindow.psnrInfo = psnrInfo;
-        }
-    }
 
     DiffWindow {
         id: diffVideoWindow

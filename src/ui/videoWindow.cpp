@@ -210,13 +210,13 @@ void VideoWindow::syncColorSpaceMenu() {
 void VideoWindow::setOsdState(int state) {
     if (m_osdState != state) {
         m_osdState = state;
-        emit osdStateChanged();
+        emit osdStateChanged(m_osdState);
     }
 }
 
 void VideoWindow::toggleOsd() {
     m_osdState = (m_osdState + 1) % 3; // Cycle through 0, 1, 2
-    emit osdStateChanged();
+    emit osdStateChanged(m_osdState);
 }
 
 void VideoWindow::updateFrameInfo(int currentFrame, double currentTimeMs) {
@@ -301,6 +301,10 @@ QString VideoWindow::colorSpace() const {
 }
 
 QString VideoWindow::colorRange() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
     AVColorRange colorRange = m_frameMeta->colorRange();
 
     switch (colorRange) {

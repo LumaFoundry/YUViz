@@ -8,6 +8,7 @@
 
 class CompareController : public QObject {
     Q_OBJECT
+    Q_PROPERTY(QString psnrInfo READ psnrInfo NOTIFY psnrChanged)
 
   public:
     CompareController(QObject* parent = nullptr);
@@ -19,11 +20,12 @@ class CompareController : public QObject {
     void setDiffWindow(DiffWindow* diffWindow) { m_diffWindow = diffWindow; }
     PSNRResult getPSNRResult() const { return m_psnrResult; }
     double getPSNR() const { return m_psnr; } // For backward compatibility
+    QString psnrInfo() const { return m_psnrInfo; }
 
   signals:
     void requestUpload(FrameData* frame1, FrameData* frame2);
     void requestRender();
-    void psnrChanged(const QString& psnrInfo);
+    void psnrChanged();
 
   public slots:
     void onReceiveFrame(FrameData* frame, int index);
@@ -56,4 +58,6 @@ class CompareController : public QObject {
 
     // For display
     DiffWindow* m_diffWindow = nullptr;
+
+    QString m_psnrInfo;
 };

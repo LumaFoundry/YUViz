@@ -76,7 +76,7 @@ class VideoWindow : public QQuickItem {
     void maxZoomChanged();
     void sharedViewChanged();
     void frameReady();
-    void osdStateChanged();
+    void osdStateChanged(int newState);
     void currentFrameChanged();
     void currentTimeMsChanged();
 

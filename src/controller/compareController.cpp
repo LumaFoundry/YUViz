@@ -83,13 +83,13 @@ void CompareController::onCompareRendered() {
         m_ready2 = false;
     }
 
-    QString psnrInfo = "PSNR (Average): " + QString::number(m_psnrResult.average) +
-                       "\nY: " + QString::number(m_psnrResult.y) + "\nU: " + QString::number(m_psnrResult.u) +
-                       "\nV: " + QString::number(m_psnrResult.v);
+    m_psnrInfo = "PSNR (Average): " + QString::number(m_psnrResult.average) +
+                 "\nY: " + QString::number(m_psnrResult.y) + "\nU: " + QString::number(m_psnrResult.u) +
+                 "\nV: " + QString::number(m_psnrResult.v);
 
-    emit psnrChanged(psnrInfo);
+    emit psnrChanged();
 
-    qDebug() << psnrInfo;
+    qDebug() << m_psnrInfo;
 
     // Clear cache to make sure we don't compare stale frames
     if (m_frame1) {

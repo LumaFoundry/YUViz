@@ -9,6 +9,7 @@ ApplicationWindow {
 
     property int videoCount: 0
     property var videoWindows: []
+    property int globalOsdState: 0
 
     QtObject {
         id: qmlBridge
@@ -26,13 +27,8 @@ ApplicationWindow {
                 obj.requestRemove.connect(mainWindow.removeVideoWindowById);
 
                 // Sync OSD state with existing video windows
-                if (videoWindowContainer.children.length > 0) {
-                    let existingWindow = videoWindowContainer.children[0];
-                    if (existingWindow && existingWindow.osdState !== undefined) {
-                        obj.osdState = existingWindow.osdState;
-                        console.log("[qmlBridge] Synced OSD state to:", existingWindow.osdState);
-                    }
-                }
+                obj.osdState = mainWindow.globalOsdState;
+                console.log("[qmlBridge] Synced OSD state to:", mainWindow.globalOsdState);
             }
             return obj;
         }
@@ -172,22 +168,8 @@ ApplicationWindow {
             }
 
             if (event.key === Qt.Key_O) {
-                console.log("O key pressed, trying to toggle OSD");
-                // Toggle OSD for all videos in the container
-                console.log("VideoWindowContainer has", videoWindowContainer.children.length, "children");
-                for (var i = 0; i < videoWindowContainer.children.length; i++) {
-                    var videoWindow = videoWindowContainer.children[i];
-                    if (videoWindow && videoWindow.toggleOsd) {
-                        console.log("Toggling OSD for video window", i);
-                        videoWindow.toggleOsd();
-                    } else {
-                        console.log("Video window", i, "does not have toggleOsd method");
-                    }
-                }
-                if (diffPopupInstance) {
-                    console.log("Toggling OSD for diffPopupInstance");
-                    diffPopupInstance.diffVideoWindow.toggleOsd();
-                }
+                console.log("O key pressed, toggling global OSD state");
+                mainWindow.toggleGlobalOsdState();
                 event.accepted = true;
             }
         }
@@ -458,7 +440,6 @@ ApplicationWindow {
                             console.log("Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
 
                             diffPopupInstance.visible = true;
-
                             // Cleanup when window closes
                             diffPopupInstance.onVisibleChanged.connect(function () {
                                 if (!diffPopupInstance.visible) {
@@ -468,7 +449,7 @@ ApplicationWindow {
                                 }
                             });
                             videoLoader.setupDiffWindow(leftId, rightId);
-
+                            diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
                             keyHandler.forceActiveFocus();
                         }
                     }
@@ -613,7 +594,27 @@ ApplicationWindow {
                 break;
             }
         }
+
+        // If no windows left, reset global OSD state
+        if (videoWindowContainer.children.length === 0) {
+            mainWindow.globalOsdState = 0;
+            console.log("[mainWindow] Reset global OSD state to 0");
+        }
+
         videoController.removeVideo(id);
         keyHandler.forceActiveFocus();
+    }
+
+    function toggleGlobalOsdState() {
+        mainWindow.globalOsdState = (mainWindow.globalOsdState + 1) % 3;
+        for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+            let child = videoWindowContainer.children[i];
+            if (child && child.osdState !== undefined) {
+                child.osdState = mainWindow.globalOsdState;
+            }
+        }
+        if (diffPopupInstance && diffPopupInstance.diffVideoWindow) {
+            diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+        }
     }
 }
