@@ -88,7 +88,8 @@ int main(int argc, char* argv[]) {
     engine.rootContext()->setContextProperty("sharedViewProperties", &sharedViewProperties);
 
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
-    qmlRegisterType<VideoWindow>("Window", 1, 0, "VideoWindow");
+    qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
+    qmlRegisterType<DiffWindow>("DiffWindow", 1, 0, "DiffWindow");
 
     std::shared_ptr<CompareController> compareController = std::make_shared<CompareController>(nullptr);
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr, compareController);

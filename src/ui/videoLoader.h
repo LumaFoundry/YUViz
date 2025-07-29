@@ -4,6 +4,7 @@
 #include <QQmlApplicationEngine>
 #include "controller/compareController.h"
 #include "controller/videoController.h"
+#include "ui/diffWindow.h"
 #include "ui/videoWindow.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"

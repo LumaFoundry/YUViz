@@ -1,6 +1,6 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
-import Window 1.0
+import DiffWindow 1.0
 import QtQuick.Layouts 1.15
 
 Window {
@@ -25,7 +25,7 @@ Window {
         }
     }
 
-    VideoWindow {
+    DiffWindow {
         id: diffVideoWindow
         objectName: "diffWindow"
         anchors.fill: parent
