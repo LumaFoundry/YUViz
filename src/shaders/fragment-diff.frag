@@ -19,9 +19,9 @@ void main() {
     // 0.5 (grey) for same Y
     // 1.0 (white) y1 > y2
     // 0.0 (black) y1 < y2
-    float gray = 0.5 + diff * 0.5;
+    float gray = 0.5 + diff * 2;
     
     gray = clamp(gray, 0.0, 1.0);
     
-    fragColor = vec4(gray, gray, gray, 1.0);
+    fragColor = vec4(gray, 0, 0, 1.0);
 }
