@@ -10,6 +10,7 @@ Window {
     visible: false
     title: "Diff Result"
     flags: Qt.Window
+    color: "black"
 
     property point dragPos
     property int leftVideoId: -1

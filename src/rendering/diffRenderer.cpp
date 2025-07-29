@@ -113,7 +113,7 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
     {
         QRhiTextureSubresourceUploadDescription sd(frame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
-        yDesc1.setEntries({{0, 0, sd}});
+        yDesc2.setEntries({{0, 0, sd}});
     }
     m_frameBatch->uploadTexture(m_yTex2.get(), yDesc2);
 

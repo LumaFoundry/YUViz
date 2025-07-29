@@ -15,7 +15,7 @@ void main() {
 
     float diff = y2 - y1;
 
-    float gray = 0.5 + diff * 0.2;
+    float gray = 0.5 + diff * 4;
 
     gray = clamp(gray, 0.0, 1.0);
 
