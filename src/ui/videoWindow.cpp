@@ -234,10 +234,6 @@ int VideoWindow::currentFrame() const {
     return m_currentFrame;
 }
 
-int VideoWindow::totalFrames() const {
-    return m_frameMeta ? m_frameMeta->totalFrames() : 0;
-}
-
 QString VideoWindow::pixelFormat() const {
     if (!m_frameMeta) {
         return QString("N/A");

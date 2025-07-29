@@ -233,6 +233,20 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             temp_pts = loadCompressedFrame();
             qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
+
+        // Check if we've reached EOF (indicated by -1 PTS)
+        if (temp_pts == -1) {
+            qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
+            if (currentFrameIndex > 0) {
+                FrameData* lastFrame = m_frameQueue->getTailFrame(currentFrameIndex - 1);
+                if (lastFrame) {
+                    lastFrame->setEndFrame(true);
+                    qDebug() << "VideoDecoder: Marked frame " << (currentFrameIndex - 1) << " as end frame";
+                }
+            }
+            break;
+        }
+
         maxpts = std::max(maxpts, temp_pts);
         minpts = std::min(minpts, std::max(temp_pts, 0LL));
     }
@@ -380,11 +394,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                     // Use currentFrameIndex for consistent frame numbering with timer
                     frameData->setPts(currentFrameIndex);
-                    if (currentFrameIndex >= totalFrames + 1) {
-                        frameData->setEndFrame(true);
-                    } else {
-                        frameData->setEndFrame(false);
-                    }
+                    frameData->setEndFrame(false);
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);

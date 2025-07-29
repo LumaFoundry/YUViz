@@ -254,6 +254,13 @@ void VideoController::stepForward() {
         // qDebug() << "VideoController: Step forward requested while playing, pausing first";
         pause();
     }
+    
+    // Prevent stepping forward if we've already reached the end
+    if (m_reachedEnd) {
+        qDebug() << "VideoController: Already at end of video, cannot step forward";
+        return;
+    }
+    
     m_direction = 1;
     m_reachedEnd = false;
     // qDebug() << "VideoController: Step forward requested";

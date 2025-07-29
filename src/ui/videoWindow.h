@@ -17,7 +17,6 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
     Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
-    Q_PROPERTY(int totalFrames READ totalFrames CONSTANT)
     Q_PROPERTY(QString pixelFormat READ pixelFormat CONSTANT)
     Q_PROPERTY(QString timeBase READ timeBase CONSTANT)
     Q_PROPERTY(qint64 duration READ duration CONSTANT)
@@ -42,7 +41,6 @@ class VideoWindow : public QQuickItem {
     int osdState() const { return m_osdState; }
     void setOsdState(int state);
     int currentFrame() const;
-    int totalFrames() const;
     QString pixelFormat() const;
     QString timeBase() const;
     qint64 duration() const;

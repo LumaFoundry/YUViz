@@ -467,8 +467,7 @@ VideoWindow {
                     var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
-                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
-                        + " / " + videoWindow.totalFrames;
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame;
                 } else if (videoWindow.osdState === 2) {
                     // Detailed info: add pixel format, timebase/pts, aspect ratio
                     var durationSec = Math.floor(videoWindow.duration / 1000);
@@ -479,7 +478,7 @@ VideoWindow {
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
                     return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
-                        + " / " + videoWindow.totalFrames + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
+                        + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
                         + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Color Space: "
                         + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
                 }
