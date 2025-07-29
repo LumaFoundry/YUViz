@@ -25,7 +25,7 @@ Window {
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
-    property bool isZoomed: false  // 初始化为false，避免在初始化时访问sharedView
+    property bool isZoomed: false  
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
 
     DiffWindow {
