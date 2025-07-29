@@ -25,6 +25,13 @@ void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_yTex1->create();
     m_yTex2->create();
 
+    // Diff configuration buffer
+    m_diffConfig.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int) * 4));
+    m_diffConfig->create();
+
+    // Set default configuration
+    setDiffConfig(0, 2.0f, 0); // 默认热力图模式，8倍放大，直接相减
+
     m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float) * 4));
     m_resizeParams->create();
 
@@ -67,6 +74,7 @@ void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
              1, QRhiShaderResourceBinding::FragmentStage, m_yTex1.get(), m_sampler.get()),
          QRhiShaderResourceBinding::sampledTexture(
              2, QRhiShaderResourceBinding::FragmentStage, m_yTex2.get(), m_sampler.get()),
+         QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_diffConfig.get()),
          QRhiShaderResourceBinding::uniformBuffer(5, QRhiShaderResourceBinding::VertexStage, m_resizeParams.get())});
     m_resourceBindings->create();
 
@@ -91,6 +99,18 @@ QByteArray DiffRenderer::loadShaderSource(const QString& path) {
         return {};
     }
     return f.readAll();
+}
+
+void DiffRenderer::setDiffConfig(int displayMode, float diffMultiplier, int diffMethod) {
+    struct DiffConfig {
+        int displayMode;
+        float diffMultiplier;
+        int diffMethod;
+        int padding;
+    };
+    DiffConfig dc = {displayMode, diffMultiplier, diffMethod, 0};
+    m_diffConfigBatch = m_rhi->nextResourceUpdateBatch();
+    m_diffConfigBatch->updateDynamicBuffer(m_diffConfig.get(), 0, sizeof(dc), &dc);
 }
 
 void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
@@ -126,6 +146,10 @@ void DiffRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRh
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
         m_initBatch = nullptr;
+    }
+    if (m_diffConfigBatch) {
+        cb->resourceUpdate(m_diffConfigBatch);
+        m_diffConfigBatch = nullptr;
     }
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
@@ -199,9 +223,17 @@ void DiffRenderer::releaseBatch() {
         m_initBatch->release();
         m_initBatch = nullptr;
     }
+    if (m_diffConfigBatch) {
+        m_diffConfigBatch->release();
+        m_diffConfigBatch = nullptr;
+    }
     if (m_frameBatch) {
         m_frameBatch->release();
         m_frameBatch = nullptr;
+    }
+    if (m_resizeParamsBatch) {
+        m_resizeParamsBatch->release();
+        m_resizeParamsBatch = nullptr;
     }
 }
 

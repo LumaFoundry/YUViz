@@ -13,6 +13,7 @@ class DiffRenderer : public QObject {
     ~DiffRenderer();
 
     void initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp);
+    void setDiffConfig(int displayMode, float diffMultiplier, int diffMethod);
     void uploadFrame(FrameData* frame1, FrameData* frame2);
     void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
     void releaseBatch();
@@ -37,6 +38,7 @@ class DiffRenderer : public QObject {
     float m_centerY = 0.5f;
     std::unique_ptr<QRhiTexture> m_yTex1;
     std::unique_ptr<QRhiTexture> m_yTex2;
+    std::unique_ptr<QRhiBuffer> m_diffConfig;
     std::unique_ptr<QRhiBuffer> m_resizeParams;
     std::unique_ptr<QRhiGraphicsPipeline> m_pip;
     std::unique_ptr<QRhiSampler> m_sampler;
@@ -45,6 +47,7 @@ class DiffRenderer : public QObject {
     float m_windowAspect = 0;
 
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
+    QRhiResourceUpdateBatch* m_diffConfigBatch = nullptr;
     QRhiResourceUpdateBatch* m_frameBatch = nullptr;
     QRhiResourceUpdateBatch* m_resizeParamsBatch = nullptr;
 
