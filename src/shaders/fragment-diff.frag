@@ -9,7 +9,7 @@ layout(binding = 2) uniform sampler2D y_tex_frame2;
 
 // Diff configuration uniform block
 layout(binding = 4) uniform DiffConfigParams {
-    int displayMode;    // 0=Grayscale Classic, 1=Heatmap
+    int displayMode;    // 0=Grayscale Classic, 1=Heatmap, 2=Binary
     float diffMultiplier; // diff multiplier
     int diffMethod;     // 0=Direct Subtraction, 1=Squared Difference, 2=Normalized, 3=Absolute Difference
     int padding;        // Alignment to 16-byte boundary
@@ -61,7 +61,7 @@ void main() {
         float gray = 0.5 + diff * 4.0;
         gray = clamp(gray, 0.0, 1.0);
         color = vec3(gray, gray, gray);
-    } else {
+    } else if (displayMode == 1) {
         // Heatmap mode
         if (diffMethod == 1 || diffMethod == 3) {
             // Absolute or squared diff: use viridis single-color gradient
@@ -83,6 +83,14 @@ void main() {
                 // Positive difference: white to red
                 color = mix(whiteColor, redColor, normalizedDiff);
             }
+        }
+    } else {
+        // Binary mode: white for differences, black for no difference
+        float threshold = 0.01; // Threshold for considering a difference
+        if (abs(diff) > threshold) {
+            color = vec3(1.0, 1.0, 1.0); // White for differences
+        } else {
+            color = vec3(0.0, 0.0, 0.0); // Black for no difference
         }
     }
     

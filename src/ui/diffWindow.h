@@ -107,7 +107,7 @@ class DiffWindow : public QQuickItem {
     double m_currentTimeMs = 0.0;
 
     // Diff configuration members
-    int m_displayMode = 1;         // 0=Grayscale Classic, 1=Heatmap
+    int m_displayMode = 1;         // 0=Grayscale Classic, 1=Heatmap, 2=Binary
     float m_diffMultiplier = 2.0f; // diff multiplier
     int m_diffMethod = 0;          // 0=Direct Subtraction, 1=Squared Difference, 2=Normalized, 3=Absolute Difference
 

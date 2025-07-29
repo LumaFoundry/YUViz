@@ -73,7 +73,7 @@ Window {
 
                             ComboBox {
                                 id: displayModeSelector
-                                model: ["Grayscale", "Heatmap"]
+                                model: ["Grayscale", "Heatmap", "Binary"]
                                 width: 180
                                 currentIndex: diffVideoWindow.displayMode
 
