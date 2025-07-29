@@ -9,19 +9,15 @@ layout(binding = 2) uniform sampler2D y_tex_frame2;
 
 void main() {
     vec2 texCoord = v_texCoord;
-    
+
     float y1 = texture(y_tex_frame1, texCoord).r;
     float y2 = texture(y_tex_frame2, texCoord).r;
-    
-    float diff = y1 - y2;
-    
-    // map to grey only
-    // 0.5 (grey) for same Y
-    // 1.0 (white) y1 > y2
-    // 0.0 (black) y1 < y2
-    float gray = 0.5 + diff * 2;
-    
+
+    float diff = y2 - y1;
+
+    float gray = 0.5 + diff * 0.2;
+
     gray = clamp(gray, 0.0, 1.0);
-    
-    fragColor = vec4(gray, 0, 0, 1.0);
+
+    fragColor = vec4(gray, gray, gray, 1.0);
 }
