@@ -21,6 +21,14 @@ VideoWindow::VideoWindow(QQuickItem* parent) :
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     m_frameMeta = metaPtr; // Store the frameMeta for OSD access
     m_renderer = new VideoRenderer(this, metaPtr);
+
+    // Set aspect ratio based on actual frame dimensions from frameMeta
+    if (metaPtr && metaPtr->yHeight() > 0) {
+        m_videoAspectRatio = static_cast<qreal>(metaPtr->yWidth()) / metaPtr->yHeight();
+        qDebug() << "[VideoWindow] Setting aspect ratio to" << m_videoAspectRatio << "from frame dimensions"
+                 << metaPtr->yWidth() << "x" << metaPtr->yHeight();
+    }
+
     if (window()) {
         update();
     } else {
