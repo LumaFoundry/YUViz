@@ -122,6 +122,7 @@ void VideoController::removeVideo(int index) {
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
     m_realCount--;
+    seekTo(0.0);
 }
 
 void VideoController::start() {
@@ -183,7 +184,7 @@ void VideoController::onFCEndOfVideo(int index) {
     // Handle end of video for specific FC
     m_endCount++;
 
-    if (m_endCount == m_frameControllers.size()) {
+    if (m_endCount == m_realCount) {
         if (m_currentTimeMs > 0) {
             qDebug() << "All FrameControllers reached end of video, stopping playback";
             m_reachedEnd = true;

@@ -50,13 +50,6 @@ Window {
                 font.family: "monospace"
                 font.pixelSize: 12
                 text: {
-                    var durationSec = Math.floor(diffVideoWindow.duration / 1000);
-                    var currentSec = Math.floor(diffVideoWindow.currentTimeMs / 1000);
-                    var durationMin = Math.floor(durationSec / 60);
-                    var currentMin = Math.floor(currentSec / 60);
-                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
-                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
-
                     var osdStr = diffWindow.psnrInfo;
 
                     if (diffVideoWindow.osdState === 1) {
