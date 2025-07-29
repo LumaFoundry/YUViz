@@ -149,7 +149,7 @@ void VideoController::start() {
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
-        if (update[i] && m_frameControllers[i]) {
+        if (m_frameControllers[i] && update[i]) {
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
             // qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
         }
@@ -254,13 +254,13 @@ void VideoController::stepForward() {
         // qDebug() << "VideoController: Step forward requested while playing, pausing first";
         pause();
     }
-    
+
     // Prevent stepping forward if we've already reached the end
     if (m_reachedEnd) {
         qDebug() << "VideoController: Already at end of video, cannot step forward";
         return;
     }
-    
+
     m_direction = 1;
     m_reachedEnd = false;
     // qDebug() << "VideoController: Step forward requested";
@@ -304,21 +304,20 @@ void VideoController::seekTo(double timeMs) {
 
     std::vector<int64_t> seekPts;
 
-    for (auto& fc : m_frameControllers) {
-        if (!fc) {
-            seekPts.push_back(0);
-            continue;
-        }
+    for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         // Convert timeMs to PTS using the FC's timebase
-        AVRational timebase = fc->getTimeBase();
+        AVRational timebase = m_timeBases[i];
         int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
 
-        // Call seek on the FC
-        // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
-        fc->onSeek(pts);
+        if (m_frameControllers[i]) {
+            // Call seek on the FC
+            // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
+            m_frameControllers[i]->onSeek(pts);
+        }
 
         seekPts.push_back(pts);
     }
+
     // send signal to timer to seek
     emit seekTimer(seekPts);
 }
