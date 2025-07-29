@@ -29,11 +29,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
 
     // Uniform buffer
     m_colorParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int) * 4));
-    if (!m_colorParams->create()) {
-        qWarning() << "Failed to create color parameters uniform buffer";
-        emit rendererError();
-        return;
-    }
+    m_colorParams->create();
 
     setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
 
@@ -83,11 +79,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
              3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get()),
          QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get()),
          QRhiShaderResourceBinding::uniformBuffer(5, QRhiShaderResourceBinding::VertexStage, m_resizeParams.get())});
-    if (!m_resourceBindings->create()) {
-        qWarning() << "Failed to create shader resource bindings";
-        emit rendererError();
-        return;
-    }
+    m_resourceBindings->create();
 
     m_pip->setShaderResourceBindings(m_resourceBindings.get());
     m_pip->create();
