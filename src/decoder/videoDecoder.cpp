@@ -316,6 +316,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
     int ret;
     int64_t pts = -1;
+    int totalFrames = getTotalFrames();
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
@@ -379,6 +380,9 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                     // Use currentFrameIndex for consistent frame numbering with timer
                     frameData->setPts(currentFrameIndex);
+                    if (currentFrameIndex == totalFrames + 1) {
+                        frameData->setEndFrame(true);
+                    }
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
@@ -403,7 +407,6 @@ int64_t VideoDecoder::loadCompressedFrame() {
     }
 
     av_packet_free(&tempPacket);
-    emit lastFrameLoaded();
     return -1;
 }
 
