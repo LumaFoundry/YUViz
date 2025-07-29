@@ -66,14 +66,14 @@ Window {
                             width: 200
 
                             Text {
-                                text: "显示模式"
+                                text: "Display Mode"
                                 color: "black"
                                 font.pixelSize: 12
                             }
 
                             ComboBox {
                                 id: displayModeSelector
-                                model: ["黑白灰经典模式", "热力图模式"]
+                                model: ["Grayscale", "Heatmap"]
                                 width: 180
                                 currentIndex: diffVideoWindow.displayMode
 
@@ -86,14 +86,14 @@ Window {
                             }
 
                             Text {
-                                text: "差异计算方法"
+                                text: "Diff Method"
                                 color: "black"
                                 font.pixelSize: 12
                             }
 
                             ComboBox {
                                 id: diffMethodSelector
-                                model: ["直接相减", "差的平方", "归一化", "差的绝对值"]
+                                model: ["Direct Subtraction", "Squared Difference", "Normalized", "Absolute Difference"]
                                 width: 180
                                 currentIndex: diffVideoWindow.diffMethod
 
@@ -106,7 +106,7 @@ Window {
                             }
 
                             Text {
-                                text: "放大倍率"
+                                text: "Multiplier"
                                 color: "black"
                                 font.pixelSize: 12
                             }
@@ -141,7 +141,7 @@ Window {
                     }
 
                     MenuItem {
-                        text: "关闭差异窗口"
+                        text: "Close Diff Window"
                         onTriggered: diffWindow.close()
                     }
                 }

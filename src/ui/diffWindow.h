@@ -107,9 +107,9 @@ class DiffWindow : public QQuickItem {
     double m_currentTimeMs = 0.0;
 
     // Diff configuration members
-    int m_displayMode = 1;         // 0=黑白灰经典模式, 1=热力图模式
-    float m_diffMultiplier = 2.0f; // diff放大倍率
-    int m_diffMethod = 0;          // 0=直接相减, 1=差的平方, 2=归一化, 3=差的绝对值
+    int m_displayMode = 1;         // 0=Grayscale Classic, 1=Heatmap
+    float m_diffMultiplier = 2.0f; // diff multiplier
+    int m_diffMethod = 0;          // 0=Direct Subtraction, 1=Squared Difference, 2=Normalized, 3=Absolute Difference
 
     QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;
