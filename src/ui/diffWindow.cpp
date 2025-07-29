@@ -79,6 +79,37 @@ void DiffWindow::setSharedView(SharedViewProperties* view) {
     emit sharedViewChanged();
 }
 
+// Diff configuration methods
+void DiffWindow::setDisplayMode(int mode) {
+    if (m_displayMode != mode) {
+        m_displayMode = mode;
+        if (m_renderer) {
+            m_renderer->setDiffConfig(m_displayMode, m_diffMultiplier, m_diffMethod);
+        }
+        emit displayModeChanged();
+    }
+}
+
+void DiffWindow::setDiffMultiplier(float multiplier) {
+    if (m_diffMultiplier != multiplier) {
+        m_diffMultiplier = multiplier;
+        if (m_renderer) {
+            m_renderer->setDiffConfig(m_displayMode, m_diffMultiplier, m_diffMethod);
+        }
+        emit diffMultiplierChanged();
+    }
+}
+
+void DiffWindow::setDiffMethod(int method) {
+    if (m_diffMethod != method) {
+        m_diffMethod = method;
+        if (m_renderer) {
+            m_renderer->setDiffConfig(m_displayMode, m_diffMultiplier, m_diffMethod);
+        }
+        emit diffMethodChanged();
+    }
+}
+
 QSGNode* DiffWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
     // qDebug() << "DiffWindow::updatePaintNode called in thread" << QThread::currentThread();
 

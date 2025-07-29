@@ -22,6 +22,9 @@ class DiffWindow : public QQuickItem {
     Q_PROPERTY(QString timeBase READ timeBase)
     Q_PROPERTY(qint64 duration READ duration)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
+    Q_PROPERTY(int displayMode READ displayMode WRITE setDisplayMode NOTIFY displayModeChanged)
+    Q_PROPERTY(float diffMultiplier READ diffMultiplier WRITE setDiffMultiplier NOTIFY diffMultiplierChanged)
+    Q_PROPERTY(int diffMethod READ diffMethod WRITE setDiffMethod NOTIFY diffMethodChanged)
 
   public:
     explicit DiffWindow(QQuickItem* parent = nullptr);
@@ -43,6 +46,14 @@ class DiffWindow : public QQuickItem {
     QString timeBase() const;
     qint64 duration() const;
     double currentTimeMs() const;
+
+    // Diff configuration methods
+    int displayMode() const { return m_displayMode; }
+    void setDisplayMode(int mode);
+    float diffMultiplier() const { return m_diffMultiplier; }
+    void setDiffMultiplier(float multiplier);
+    int diffMethod() const { return m_diffMethod; }
+    void setDiffMethod(int method);
 
   public slots:
     void uploadFrame(FrameData* frame1, FrameData* frame2);
@@ -72,6 +83,9 @@ class DiffWindow : public QQuickItem {
     void osdStateChanged();
     void currentFrameChanged();
     void currentTimeMsChanged();
+    void displayModeChanged();
+    void diffMultiplierChanged();
+    void diffMethodChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
@@ -91,6 +105,11 @@ class DiffWindow : public QQuickItem {
     std::shared_ptr<FrameMeta> m_frameMeta;
     int m_currentFrame = 0;
     double m_currentTimeMs = 0.0;
+
+    // Diff configuration members
+    int m_displayMode = 1;         // 0=黑白灰经典模式, 1=热力图模式
+    float m_diffMultiplier = 2.0f; // diff放大倍率
+    int m_diffMethod = 0;          // 0=直接相减, 1=差的平方, 2=归一化, 3=差的绝对值
 
     QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;
