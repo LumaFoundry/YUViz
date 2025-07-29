@@ -120,7 +120,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     int64_t futurePts = pts + 1 * direction;
     if (futurePts < 0) {
         qWarning() << "Future PTS is negative, cannot upload frame";
-        emit endOfVideo(m_index);
+        emit endOfVideo(false, m_index);
         return;
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
@@ -155,7 +155,7 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
     // Safe guard
     if (pts < 0) {
         qWarning() << "Negative PTS, cannot upload frame";
-        emit endOfVideo(m_index);
+        emit endOfVideo(true, m_index);
         return;
     }
 
@@ -216,6 +216,8 @@ void FrameController::onFrameUploaded() {
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
             m_endOfVideo = true;
+        } else if (m_endOfVideo) {
+            m_endOfVideo = false;
         }
         emit requestRender(m_index);
     }
@@ -226,7 +228,10 @@ void FrameController::onFrameUploaded() {
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after stepping, setting endOfVideo to true";
             m_endOfVideo = true;
+        } else if (m_endOfVideo) {
+            m_endOfVideo = false;
         }
+
         emit requestRender(m_index);
     }
 }
@@ -243,10 +248,10 @@ void FrameController::onFrameRendered() {
     }
 
     if (m_endOfVideo) {
-        // qDebug() << "FrameController::End of frame is rendered for index " << m_index;
-        emit endOfVideo(m_index);
-        return;
+        qDebug() << "FrameController::End of frame is rendered for index " << m_index;
     }
+
+    emit endOfVideo(m_endOfVideo, m_index);
 }
 
 void FrameController::onSeek(int64_t pts) {

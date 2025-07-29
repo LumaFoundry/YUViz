@@ -190,12 +190,21 @@ void VideoController::onReady(int index) {
     }
 }
 
-void VideoController::onFCEndOfVideo(int index) {
-    qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
+void VideoController::onFCEndOfVideo(bool end, int index) {
     // Handle end of video for specific FC
-    m_endCount++;
+
+    if (end) {
+        // qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
+        m_endCount++;
+    } else {
+        m_endCount = std::max(0, m_endCount - 1);
+    }
+    // qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
 
     if (m_endCount == m_realCount) {
+        // Note: it should actually be m_currentTimeMs == duration
+        // But for some reason currentTimeMs does not reach duration
+        qDebug() << "CurrentTimeMs" << m_currentTimeMs << "/ Duration" << m_duration;
         if (m_currentTimeMs > 0) {
             qDebug() << "All FrameControllers reached end of video, stopping playback";
             m_reachedEnd = true;
@@ -272,8 +281,13 @@ void VideoController::stepBackward() {
         // qDebug() << "VideoController: Step backward requested while playing, pausing first";
         pause();
     }
+
+    // Reset reachedEnd state if we are stepping backward
+    if (m_reachedEnd) {
+        m_reachedEnd = false;
+    }
+
     m_direction = -1;
-    m_reachedEnd = false;
     // qDebug() << "VideoController: Step backward requested";
     emit stepBackwardTimer();
 }

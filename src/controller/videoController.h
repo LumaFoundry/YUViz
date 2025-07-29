@@ -45,7 +45,7 @@ class VideoController : public QObject {
 
   public slots:
     void onReady(int index);
-    void onFCEndOfVideo(int index);
+    void onFCEndOfVideo(bool end, int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void togglePlayPause();
