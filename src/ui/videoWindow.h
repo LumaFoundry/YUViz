@@ -17,13 +17,13 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
     Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
-    Q_PROPERTY(int totalFrames READ totalFrames)
-    Q_PROPERTY(QString pixelFormat READ pixelFormat)
-    Q_PROPERTY(QString timeBase READ timeBase)
-    Q_PROPERTY(qint64 duration READ duration)
+    Q_PROPERTY(int totalFrames READ totalFrames CONSTANT)
+    Q_PROPERTY(QString pixelFormat READ pixelFormat CONSTANT)
+    Q_PROPERTY(QString timeBase READ timeBase CONSTANT)
+    Q_PROPERTY(qint64 duration READ duration CONSTANT)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
-    Q_PROPERTY(QString colorSpace READ colorSpace)
-    Q_PROPERTY(QString colorRange READ colorRange)
+    Q_PROPERTY(QString colorSpace READ colorSpace CONSTANT)
+    Q_PROPERTY(QString colorRange READ colorRange CONSTANT)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);

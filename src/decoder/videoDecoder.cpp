@@ -380,8 +380,10 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                     // Use currentFrameIndex for consistent frame numbering with timer
                     frameData->setPts(currentFrameIndex);
-                    if (currentFrameIndex == totalFrames + 1) {
+                    if (currentFrameIndex >= totalFrames + 1) {
                         frameData->setEndFrame(true);
+                    } else {
+                        frameData->setEndFrame(false);
                     }
                     currentFrameIndex++;
                 } else {
