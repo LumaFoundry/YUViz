@@ -1,6 +1,6 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
-import Window 1.0
+import VideoWindow 1.0
 import QtQuick.Layouts 1.15
 
 VideoWindow {

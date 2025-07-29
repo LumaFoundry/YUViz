@@ -58,6 +58,9 @@ set(SRC
         src/ui/videoLoader.cpp
         src/qml/qml.qrc
         src/utils/compareHelper.cpp
+        src/ui/diffWindow.cpp
+        src/rendering/diffRenderer.cpp
+        src/rendering/diffRenderNode.cpp
 )
 
 set(QRC_SOURCES src/qml/qml.qrc)

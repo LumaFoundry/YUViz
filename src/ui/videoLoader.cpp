@@ -107,7 +107,7 @@ void VideoLoader::setupDiffWindow(int leftId, int rightId) {
         return;
     }
 
-    VideoWindow* diffWindow = qobject_cast<VideoWindow*>(obj);
+    DiffWindow* diffWindow = qobject_cast<DiffWindow*>(obj);
     if (!diffWindow) {
         qWarning() << "DiffWindow object is not a VideoWindow";
         return;
