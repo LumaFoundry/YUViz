@@ -100,7 +100,7 @@ void FrameController::start() {
 
 // Slots Definitions
 void FrameController::onTimerTick(int64_t pts, int direction) {
-    // qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
+    qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
     // Update VideoWindow with current frame info
     AVRational timeBase = getTimeBase();
@@ -110,8 +110,17 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
+        m_lastPTS = pts;
         qDebug() << "Requested render for frame with PTS" << pts;
+        if (target->isEndFrame()) {
+            qDebug() << "End frame = True set by" << target->pts();
+            m_endOfVideo = true;
+        } else if (m_endOfVideo) {
+            qDebug() << "End frame = False set by" << target->pts();
+            m_endOfVideo = false;
+        }
         emit requestRender(m_index);
+        emit endOfVideo(m_endOfVideo, m_index);
     } else {
         qWarning() << "Cannot render frame" << pts;
     }
@@ -125,13 +134,6 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
     if (future) {
-        if (future->isEndFrame()) {
-            // qDebug() << "End frame = True set by " << future->pts();
-            m_endOfVideo = true;
-        } else if (m_endOfVideo) {
-            // qDebug() << "End frame = False set by " << future->pts();
-            m_endOfVideo = false;
-        }
         emit requestUpload(future, m_index);
         qDebug() << "Requested upload for frame with PTS" << (pts + 1 * direction);
     } else {
@@ -212,7 +214,7 @@ void FrameController::onFrameUploaded() {
     if (m_seeking != -1) {
         qDebug() << "FrameController::requesting render after seeked frame uploaded";
         FrameData* target = m_frameQueue->getHeadFrame(m_seeking);
-
+        m_lastPTS = m_seeking;
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
             m_endOfVideo = true;
@@ -225,6 +227,7 @@ void FrameController::onFrameUploaded() {
     if (m_stepping != -1) {
         // qDebug() << "FrameController::Stepping frame is rendered";
         FrameData* target = m_frameQueue->getHeadFrame(m_stepping);
+        m_lastPTS = m_stepping;
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after stepping, setting endOfVideo to true";
             m_endOfVideo = true;
@@ -237,6 +240,7 @@ void FrameController::onFrameUploaded() {
 }
 
 void FrameController::onFrameRendered() {
+    qDebug() << "onFrameRendered";
     if (m_seeking != -1) {
         // qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
@@ -246,12 +250,6 @@ void FrameController::onFrameRendered() {
         // qDebug() << "FrameController::Stepping frame is rendered";
         m_stepping = -1; // Reset stepping after rendering
     }
-
-    if (m_endOfVideo) {
-        qDebug() << "FrameController::End of frame is rendered for index " << m_index;
-    }
-
-    emit endOfVideo(m_endOfVideo, m_index);
 }
 
 void FrameController::onSeek(int64_t pts) {
@@ -280,8 +278,15 @@ void FrameController::onFrameSeeked(int64_t pts) {
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(targetPts);
     if (!frameSeeked) {
         // qDebug() << "Frame is not seeked";
+    } else if (frameSeeked->isEndFrame()) {
+        // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
+        m_endOfVideo = true;
+    } else if (m_endOfVideo) {
+        m_endOfVideo = false;
     }
+
     emit requestUpload(frameSeeked, m_index);
+    emit endOfVideo(m_endOfVideo, m_index);
 }
 
 void FrameController::onRenderError() {

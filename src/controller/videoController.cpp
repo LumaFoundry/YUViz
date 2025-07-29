@@ -148,33 +148,30 @@ void VideoController::start() {
 
 void VideoController::onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
+    // Update VC-local property and notify QML
+    m_currentTimeMs = playingTimeMs;
+    emit currentTimeMsChanged();
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (m_frameControllers[i] && update[i]) {
+            qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
             m_frameControllers[i]->onTimerTick(pts[i], m_direction);
-            // qDebug() << "Emitted onTimerTick for FrameController index" << i << "with PTS" << pts[i];
         }
-    }
-
-    // Update VC-local property and notify QML
-    if (playingTimeMs != m_currentTimeMs) {
-        m_currentTimeMs = playingTimeMs;
-        emit currentTimeMsChanged();
     }
 }
 
 void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs) {
     // qDebug() << "VideoController: onTick called";
     qDebug() << "VideoController::Step Direcetion:" << m_direction;
+    // Update VC-local property and notify QML
+    m_currentTimeMs = playingTimeMs;
+    emit currentTimeMsChanged();
+
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         if (update[i] && m_frameControllers[i]) {
             m_frameControllers[i]->onTimerStep(pts[i], m_direction);
             // qDebug() << "Emitted onTimerStep for FrameController index" << i << "with PTS" << pts[i];
         }
     }
-
-    // Update VC-local property and notify QML
-    m_currentTimeMs = playingTimeMs;
-    emit currentTimeMsChanged();
 }
 
 void VideoController::onReady(int index) {
@@ -194,12 +191,12 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
     // Handle end of video for specific FC
 
     if (end) {
-        // qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
+        qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
         m_endCount++;
     } else {
         m_endCount = std::max(0, m_endCount - 1);
     }
-    // qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
+    qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
 
     if (m_endCount == m_realCount) {
         // Note: it should actually be m_currentTimeMs == duration
@@ -207,6 +204,11 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
         qDebug() << "CurrentTimeMs" << m_currentTimeMs << "/ Duration" << m_duration;
         if (m_currentTimeMs > 0) {
             qDebug() << "All FrameControllers reached end of video, stopping playback";
+
+            // Update UI
+            m_currentTimeMs = m_duration;
+            emit currentTimeMsChanged();
+
             m_reachedEnd = true;
             pause();
             m_endCount = 0;
