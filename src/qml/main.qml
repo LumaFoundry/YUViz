@@ -463,6 +463,7 @@ ApplicationWindow {
                             diffPopupInstance.onVisibleChanged.connect(function () {
                                 if (!diffPopupInstance.visible) {
                                     diffPopupInstance.destroy();
+                                    videoController.setDiffMode(false, leftId, rightId);
                                     diffPopupInstance = null;
                                 }
                             });
@@ -600,6 +601,7 @@ ApplicationWindow {
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
+            console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             diffPopupInstance.visible = false;
         }

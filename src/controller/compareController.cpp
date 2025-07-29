@@ -13,11 +13,6 @@ void CompareController::setVideoIds(int id1, int id2) {
 
 void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1, std::shared_ptr<FrameMeta> meta2) {
 
-    if (m_index1 < 0 || m_index2 < 0) {
-        qWarning() << "CompareController::setMetadata - Video IDs are not set";
-        return;
-    }
-
     m_metadata1 = meta1;
     m_metadata2 = meta2;
     if (m_metadata1 && m_metadata2 && m_metadata1->yWidth() == m_metadata2->yWidth() &&
@@ -126,7 +121,7 @@ void CompareController::onCompareRendered() {
 }
 
 void CompareController::diff() {
-    if (!m_frame1 || !m_frame2 || !m_metadata1) {
+    if (!m_frame1 || !m_frame2 || !m_metadata1 || !m_metadata2) {
         return;
     }
 
