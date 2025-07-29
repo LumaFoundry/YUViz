@@ -110,6 +110,46 @@ void DiffWindow::setDiffMethod(int method) {
     }
 }
 
+QVariant DiffWindow::getDiffValue(int x, int y) const {
+    if (!m_renderer)
+        return QVariant();
+
+    // Get the two frames from renderer
+    FrameData* frame1 = m_renderer->getCurrentFrame1();
+    FrameData* frame2 = m_renderer->getCurrentFrame2();
+    auto meta = m_renderer->getFrameMeta();
+
+    if (!frame1 || !frame2 || !meta)
+        return QVariant();
+
+    int yW = meta->yWidth(), yH = meta->yHeight();
+    if (x < 0 || y < 0 || x >= yW || y >= yH)
+        return QVariant();
+
+    // Check if frame pointers are valid
+    uint8_t* y1Ptr = frame1->yPtr();
+    uint8_t* y2Ptr = frame2->yPtr();
+    if (!y1Ptr || !y2Ptr)
+        return QVariant();
+
+    // Get Y values from both frames with bounds checking
+    int y1Val = 0, y2Val = 0;
+    try {
+        y1Val = y1Ptr[y * yW + x];
+        y2Val = y2Ptr[y * yW + x];
+    } catch (...) {
+        qDebug() << "DiffWindow::getDiffValue - Exception caught when accessing pixel data";
+        return QVariant();
+    }
+
+    // Calculate simple Y difference (y1 - y2)
+    int diff = y1Val - y2Val;
+
+    QVariantList result;
+    result << y1Val << y2Val << diff;
+    return result;
+}
+
 QSGNode* DiffWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
     // qDebug() << "DiffWindow::updatePaintNode called in thread" << QThread::currentThread();
 

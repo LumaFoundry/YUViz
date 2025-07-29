@@ -148,6 +148,178 @@ Window {
             }
         }
 
+        // Pixel difference values canvas
+        Canvas {
+            id: pixelValuesCanvas
+            anchors.fill: parent
+            z: 2
+            visible: true
+
+            property var frameMeta: null
+            property var pixelValueThreshold: 10
+
+            // connect to DiffWindow signals
+            Connections {
+                target: diffVideoWindow.sharedView
+
+                function onViewChanged() {
+                    pixelValuesCanvas.requestPaint();
+                }
+            }
+            Connections {
+                target: diffVideoWindow
+
+                function onFrameReady() {
+                    pixelValuesCanvas.requestPaint();
+                }
+            }
+
+            onPaint: {
+                try {
+                    var ctx = getContext("2d");
+                    if (!ctx)
+                        return;
+
+                    ctx.clearRect(0, 0, width, height);
+
+                    // get frame meta
+                    var meta = diffVideoWindow.getFrameMeta();
+                    if (!meta || !meta.yWidth || !meta.yHeight)
+                        return;
+                    var yWidth = meta.yWidth;
+                    var yHeight = meta.yHeight;
+
+                    // threshold logic
+                    var threshold = Math.round(yWidth / 10);
+                    if (diffVideoWindow.sharedView.zoom < threshold)
+                        return;
+
+                    var videoRect = getVideoRect();
+                    var pixelSpacing = Math.max(1, Math.floor(40 / diffVideoWindow.sharedView.zoom));
+                    var startX = Math.max(0, Math.floor((diffVideoWindow.sharedView.centerX - 0.6 / diffVideoWindow.sharedView.zoom) * yWidth));
+                    var endX = Math.min(yWidth, Math.ceil((diffVideoWindow.sharedView.centerX + 0.6 / diffVideoWindow.sharedView.zoom) * yWidth));
+                    var startY = Math.max(0, Math.floor((diffVideoWindow.sharedView.centerY - 0.6 / diffVideoWindow.sharedView.zoom) * yHeight));
+                    var endY = Math.min(yHeight, Math.ceil((diffVideoWindow.sharedView.centerY + 0.6 / diffVideoWindow.sharedView.zoom) * yHeight));
+
+                    // Additional bounds checking
+                    if (startX < 0 || startY < 0 || endX > yWidth || endY > yHeight) {
+                        console.log("QML: Invalid bounds detected");
+                        return;
+                    }
+
+                    for (var y = startY; y < endY; y += pixelSpacing) {
+                        for (var x = startX; x < endX; x += pixelSpacing) {
+                            if (x >= yWidth || y >= yHeight)
+                                continue;
+                            try {
+                                var diffValues = diffVideoWindow.getDiffValue(x, y);
+                                if (!diffValues || diffValues.length !== 3)
+                                    continue;
+                                var y1Value = diffValues[0];
+                                var y2Value = diffValues[1];
+                                var diffValue = diffValues[2];
+                                
+                                // Additional safety checks
+                                if (typeof y1Value !== 'number' || typeof y2Value !== 'number' || typeof diffValue !== 'number')
+                                    continue;
+                                var normalizedX = (x + 0.5) / yWidth;
+                                var normalizedY = (y + 0.5) / yHeight;
+                                var transformedX = (normalizedX - diffVideoWindow.sharedView.centerX) * diffVideoWindow.sharedView.zoom + 0.5;
+                                var transformedY = (normalizedY - diffVideoWindow.sharedView.centerY) * diffVideoWindow.sharedView.zoom + 0.5;
+                                var screenX = videoRect.x + transformedX * videoRect.width;
+                                var screenY = videoRect.y + transformedY * videoRect.height;
+                                if (screenX >= 0 && screenX < width && screenY >= 0 && screenY < height) {
+                                    drawPixelValue(ctx, screenX, screenY, y1Value, y2Value, diffValue);
+                                }
+                            } catch (error) {
+                                console.log("QML: Error processing pixel at", x, y, ":", error);
+                                continue;
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log("QML: Canvas onPaint error:", error);
+                }
+            }
+
+            function getVideoRect() {
+                var itemRect = {
+                    width: width,
+                    height: height
+                };
+                var videoRect = {
+                    x: 0,
+                    y: 0,
+                    width: itemRect.width,
+                    height: itemRect.height
+                };
+                var windowAspect = itemRect.width / itemRect.height;
+                var videoAspect = diffVideoWindow.getAspectRatio;
+
+                if (windowAspect > videoAspect) {
+                    // window wider, height adapted, width centered
+                    var newWidth = videoAspect * itemRect.height;
+                    videoRect.x = (itemRect.width - newWidth) / 2.0;
+                    videoRect.width = newWidth;
+                } else {
+                    // window higher, width adapted, height centered
+                    var newHeight = itemRect.width / videoAspect;
+                    videoRect.y = (itemRect.height - newHeight) / 2.0;
+                    videoRect.height = newHeight;
+                }
+
+                return videoRect;
+            }
+
+            function drawPixelValue(ctx, x, y, y1Val, y2Val, diffVal) {
+                try {
+                    var fontSize = Math.max(10, Math.min(15, 0.8 * diffVideoWindow.sharedView.zoom));
+                    var padding = Math.max(3, Math.min(9, 0.3 * diffVideoWindow.sharedView.zoom));
+                    var lineHeight = fontSize + 2;
+
+                    var text = "Y1:" + y1Val + "\nY2:" + y2Val + "\nDiff:" + diffVal;
+                    var lines = text.split('\n');
+                    var maxWidth = 0;
+
+                    // temporarily set font to calculate text width
+                    ctx.font = Math.floor(fontSize) + "px Consolas";
+
+                    for (var i = 0; i < lines.length; i++) {
+                        var textWidth = ctx.measureText(lines[i]).width;
+                        maxWidth = Math.max(maxWidth, textWidth);
+                    }
+
+                    // draw semi-transparent background
+                    var bgWidth = maxWidth + padding * 2;
+                    var bgHeight = lines.length * lineHeight + padding * 2;
+                    ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
+                    ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
+
+                    // draw text
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+
+                    for (var i = 0; i < lines.length; i++) {
+                        var textY = y - bgHeight / 2 + padding + i * lineHeight + lineHeight / 2;
+
+                        // draw black stroke
+                        ctx.strokeStyle = "black";
+                        ctx.lineWidth = 1;
+                        ctx.strokeText(lines[i], x, textY);
+
+                        // draw white text
+                        ctx.fillStyle = "white";
+                        ctx.fillText(lines[i], x, textY);
+                    }
+
+                    // restore original font
+                    ctx.font = "12px monospace";
+                } catch (error) {
+                    console.log("QML: drawPixelValue error:", error);
+                }
+            }
+        }
+
         // OSD Overlay
         Rectangle {
             visible: diffVideoWindow.osdState > 0

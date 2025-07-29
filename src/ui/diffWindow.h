@@ -36,6 +36,7 @@ class DiffWindow : public QQuickItem {
     qreal getAspectRatio() const;
     qreal maxZoom() const;
     void setMaxZoom(qreal zoom);
+    Q_INVOKABLE QVariant getDiffValue(int x, int y) const;
 
     // OSD-related methods
     int osdState() const { return m_osdState; }
