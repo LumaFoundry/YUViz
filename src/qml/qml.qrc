@@ -4,5 +4,6 @@
     <file>ImportPopup.qml</file>
     <file>VideoWindow.qml</file>
     <file>Theme.qml</file>
+    <file>ResolutionWarningPopup.qml</file>
 </qresource>
 </RCC>
