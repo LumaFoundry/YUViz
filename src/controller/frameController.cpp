@@ -260,6 +260,11 @@ void FrameController::onSeek(int64_t pts) {
 
     m_endOfVideo = false;
 
+    // Update VideoWindow with current frame info
+    AVRational timeBase = getTimeBase();
+    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
+    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
+
     emit requestSeek(pts, m_frameQueue->getSize() / 2);
 
     // TODO: implement smart seek to check if frame is in frame Queue
