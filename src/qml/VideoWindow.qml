@@ -478,7 +478,7 @@ VideoWindow {
                     var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
 
                     return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
-                        + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
+                        + "\n" + "Resolution: " + videoWindow.videoResolution + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
                         + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Color Space: "
                         + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
                 }

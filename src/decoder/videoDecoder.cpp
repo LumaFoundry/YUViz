@@ -142,6 +142,7 @@ void VideoDecoder::openFile() {
     int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
     int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
 
+    setDimensions(m_width, m_height);
     metadata.setYWidth(m_width);
     metadata.setYHeight(m_height);
     metadata.setUVWidth(uvWidth);

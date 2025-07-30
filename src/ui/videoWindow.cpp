@@ -313,6 +313,17 @@ QString VideoWindow::colorRange() const {
     }
 }
 
+QString VideoWindow::videoResolution() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    
+    int width = m_frameMeta->yWidth();
+    int height = m_frameMeta->yHeight();
+    
+    return QString("%1x%2").arg(width).arg(height);
+}
+
 QVariant VideoWindow::getYUV(int x, int y) const {
     if (!m_renderer)
         return QVariant();

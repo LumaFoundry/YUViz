@@ -23,6 +23,7 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
     Q_PROPERTY(QString colorSpace READ colorSpace CONSTANT)
     Q_PROPERTY(QString colorRange READ colorRange CONSTANT)
+    Q_PROPERTY(QString videoResolution READ videoResolution CONSTANT)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
@@ -47,6 +48,7 @@ class VideoWindow : public QQuickItem {
     double currentTimeMs() const;
     QString colorSpace() const;
     QString colorRange() const;
+    QString videoResolution() const;
 
   public slots:
     void uploadFrame(FrameData* frame);
