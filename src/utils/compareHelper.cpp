@@ -191,8 +191,8 @@ PSNRResult CompareHelper::getPSNR(FrameData* frame1, FrameData* frame2, FrameMet
     }
 
     // Signal end of input
-    av_buffersrc_add_frame(bufferSrcCtx1, nullptr);
-    av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
+    // av_buffersrc_add_frame(bufferSrcCtx1, nullptr);
+    // av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
 
     // Get the result
     AVFrame* resultFrame = av_frame_alloc();
@@ -551,8 +551,8 @@ double CompareHelper::calculateMetricWithFilter(
     }
 
     // Signal end of input
-    av_buffersrc_add_frame(bufferSrcCtx1, nullptr);
-    av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
+    // av_buffersrc_add_frame(bufferSrcCtx1, nullptr);
+    // av_buffersrc_add_frame(bufferSrcCtx2, nullptr);
 
     // Get the result
     AVFrame* resultFrame = av_frame_alloc();
