@@ -40,7 +40,7 @@ void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_diffConfig->create();
 
     // Set default configuration
-    setDiffConfig(1, 2.0f, 0); // Default heatmap mode, 2x multiplier, direct subtraction
+    setDiffConfig(0, 4.0f, 0); // Default grey mode, 4x multiplier, direct subtraction
 
     m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float) * 4));
     m_resizeParams->create();
