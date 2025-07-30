@@ -58,7 +58,7 @@ void main() {
     vec3 color;
     if (displayMode == 0) {
         // Grayscale classic mode
-        float gray = 0.5 + diff * 4.0;
+        float gray = 0.5 + diff;
         gray = clamp(gray, 0.0, 1.0);
         color = vec3(gray, gray, gray);
     } else if (displayMode == 1) {
