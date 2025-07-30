@@ -77,6 +77,19 @@ ApplicationWindow {
         DiffWindow {}
     }
 
+
+    ResolutionWarningPopup {
+        id: resolutionWarningDialog
+        newWidth: importedWidth
+        newHeight: importedHeight
+        onContinueImport: {
+            console.log("User accepted resolution mismatch. Loading video.");
+            videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, importedAdd);
+            videoLoaded = true;
+            keyHandler.forceActiveFocus();
+        }
+    }
+
     Timer {
         id: resizeDebounce
         interval: 100
@@ -564,10 +577,33 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
-        console.log("[importVideoFromParams] calling videoLoader");
-        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
-        videoLoaded = true;
-        keyHandler.forceActiveFocus();
+
+        // If adding a video and other videos already exist...
+        if (add && videoWindowContainer.children.length > 0) {
+            const firstVideoWindow = videoWindowContainer.children[0];
+            const meta = firstVideoWindow.getFrameMeta();
+            const existingWidth = meta.yWidth;
+            const existingHeight = meta.yHeight;
+
+            // Compare resolutions
+            if (width !== existingWidth || height !== existingHeight) {
+                console.log("[importVideoFromParams] Resolution mismatch detected. Opening warning dialog.");
+                resolutionWarningDialog.firstWidth = existingWidth;
+                resolutionWarningDialog.firstHeight = existingHeight;
+                resolutionWarningDialog.open();
+            } else {
+                console.log("[importVideoFromParams] calling videoLoader - Resolution matches. Loading video directly.");
+                videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
+                videoLoaded = true;
+                keyHandler.forceActiveFocus();
+            }
+        } else {
+            // This is the first video, or we are loading a new set of videos.
+            console.log("[importVideoFromParams] calling videoLoader - Loading the first video.");
+            videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
+            videoLoaded = true;
+            keyHandler.forceActiveFocus();
+        }
     }
 
     Text {
