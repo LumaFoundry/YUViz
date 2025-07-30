@@ -34,9 +34,7 @@ Popup {
             wrapMode: Text.WordWrap
             color: Theme.textColor
             font.pixelSize: Theme.fontSizeNormal
-            text:    "Resolution Mismatch Warning:\n\nThe newly added video has a resolution of " + newWidth + "x" + newHeight +
-                        ", which is different from the first video's resolution of " + firstWidth + "x" + firstHeight +
-                        ".\n\nThis may lead to unexpected behavior."
+            text: "Resolution Mismatch Warning:\n\nThe newly added video has a resolution of " + newWidth + "x" + newHeight + ", which is different from the first video's resolution of " + firstWidth + "x" + firstHeight + ".\n\nThis may lead to unexpected behavior."
         }
 
         RowLayout {

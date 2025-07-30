@@ -22,7 +22,7 @@ vec3 viridis(float t) {
     vec3 c1 = vec3(0.127568, 0.566949, 0.550556);
     vec3 c2 = vec3(0.369214, 0.788888, 0.382914);
     vec3 c3 = vec3(0.992156, 0.803922, 0.145098);
-    
+
     return mix(mix(c0, c1, t), mix(c2, c3, t), smoothstep(0.0, 1.0, t));
 }
 

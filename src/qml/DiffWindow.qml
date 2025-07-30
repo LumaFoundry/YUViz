@@ -25,7 +25,7 @@ Window {
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
-    property bool isZoomed: false  
+    property bool isZoomed: false
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
 
     DiffWindow {
@@ -65,8 +65,7 @@ Window {
                 width: 0
                 height: 40
                 model: ["Don't remove this ComboBox"]
-                indicator: Canvas {
-                }
+                indicator: Canvas {}
             }
 
             Button {
@@ -168,8 +167,7 @@ Window {
                         }
                     }
 
-                    MenuSeparator {
-                    }
+                    MenuSeparator {}
 
                     MenuItem {
                         text: "Close Diff Window"
@@ -403,7 +401,7 @@ Window {
                                 var y1Value = diffValues[0];
                                 var y2Value = diffValues[1];
                                 var diffValue = diffValues[2];
-                                
+
                                 // Additional safety checks
                                 if (typeof y1Value !== 'number' || typeof y2Value !== 'number' || typeof diffValue !== 'number')
                                     continue;
