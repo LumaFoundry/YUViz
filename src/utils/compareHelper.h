@@ -34,9 +34,12 @@ class CompareHelper {
     double calculateMetricWithFilter(
         FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2, const char* filterName);
 
-    bool initializeFilterGraph(const char* filterName, AVFilterGraph** graph, 
-                              AVFilterContext** bufferSrcCtx1, AVFilterContext** bufferSrcCtx2,
-                              AVFilterContext** bufferSinkCtx, AVFilterContext** metricFilterCtx);
+    bool initializeFilterGraph(const char* filterName,
+                               AVFilterGraph** graph,
+                               AVFilterContext** bufferSrcCtx1,
+                               AVFilterContext** bufferSrcCtx2,
+                               AVFilterContext** bufferSinkCtx,
+                               AVFilterContext** metricFilterCtx);
 
     // Filter graphs for different metrics
     AVFilterGraph* m_vmafGraph;
