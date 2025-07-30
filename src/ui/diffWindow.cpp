@@ -134,12 +134,6 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
     if (x < 0 || y < 0 || x >= yW || y >= yH)
         return QVariant();
 
-    // Check if frame is end frame
-    if (frame1->isEndFrame() || frame2->isEndFrame()) {
-        qDebug() << "DiffWindow::getDiffValue - End frame detected";
-        return QVariant();
-    }
-
     // Check if frame pointers are valid
     uint8_t* y1Ptr = frame1->yPtr();
     uint8_t* y2Ptr = frame2->yPtr();

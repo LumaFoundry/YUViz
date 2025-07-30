@@ -6,7 +6,17 @@ DiffRenderer::DiffRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) 
     m_metaPtr(metaPtr) {
 }
 
-DiffRenderer::~DiffRenderer() = default;
+DiffRenderer::~DiffRenderer() {
+    // 释放当前frame指针
+    if (m_currentFrame1) {
+        delete m_currentFrame1;
+        m_currentFrame1 = nullptr;
+    }
+    if (m_currentFrame2) {
+        delete m_currentFrame2;
+        m_currentFrame2 = nullptr;
+    }
+}
 
 void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_rhi = rhi;
@@ -119,13 +129,26 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         emit rendererError();
         return;
     }
-    m_currentFrame1 = frame1;
-    m_currentFrame2 = frame2;
+
+    // release current frame
+    if (m_currentFrame1) {
+        delete m_currentFrame1;
+        m_currentFrame1 = nullptr;
+    }
+    if (m_currentFrame2) {
+        delete m_currentFrame2;
+        m_currentFrame2 = nullptr;
+    }
+
+    // save frame copy, avoid dependency on external pointer lifecycle
+    m_currentFrame1 = new FrameData(*frame1);
+    m_currentFrame2 = new FrameData(*frame2);
+
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc1;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        QRhiTextureSubresourceUploadDescription sd(m_currentFrame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc1.setEntries({{0, 0, sd}});
     }
@@ -133,7 +156,7 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
 
     QRhiTextureUploadDescription yDesc2;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        QRhiTextureSubresourceUploadDescription sd(m_currentFrame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc2.setEntries({{0, 0, sd}});
     }
