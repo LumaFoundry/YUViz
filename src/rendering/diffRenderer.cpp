@@ -7,7 +7,7 @@ DiffRenderer::DiffRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) 
 }
 
 DiffRenderer::~DiffRenderer() {
-    // 释放当前frame指针
+    // release current frame pointers
     if (m_currentFrame1) {
         delete m_currentFrame1;
         m_currentFrame1 = nullptr;
