@@ -24,17 +24,18 @@ CompareHelper::CompareHelper() :
     m_psnrBufferSinkCtx(nullptr),
     m_psnrFilterCtx(nullptr),
     m_initialized(false) {
-    
+
     // Initialize filter graphs for different metrics
-    bool vmafInit = initializeFilterGraph("libvmaf", &m_vmafGraph, &m_vmafBufferSrcCtx1, 
-                                          &m_vmafBufferSrcCtx2, &m_vmafBufferSinkCtx, &m_vmafFilterCtx);
-    bool ssimInit = initializeFilterGraph("ssim", &m_ssimGraph, &m_ssimBufferSrcCtx1, 
-                                          &m_ssimBufferSrcCtx2, &m_ssimBufferSinkCtx, &m_ssimFilterCtx);
-    bool psnrInit = initializeFilterGraph("psnr", &m_psnrGraph, &m_psnrBufferSrcCtx1, 
-                                          &m_psnrBufferSrcCtx2, &m_psnrBufferSinkCtx, &m_psnrFilterCtx);
-    
-    m_initialized = vmafInit && ssimInit && psnrInit;
-    
+    // bool vmafInit = initializeFilterGraph(
+    //     "libvmaf", &m_vmafGraph, &m_vmafBufferSrcCtx1, &m_vmafBufferSrcCtx2, &m_vmafBufferSinkCtx, &m_vmafFilterCtx);
+    bool ssimInit = initializeFilterGraph(
+        "ssim", &m_ssimGraph, &m_ssimBufferSrcCtx1, &m_ssimBufferSrcCtx2, &m_ssimBufferSinkCtx, &m_ssimFilterCtx);
+    bool psnrInit = initializeFilterGraph(
+        "psnr", &m_psnrGraph, &m_psnrBufferSrcCtx1, &m_psnrBufferSrcCtx2, &m_psnrBufferSinkCtx, &m_psnrFilterCtx);
+
+    m_initialized = ssimInit && psnrInit;
+    // m_initialized = vmafInit && ssimInit && psnrInit;
+
     if (!m_initialized) {
         ErrorReporter::instance().report("Failed to initialize one or more filter graphs", LogLevel::Warning);
     }
@@ -409,12 +410,12 @@ AVFrame* CompareHelper::frameDataToAVFrame(FrameData* frameData, FrameMeta* meta
 
 double CompareHelper::calculateMetricWithFilter(
     FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2, const char* filterName) {
-    
+
     if (!m_initialized) {
         ErrorReporter::instance().report("Filter graphs not initialized", LogLevel::Error);
         return -1.0;
     }
-    
+
     // Set FFmpeg log level to only show errors
     av_log_set_level(AV_LOG_ERROR);
     if (!frame1 || !frame2) {
@@ -437,7 +438,7 @@ double CompareHelper::calculateMetricWithFilter(
     AVFilterContext* bufferSrcCtx1 = nullptr;
     AVFilterContext* bufferSrcCtx2 = nullptr;
     AVFilterContext* bufferSinkCtx = nullptr;
-    
+
     if (strcmp(filterName, "libvmaf") == 0) {
         bufferSrcCtx1 = m_vmafBufferSrcCtx1;
         bufferSrcCtx2 = m_vmafBufferSrcCtx2;
@@ -451,7 +452,8 @@ double CompareHelper::calculateMetricWithFilter(
         bufferSrcCtx2 = m_psnrBufferSrcCtx2;
         bufferSinkCtx = m_psnrBufferSinkCtx;
     } else {
-        ErrorReporter::instance().report(QString("Unsupported filter: %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(QString("Unsupported filter: %1").arg(filterName).toStdString().c_str(),
+                                         LogLevel::Error);
         av_frame_free(&avFrame1);
         av_frame_free(&avFrame2);
         return -1.0;
@@ -483,7 +485,7 @@ double CompareHelper::calculateMetricWithFilter(
 
     // Note: In a more sophisticated implementation, you might want to cache these configurations
     // or recreate the filter graph only when parameters change
-    
+
     // Push frames to the filter graph
     int ret = av_buffersrc_add_frame(bufferSrcCtx1, avFrame1);
     if (ret < 0) {
@@ -563,13 +565,17 @@ double CompareHelper::calculateMetricWithFilter(
     return metricValue;
 }
 
-bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph** graph, 
-                                         AVFilterContext** bufferSrcCtx1, AVFilterContext** bufferSrcCtx2,
-                                         AVFilterContext** bufferSinkCtx, AVFilterContext** metricFilterCtx) {
+bool CompareHelper::initializeFilterGraph(const char* filterName,
+                                          AVFilterGraph** graph,
+                                          AVFilterContext** bufferSrcCtx1,
+                                          AVFilterContext** bufferSrcCtx2,
+                                          AVFilterContext** bufferSinkCtx,
+                                          AVFilterContext** metricFilterCtx) {
     // Create filter graph
     *graph = avfilter_graph_alloc();
     if (!*graph) {
-        ErrorReporter::instance().report(QString("Could not allocate filter graph for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not allocate filter graph for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
         return false;
     }
 
@@ -579,22 +585,32 @@ bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph*
     const AVFilter* metricFilter = avfilter_get_by_name(filterName);
 
     if (!bufferSrc || !bufferSink || !metricFilter) {
-        ErrorReporter::instance().report(QString("Could not find required filters for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not find required filters for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
 
     // Create buffer source contexts with dummy parameters (will be updated when processing frames)
     char args[512];
-    snprintf(args, sizeof(args), "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-             352, 288, AV_PIX_FMT_YUV420P, 1, 25, 1, 1);
+    snprintf(args,
+             sizeof(args),
+             "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
+             352,
+             288,
+             AV_PIX_FMT_YUV420P,
+             1,
+             25,
+             1,
+             1);
 
     int ret = avfilter_graph_create_filter(bufferSrcCtx1, bufferSrc, "src1", args, nullptr, *graph);
     if (ret < 0) {
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
         ErrorReporter::instance().report(
-            QString("Could not create buffer source 1 for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(), LogLevel::Error);
+            QString("Could not create buffer source 1 for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
@@ -604,7 +620,8 @@ bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph*
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
         ErrorReporter::instance().report(
-            QString("Could not create buffer source 2 for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(), LogLevel::Error);
+            QString("Could not create buffer source 2 for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
@@ -612,7 +629,8 @@ bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph*
     // Create sink context
     ret = avfilter_graph_create_filter(bufferSinkCtx, bufferSink, "sink", nullptr, nullptr, *graph);
     if (ret < 0) {
-        ErrorReporter::instance().report(QString("Could not create buffer sink for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not create buffer sink for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
@@ -637,21 +655,27 @@ bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph*
     // Link filters
     ret = avfilter_link(*bufferSrcCtx1, 0, *metricFilterCtx, 0);
     if (ret < 0) {
-        ErrorReporter::instance().report(QString("Could not link source 1 to metric filter for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not link source 1 to metric filter for %1").arg(filterName).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
 
     ret = avfilter_link(*bufferSrcCtx2, 0, *metricFilterCtx, 1);
     if (ret < 0) {
-        ErrorReporter::instance().report(QString("Could not link source 2 to metric filter for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not link source 2 to metric filter for %1").arg(filterName).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
 
     ret = avfilter_link(*metricFilterCtx, 0, *bufferSinkCtx, 0);
     if (ret < 0) {
-        ErrorReporter::instance().report(QString("Could not link metric filter to sink for %1").arg(filterName).toStdString().c_str(), LogLevel::Error);
+        ErrorReporter::instance().report(
+            QString("Could not link metric filter to sink for %1").arg(filterName).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
@@ -662,7 +686,8 @@ bool CompareHelper::initializeFilterGraph(const char* filterName, AVFilterGraph*
         char err_buf[AV_ERROR_MAX_STRING_SIZE];
         av_strerror(ret, err_buf, AV_ERROR_MAX_STRING_SIZE);
         ErrorReporter::instance().report(
-            QString("Could not configure filter graph for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(), LogLevel::Error);
+            QString("Could not configure filter graph for %1: %2").arg(filterName).arg(err_buf).toStdString().c_str(),
+            LogLevel::Error);
         avfilter_graph_free(graph);
         return false;
     }
