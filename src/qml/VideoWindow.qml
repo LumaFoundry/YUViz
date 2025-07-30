@@ -391,7 +391,7 @@ VideoWindow {
                 var maxWidth = 0;
 
                 // temporarily set font to calculate text width
-                ctx.font = Math.floor(fontSize) + "px Consolas";
+                ctx.font = Math.floor(fontSize) + "px sans-serif";
 
                 for (var i = 0; i < lines.length; i++) {
                     var textWidth = ctx.measureText(lines[i]).width;
