@@ -11,10 +11,8 @@ Popup {
     property int firstWidth: 0
     property int firstHeight: 0
 
-    signal continueImport()
-
     width: 500
-    height: 220
+    height: 180
     modal: true
     focus: true
     x: (parent.width - width) / 2
@@ -36,9 +34,9 @@ Popup {
             wrapMode: Text.WordWrap
             color: Theme.textColor
             font.pixelSize: Theme.fontSizeNormal
-            text: "The video you are adding has a resolution of " + newWidth + "x" + newHeight +
-                  ", which is different from the first video's resolution of " + firstWidth + "x" + firstHeight +
-                  ".\n\nThis can lead to unexpected behavior. Are you sure you want to continue?"
+            text:    "Resolution Mismatch Warning:\n\nThe newly added video has a resolution of " + newWidth + "x" + newHeight +
+                        ", which is different from the first video's resolution of " + firstWidth + "x" + firstHeight +
+                        ".\n\nThis may lead to unexpected behavior."
         }
 
         RowLayout {
@@ -46,16 +44,8 @@ Popup {
             spacing: 10
 
             Button {
-                text: "No"
+                text: "OK"
                 onClicked: resolutionWarningPopup.close()
-            }
-
-            Button {
-                text: "Yes, Continue"
-                onClicked: {
-                    resolutionWarningPopup.continueImport()
-                    resolutionWarningPopup.close()
-                }
             }
         }
     }

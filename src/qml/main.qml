@@ -82,12 +82,6 @@ ApplicationWindow {
         id: resolutionWarningDialog
         newWidth: importedWidth
         newHeight: importedHeight
-        onContinueImport: {
-            console.log("User accepted resolution mismatch. Loading video.");
-            videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, importedAdd);
-            videoLoaded = true;
-            keyHandler.forceActiveFocus();
-        }
     }
 
     Timer {
@@ -289,6 +283,27 @@ ApplicationWindow {
                     id: videoWindowInstance
                     width: (videoArea.width / videoWindowContainer.columns)
                     height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
+
+                    onMetadataInitialized: {
+                        // Check if this window is the last one added and it was an 'add' operation
+                        if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
+                            if (mainWindow.videoCount > 1) {
+                                const firstVideoWindow = videoWindowContainer.children[0];
+                                const firstMeta = firstVideoWindow.getFrameMeta();
+                                const thisMeta = this.getFrameMeta();
+
+                                if (firstMeta && thisMeta && (firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight)) {
+                                    resolutionWarningDialog.firstWidth = firstMeta.yWidth;
+                                    resolutionWarningDialog.firstHeight = firstMeta.yHeight;
+                                    resolutionWarningDialog.newWidth = thisMeta.yWidth;
+                                    resolutionWarningDialog.newHeight = thisMeta.yHeight;
+                                    resolutionWarningDialog.open();
+                                }
+                            }
+                            // Reset the flag after checking, to prevent re-triggering for this add operation.
+                            mainWindow.importedAdd = false;
+                        }
+                    }
                 }
             }
 
@@ -578,32 +593,10 @@ ApplicationWindow {
         importedFormat = format;
         importedAdd = add;
 
-        // If adding a video and other videos already exist...
-        if (add && videoWindowContainer.children.length > 0) {
-            const firstVideoWindow = videoWindowContainer.children[0];
-            const meta = firstVideoWindow.getFrameMeta();
-            const existingWidth = meta.yWidth;
-            const existingHeight = meta.yHeight;
-
-            // Compare resolutions
-            if (width !== existingWidth || height !== existingHeight) {
-                console.log("[importVideoFromParams] Resolution mismatch detected. Opening warning dialog.");
-                resolutionWarningDialog.firstWidth = existingWidth;
-                resolutionWarningDialog.firstHeight = existingHeight;
-                resolutionWarningDialog.open();
-            } else {
-                console.log("[importVideoFromParams] calling videoLoader - Resolution matches. Loading video directly.");
-                videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
-                videoLoaded = true;
-                keyHandler.forceActiveFocus();
-            }
-        } else {
-            // This is the first video, or we are loading a new set of videos.
-            console.log("[importVideoFromParams] calling videoLoader - Loading the first video.");
-            videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
-            videoLoaded = true;
-            keyHandler.forceActiveFocus();
-        }
+        console.log("[importVideoFromParams] calling videoLoader");
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
+        videoLoaded = true;
+        keyHandler.forceActiveFocus();
     }
 
     Text {

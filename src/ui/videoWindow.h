@@ -79,6 +79,7 @@ class VideoWindow : public QQuickItem {
     void osdStateChanged(int newState);
     void currentFrameChanged();
     void currentTimeMsChanged();
+    void metadataInitialized();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;

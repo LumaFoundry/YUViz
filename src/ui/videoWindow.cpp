@@ -37,6 +37,7 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
             update();
         });
     }
+    emit metadataInitialized();
 }
 
 void VideoWindow::setAspectRatio(int width, int height) {
@@ -317,10 +318,10 @@ QString VideoWindow::videoResolution() const {
     if (!m_frameMeta) {
         return QString("N/A");
     }
-    
+
     int width = m_frameMeta->yWidth();
     int height = m_frameMeta->yHeight();
-    
+
     return QString("%1x%2").arg(width).arg(height);
 }
 
