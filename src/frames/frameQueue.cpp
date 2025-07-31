@@ -25,6 +25,7 @@ FrameQueue::~FrameQueue() = default;
 int FrameQueue::getEmpty(int direction) {
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
+    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
 
     int empty = 0;
 
@@ -34,7 +35,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + m_queueSize / 2) - headVal;
     }
 
-    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal << "empty: " << empty;
+    // qDebug() << "Queue:: empty frames: " << empty;
 
     if (empty < 0) {
         empty = 0;
@@ -69,31 +70,4 @@ void FrameQueue::updateTail(int64_t pts) {
     if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }
-}
-
-bool FrameQueue::isLargeGap(int64_t pts) {
-    int64_t tailVal = tail.load(std::memory_order_acquire);
-    int64_t headVal = head.load(std::memory_order_acquire);
-
-    // Check if the requested pts is within the range of recently loaded frames
-    bool isWithinLoadedRange = (pts >= headVal && pts <= tailVal);
-
-    // If within loaded range, it's not a large gap
-    if (isWithinLoadedRange) {
-        return false;
-    }
-
-    // For pts outside the loaded range, check if the distance is large
-    int64_t closestBoundary = (std::abs(pts - headVal) < std::abs(pts - tailVal)) ? headVal : tailVal;
-    bool isLarge = std::abs(pts - closestBoundary) > m_queueSize / 2;
-
-    // qDebug() << "isLargeGap check: pts=" << pts << " head=" << headVal << " tail=" << tailVal
-    //          << " isWithinRange=" << isWithinLoadedRange << " isLarge=" << isLarge;
-
-    return isLarge;
-}
-
-int FrameQueue::isForwardSeek(int64_t pts) {
-    int64_t headVal = head.load(std::memory_order_acquire);
-    return pts > headVal ? 1 : -1;
 }
