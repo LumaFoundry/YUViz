@@ -165,6 +165,7 @@ void VideoDecoder::openFile() {
         QFileInfo info(QString::fromStdString(m_fileName));
         int64_t fileSize = info.size();
         yuvTotalFrames = fileSize / frameSize;
+        metadata.setTotalFrames(yuvTotalFrames);
     }
 
     currentFrameIndex = 0;
@@ -238,11 +239,11 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         // Check if we've reached EOF (indicated by -1 PTS)
         if (temp_pts == -1) {
             qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
-            if (currentFrameIndex > 0) {
-                FrameData* lastFrame = m_frameQueue->getTailFrame(currentFrameIndex - 1);
+            if (temp_pts > 0) {
+                FrameData* lastFrame = m_frameQueue->getTailFrame(temp_pts - 1);
                 if (lastFrame) {
                     lastFrame->setEndFrame(true);
-                    qDebug() << "VideoDecoder: Marked frame " << (currentFrameIndex - 1) << " as end frame";
+                    qDebug() << "VideoDecoder: Marked frame " << (temp_pts - 1) << " as end frame";
                 }
             }
             break;
