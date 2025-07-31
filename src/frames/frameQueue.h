@@ -31,6 +31,9 @@ class FrameQueue {
 
     int getEmpty(int direction);
 
+    bool isStale(int64_t pts);
+    void realignPointers(int64_t pts);
+
   private:
     // Size of the queue
     const int m_queueSize;
