@@ -242,6 +242,20 @@ void VideoController::play() {
         m_direction = 1;
         m_uiDirection = 1;
         emit directionChanged();
+
+        // Add a small delay before starting playback
+        QTimer::singleShot(100, this, [this]() {
+            m_isPlaying = true;
+            emit isPlayingChanged();
+
+            if (m_direction == 1) {
+                emit playForwardTimer();
+            } else {
+                emit playBackwardTimer();
+            }
+        });
+        // Prevent double-starting playback
+        return;
     }
 
     m_isPlaying = true;
@@ -424,7 +438,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                 &CompareController::onRequestRender);
 
         // Defer the seek operation using QTimer
-        QTimer::singleShot(100, this, [this]() { seekTo(m_currentTimeMs); });
+        QTimer::singleShot(150, this, [this]() { seekTo(m_currentTimeMs); });
 
     } else {
 

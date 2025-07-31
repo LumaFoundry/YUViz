@@ -107,6 +107,8 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
     m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
+    m_direction = direction;
+
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
@@ -265,9 +267,16 @@ void FrameController::onSeek(int64_t pts) {
     double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
     m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
-    emit requestSeek(pts, m_frameQueue->getSize() / 2);
+    if (frame) {
+        // qDebug() << "Frame found in queue, requesting upload";
+        emit requestUpload(frame, m_index);
 
-    // TODO: implement smart seek to check if frame is in frame Queue
+        int framesToFill = m_frameQueue->getEmpty(1);
+        emit requestDecode(framesToFill, 1);
+    } else {
+        // qDebug() << "Frame not in queue, requesting seek";
+        emit requestSeek(pts, m_frameQueue->getSize() / 2);
+    }
 
     qDebug() << "\n";
 }
