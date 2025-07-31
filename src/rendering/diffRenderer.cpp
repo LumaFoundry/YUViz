@@ -6,17 +6,7 @@ DiffRenderer::DiffRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) 
     m_metaPtr(metaPtr) {
 }
 
-DiffRenderer::~DiffRenderer() {
-    // release current frame pointers
-    if (m_currentFrame1) {
-        delete m_currentFrame1;
-        m_currentFrame1 = nullptr;
-    }
-    if (m_currentFrame2) {
-        delete m_currentFrame2;
-        m_currentFrame2 = nullptr;
-    }
-}
+DiffRenderer::~DiffRenderer() = default;
 
 void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_rhi = rhi;
@@ -130,19 +120,8 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         return;
     }
 
-    // release current frame
-    if (m_currentFrame1) {
-        delete m_currentFrame1;
-        m_currentFrame1 = nullptr;
-    }
-    if (m_currentFrame2) {
-        delete m_currentFrame2;
-        m_currentFrame2 = nullptr;
-    }
-
-    // save frame copy, avoid dependency on external pointer lifecycle
-    m_currentFrame1 = new FrameData(*frame1);
-    m_currentFrame2 = new FrameData(*frame2);
+    m_currentFrame1 = frame1;
+    m_currentFrame2 = frame2;
 
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
