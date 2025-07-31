@@ -522,6 +522,37 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         targetPts = 0;
     }
 
+    // Special handling for YUV files
+    if (isYUV(codecContext->codec_id)) {
+        // For YUV files, we need to seek directly to the byte position
+        if (targetPts >= yuvTotalFrames) {
+            targetPts = yuvTotalFrames - 1;
+        }
+
+        // Calculate frame size
+        const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+        int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
+        int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
+        int ySize = m_width * m_height;
+        int uvSize = uvWidth * uvHeight;
+        int frameSize = ySize + 2 * uvSize;
+
+        // Calculate byte position for target frame
+        int64_t bytePosition = targetPts * frameSize;
+
+        // Seek to the calculated position
+        int ret = avio_seek(formatContext->pb, bytePosition, SEEK_SET);
+        if (ret < 0) {
+            ErrorReporter::instance().report("Failed to seek in YUV file to frame: " + std::to_string(targetPts),
+                                             LogLevel::Error);
+            return;
+        }
+
+        qDebug() << "Decoder::seekTo YUV file to frame" << targetPts << "at byte position" << bytePosition;
+        currentFrameIndex = targetPts;
+        return;
+    }
+
     int64_t seek_timestamp = targetPts;
     if (m_needsTimebaseConversion) {
         AVStream* videoStream = formatContext->streams[videoStreamIndex];
