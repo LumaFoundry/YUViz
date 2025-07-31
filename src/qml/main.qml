@@ -144,6 +144,28 @@ ApplicationWindow {
         resizeDebounce.restart();
     }
 
+    onXChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onYChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
     // Top-level key listener
     Item {
         id: keyHandler
