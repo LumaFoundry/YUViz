@@ -34,7 +34,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + m_queueSize / 2) - headVal;
     }
 
-    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal << "empty: " << empty;
+    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal << "empty: " << empty;
 
     if (empty < 0) {
         empty = 0;
@@ -69,11 +69,6 @@ void FrameQueue::updateTail(int64_t pts) {
     if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }
-}
-
-void FrameQueue::realignPointers(int64_t pts) {
-    head.store(pts, std::memory_order_release);
-    tail.store(pts, std::memory_order_release);
 }
 
 bool FrameQueue::isStale(int64_t pts) {
