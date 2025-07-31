@@ -398,7 +398,9 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
     if (m_diffMode) {
         m_compareController->setVideoIds(id1, id2);
         m_compareController->setMetadata(m_frameControllers[id1]->getFrameMeta(),
-                                         m_frameControllers[id2]->getFrameMeta());
+                                         m_frameControllers[id2]->getFrameMeta(),
+                                         m_frameControllers[id1]->getFrameQueue(),
+                                         m_frameControllers[id2]->getFrameQueue());
 
         // Connect compare controller to FCs
         connect(m_frameControllers[id1].get(),
@@ -453,6 +455,6 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
         }
 
         m_compareController->setVideoIds(-1, -1);
-        m_compareController->setMetadata(nullptr, nullptr);
+        m_compareController->setMetadata(nullptr, nullptr, nullptr, nullptr);
     }
 }

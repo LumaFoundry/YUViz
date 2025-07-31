@@ -10,7 +10,10 @@ void CompareController::setVideoIds(int id1, int id2) {
     m_index2 = id2;
 }
 
-void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1, std::shared_ptr<FrameMeta> meta2) {
+void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
+                                    std::shared_ptr<FrameMeta> meta2,
+                                    std::shared_ptr<FrameQueue> queue1,
+                                    std::shared_ptr<FrameQueue> queue2) {
 
     m_metadata1 = meta1;
     m_metadata2 = meta2;
@@ -20,7 +23,7 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1, std::share
         qDebug() << "CompareController::Meta is set";
 
         if (m_diffWindow) {
-            m_diffWindow->initialize(m_metadata1); // optional if already done in QML
+            m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
             connect(this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame);
             connect(this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame);
             connect(m_diffWindow->m_renderer, &DiffRenderer::batchIsEmpty, this, &CompareController::onCompareRendered);

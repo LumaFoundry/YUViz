@@ -6,6 +6,7 @@
 #include <QtQml/qqml.h>
 #include <memory>
 #include "frames/frameData.h"
+#include "frames/frameQueue.h"
 #include "rendering/diffRenderer.h"
 #include "utils/sharedViewProperties.h"
 
@@ -30,7 +31,9 @@ class DiffWindow : public QQuickItem {
     explicit DiffWindow(QQuickItem* parent = nullptr);
     SharedViewProperties* sharedView() const;
     void setSharedView(SharedViewProperties* view);
-    void initialize(std::shared_ptr<FrameMeta> metaPtr);
+    void initialize(std::shared_ptr<FrameMeta> metaPtr,
+                    std::shared_ptr<FrameQueue> queuePtr1,
+                    std::shared_ptr<FrameQueue> queuePtr2);
     DiffRenderer* m_renderer = nullptr;
     void setAspectRatio(int width, int height);
     qreal getAspectRatio() const;
@@ -104,6 +107,8 @@ class DiffWindow : public QQuickItem {
     // OSD-related members
     int m_osdState = 0; // 0: hidden, 1: basic info, 2: detailed info
     std::shared_ptr<FrameMeta> m_frameMeta;
+    std::shared_ptr<FrameQueue> m_frameQueue1;
+    std::shared_ptr<FrameQueue> m_frameQueue2;
     int m_currentFrame = 0;
     double m_currentTimeMs = 0.0;
 
