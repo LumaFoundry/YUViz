@@ -86,7 +86,7 @@ ApplicationWindow {
 
     Timer {
         id: resizeDebounce
-        interval: 100
+        interval: 200
         repeat: false
         onTriggered: {
             resizing = false;
