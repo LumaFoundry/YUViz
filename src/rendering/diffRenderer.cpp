@@ -1,14 +1,24 @@
-#include "videoRenderer.h"
+#include "diffRenderer.h"
 #include <QFile>
 
-VideoRenderer::VideoRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) :
+DiffRenderer::DiffRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) :
     QObject(parent),
     m_metaPtr(metaPtr) {
 }
 
-VideoRenderer::~VideoRenderer() = default;
+DiffRenderer::~DiffRenderer() {
+    // release current frame pointers
+    if (m_currentFrame1) {
+        delete m_currentFrame1;
+        m_currentFrame1 = nullptr;
+    }
+    if (m_currentFrame2) {
+        delete m_currentFrame2;
+        m_currentFrame2 = nullptr;
+    }
+}
 
-void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
+void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_rhi = rhi;
 
     if (m_rhi) {
@@ -20,18 +30,17 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     }
 
     // Create YUV textures
-    m_yTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
-    m_uTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
-    m_vTex.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->uvWidth(), m_metaPtr->uvHeight())));
-    m_yTex->create();
-    m_uTex->create();
-    m_vTex->create();
+    m_yTex1.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
+    m_yTex2.reset(m_rhi->newTexture(QRhiTexture::R8, QSize(m_metaPtr->yWidth(), m_metaPtr->yHeight())));
+    m_yTex1->create();
+    m_yTex2->create();
 
-    // Uniform buffer
-    m_colorParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int) * 4));
-    m_colorParams->create();
+    // Diff configuration buffer
+    m_diffConfig.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(int) * 4));
+    m_diffConfig->create();
 
-    setColorParams(m_metaPtr->colorSpace(), m_metaPtr->colorRange());
+    // Set default configuration
+    setDiffConfig(0, 4.0f, 0); // Default grey mode, 4x multiplier, direct subtraction
 
     m_resizeParams.reset(m_rhi->newBuffer(QRhiBuffer::Dynamic, QRhiBuffer::UniformBuffer, sizeof(float) * 4));
     m_resizeParams->create();
@@ -39,7 +48,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     // Load shaders
     Q_INIT_RESOURCE(videoplayer_shaders);
     QByteArray vsQsb = loadShaderSource(":/shaders/vertex.vert.qsb");
-    QByteArray fsQsb = loadShaderSource(":/shaders/fragment.frag.qsb");
+    QByteArray fsQsb = loadShaderSource(":/shaders/fragment-diff.frag.qsb");
 
     if (vsQsb.isEmpty() || fsQsb.isEmpty()) {
         qWarning() << "Failed to open shader file";
@@ -72,12 +81,10 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_resourceBindings.reset(m_rhi->newShaderResourceBindings());
     m_resourceBindings->setBindings(
         {QRhiShaderResourceBinding::sampledTexture(
-             1, QRhiShaderResourceBinding::FragmentStage, m_yTex.get(), m_sampler.get()),
+             1, QRhiShaderResourceBinding::FragmentStage, m_yTex1.get(), m_sampler.get()),
          QRhiShaderResourceBinding::sampledTexture(
-             2, QRhiShaderResourceBinding::FragmentStage, m_uTex.get(), m_sampler.get()),
-         QRhiShaderResourceBinding::sampledTexture(
-             3, QRhiShaderResourceBinding::FragmentStage, m_vTex.get(), m_sampler.get()),
-         QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_colorParams.get()),
+             2, QRhiShaderResourceBinding::FragmentStage, m_yTex2.get(), m_sampler.get()),
+         QRhiShaderResourceBinding::uniformBuffer(4, QRhiShaderResourceBinding::FragmentStage, m_diffConfig.get()),
          QRhiShaderResourceBinding::uniformBuffer(5, QRhiShaderResourceBinding::VertexStage, m_resizeParams.get())});
     m_resourceBindings->create();
 
@@ -96,7 +103,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_initBatch->uploadStaticBuffer(m_vbuf.get(), 0, sizeof(verts), verts);
 }
 
-QByteArray VideoRenderer::loadShaderSource(const QString& path) {
+QByteArray DiffRenderer::loadShaderSource(const QString& path) {
     QFile f(path);
     if (!f.open(QIODevice::ReadOnly)) {
         return {};
@@ -104,61 +111,70 @@ QByteArray VideoRenderer::loadShaderSource(const QString& path) {
     return f.readAll();
 }
 
-void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
-    struct ColorParams {
-        int colorSpace, colorRange, padding[2];
+void DiffRenderer::setDiffConfig(int displayMode, float diffMultiplier, int diffMethod) {
+    struct DiffConfig {
+        int displayMode;
+        float diffMultiplier;
+        int diffMethod;
+        int padding;
     };
-    ColorParams cp = {space, range, {0, 0}};
-    m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
-    m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
+    DiffConfig dc = {displayMode, diffMultiplier, diffMethod, 0};
+    m_diffConfigBatch = m_rhi->nextResourceUpdateBatch();
+    m_diffConfigBatch->updateDynamicBuffer(m_diffConfig.get(), 0, sizeof(dc), &dc);
 }
 
-void VideoRenderer::uploadFrame(FrameData* frame) {
-    if (!frame) {
-        qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
+void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
+    if (!frame1 || !frame2) {
+        qDebug() << "DiffRenderer::uploadFrame called with invalid frame";
         emit rendererError();
         return;
     }
-    m_currentFrame = frame;
+
+    // release current frame
+    if (m_currentFrame1) {
+        delete m_currentFrame1;
+        m_currentFrame1 = nullptr;
+    }
+    if (m_currentFrame2) {
+        delete m_currentFrame2;
+        m_currentFrame2 = nullptr;
+    }
+
+    // save frame copy, avoid dependency on external pointer lifecycle
+    m_currentFrame1 = new FrameData(*frame1);
+    m_currentFrame2 = new FrameData(*frame2);
+
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
-    QRhiTextureUploadDescription yDesc;
+    QRhiTextureUploadDescription yDesc1;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        QRhiTextureSubresourceUploadDescription sd(m_currentFrame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
-        yDesc.setEntries({{0, 0, sd}});
+        yDesc1.setEntries({{0, 0, sd}});
     }
-    m_frameBatch->uploadTexture(m_yTex.get(), yDesc);
+    m_frameBatch->uploadTexture(m_yTex1.get(), yDesc1);
 
-    QRhiTextureUploadDescription uDesc;
+    QRhiTextureUploadDescription yDesc2;
     {
-        QRhiTextureSubresourceUploadDescription sd(frame->uPtr(), m_metaPtr->uvWidth() * m_metaPtr->uvHeight());
-        sd.setDataStride(m_metaPtr->uvWidth());
-        uDesc.setEntries({{0, 0, sd}});
+        QRhiTextureSubresourceUploadDescription sd(m_currentFrame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        sd.setDataStride(m_metaPtr->yWidth());
+        yDesc2.setEntries({{0, 0, sd}});
     }
-    m_frameBatch->uploadTexture(m_uTex.get(), uDesc);
-
-    QRhiTextureUploadDescription vDesc;
-    {
-        QRhiTextureSubresourceUploadDescription sd(frame->vPtr(), m_metaPtr->uvWidth() * m_metaPtr->uvHeight());
-        sd.setDataStride(m_metaPtr->uvWidth());
-        vDesc.setEntries({{0, 0, sd}});
-    }
-    m_frameBatch->uploadTexture(m_vTex.get(), vDesc);
+    m_frameBatch->uploadTexture(m_yTex2.get(), yDesc2);
 
     emit batchIsFull();
 }
 
-void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt) {
-    // qDebug() << "VideoRenderer:: renderFrame called";
+void DiffRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt) {
+    // qDebug() << "DiffRenderer:: renderFrame called";
 
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
         m_initBatch = nullptr;
     }
-    if (m_colorParamsBatch) {
-        cb->resourceUpdate(m_colorParamsBatch);
-        m_colorParamsBatch = nullptr;
+    if (m_diffConfigBatch) {
+        cb->resourceUpdate(m_diffConfigBatch);
+        m_diffConfigBatch = nullptr;
     }
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
@@ -166,7 +182,7 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
         emit batchIsEmpty();
     }
 
-    // qDebug() << "VideoRenderer::init ready";
+    // qDebug() << "DiffRenderer::init ready";
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();
@@ -227,22 +243,26 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
     cb->draw(4);
 }
 
-void VideoRenderer::releaseBatch() {
+void DiffRenderer::releaseBatch() {
     if (m_initBatch) {
         m_initBatch->release();
         m_initBatch = nullptr;
     }
-    if (m_colorParamsBatch) {
-        m_colorParamsBatch->release();
-        m_colorParamsBatch = nullptr;
+    if (m_diffConfigBatch) {
+        m_diffConfigBatch->release();
+        m_diffConfigBatch = nullptr;
     }
     if (m_frameBatch) {
         m_frameBatch->release();
         m_frameBatch = nullptr;
     }
+    if (m_resizeParamsBatch) {
+        m_resizeParamsBatch->release();
+        m_resizeParamsBatch = nullptr;
+    }
 }
 
-void VideoRenderer::setZoomAndOffset(const float zoom, const float centerX, const float centerY) {
+void DiffRenderer::setZoomAndOffset(const float zoom, const float centerX, const float centerY) {
     m_zoom = zoom;
     m_centerX = centerX;
     m_centerY = centerY;

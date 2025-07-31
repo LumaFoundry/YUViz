@@ -1,6 +1,6 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
-import Window 1.0
+import VideoWindow 1.0
 import QtQuick.Layouts 1.15
 
 VideoWindow {
@@ -12,10 +12,11 @@ VideoWindow {
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
-    property bool isCtrlPressed: keyHandler.isCtrlPressed
+    property bool isCtrlPressed: mainWindow.isCtrlPressed
     property bool isZoomed: sharedView ? sharedView.isZoomed : false
     property var sharedView: sharedViewProperties
     objectName: "videoWindow_" + videoId
+
     signal requestRemove(int videoId)
 
     QtObject {
@@ -28,7 +29,6 @@ VideoWindow {
         }
     }
 
-
     Row {
         anchors.top: parent.top
         anchors.right: parent.right
@@ -38,15 +38,16 @@ VideoWindow {
             width: 0
             height: 40
             model: ["Don't remove this ComboBox"]
-            indicator: Canvas {}
+            indicator: Canvas {
+            }
         }
-        
+
         Button {
             id: menuButton
             width: 40
             height: 40
             text: "⚙"
-            font.pixelSize: 40
+            font.pixelSize: 30
             background: Rectangle {
                 color: "transparent"
             }
@@ -73,12 +74,35 @@ VideoWindow {
 
                         onCurrentIndexChanged: {
                             let colorSpaceMap = [
-                                { space: 1, range: 1 },  // BT709 MPEG
-                                { space: 1, range: 2 },  // BT709 Full
-                                { space: 5, range: 1 },  // BT470BG MPEG
-                                { space: 5, range: 2 },  // BT470BG Full
-                                { space: 10, range: 1 }, // BT2020_CL MPEG
-                                { space: 10, range: 2 }  // BT2020_CL Full
+                                {
+                                    space: 1,
+                                    range: 1
+                                }  // BT709 MPEG
+                                ,
+                                {
+                                    space: 1,
+                                    range: 2
+                                }  // BT709 Full
+                                ,
+                                {
+                                    space: 5,
+                                    range: 1
+                                }  // BT470BG MPEG
+                                ,
+                                {
+                                    space: 5,
+                                    range: 2
+                                }  // BT470BG Full
+                                ,
+                                {
+                                    space: 10,
+                                    range: 1
+                                } // BT2020_CL MPEG
+                                ,
+                                {
+                                    space: 10,
+                                    range: 2
+                                }  // BT2020_CL Full
                             ];
                             let selected = colorSpaceMap[currentIndex];
                             videoWindow.setColorParams(selected.space, selected.range);
@@ -89,7 +113,8 @@ VideoWindow {
                     }
                 }
 
-                MenuSeparator {}
+                MenuSeparator {
+                }
 
                 MenuItem {
                     text: "Close the Video"
@@ -174,7 +199,7 @@ VideoWindow {
             if (mainWindow.isCtrlPressed)
                 return Qt.CrossCursor;
             if (videoWindow.isZoomed) {
-               return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+                return (videoWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
             }
             return Qt.ArrowCursor;
         }
@@ -257,27 +282,31 @@ VideoWindow {
         // connect to VideoWindow signals
         Connections {
             target: sharedViewProperties
+
             function onViewChanged() {
-                pixelValuesCanvas.requestPaint()
+                pixelValuesCanvas.requestPaint();
             }
         }
         Connections {
             target: videoWindow
+
             function onFrameReady() {
-                pixelValuesCanvas.requestPaint()
+                pixelValuesCanvas.requestPaint();
             }
         }
 
         onPaint: {
             try {
                 var ctx = getContext("2d");
-                if (!ctx) return;
+                if (!ctx)
+                    return;
 
                 ctx.clearRect(0, 0, width, height);
 
                 // get frame meta
                 var meta = videoWindow.getFrameMeta();
-                if (!meta || !meta.yWidth || !meta.yHeight) return;
+                if (!meta || !meta.yWidth || !meta.yHeight)
+                    return;
                 var yWidth = meta.yWidth;
                 var yHeight = meta.yHeight;
                 var uvWidth = meta.uvWidth;
@@ -286,7 +315,8 @@ VideoWindow {
 
                 // threshold logic
                 var threshold = Math.round(yWidth / 10);
-                if (videoWindow.sharedView.zoom < threshold) return;
+                if (videoWindow.sharedView.zoom < threshold)
+                    return;
 
                 var videoRect = getVideoRect();
                 var pixelSpacing = Math.max(1, Math.floor(40 / videoWindow.sharedView.zoom));
@@ -297,9 +327,11 @@ VideoWindow {
 
                 for (var y = startY; y < endY; y += pixelSpacing) {
                     for (var x = startX; x < endX; x += pixelSpacing) {
-                        if (x >= yWidth || y >= yHeight) continue;
+                        if (x >= yWidth || y >= yHeight)
+                            continue;
                         var yuv = videoWindow.getYUV(x, y);
-                        if (!yuv || yuv.length !== 3) continue;
+                        if (!yuv || yuv.length !== 3)
+                            continue;
                         var yValue = yuv[0];
                         var uValue = yuv[1];
                         var vValue = yuv[2];
@@ -313,15 +345,23 @@ VideoWindow {
                             drawPixelValue(ctx, screenX, screenY, yValue, uValue, vValue);
                         }
                     }
-                }             
+                }
             } catch (error) {
                 console.log("QML: Canvas onPaint error:", error);
             }
         }
 
         function getVideoRect() {
-            var itemRect = {width: width, height: height};
-            var videoRect = {x: 0, y: 0, width: itemRect.width, height: itemRect.height};
+            var itemRect = {
+                width: width,
+                height: height
+            };
+            var videoRect = {
+                x: 0,
+                y: 0,
+                width: itemRect.width,
+                height: itemRect.height
+            };
             var windowAspect = itemRect.width / itemRect.height;
             var videoAspect = videoWindow.getAspectRatio;
 
@@ -351,7 +391,7 @@ VideoWindow {
                 var maxWidth = 0;
 
                 // temporarily set font to calculate text width
-                ctx.font = Math.floor(fontSize) + "px Consolas";
+                ctx.font = Math.floor(fontSize) + "px sans-serif";
 
                 for (var i = 0; i < lines.length; i++) {
                     var textWidth = ctx.measureText(lines[i]).width;
@@ -362,14 +402,14 @@ VideoWindow {
                 var bgWidth = maxWidth + padding * 2;
                 var bgHeight = lines.length * lineHeight + padding * 2;
                 ctx.fillStyle = "rgba(0, 0, 0, 0.3)";
-                ctx.fillRect(x - bgWidth/2, y - bgHeight/2, bgWidth, bgHeight);
+                ctx.fillRect(x - bgWidth / 2, y - bgHeight / 2, bgWidth, bgHeight);
 
                 // draw text
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
 
                 for (var i = 0; i < lines.length; i++) {
-                    var textY = y - bgHeight/2 + padding + i * lineHeight + lineHeight/2;
+                    var textY = y - bgHeight / 2 + padding + i * lineHeight + lineHeight / 2;
 
                     // draw black stroke
                     ctx.strokeStyle = "black";
@@ -390,6 +430,60 @@ VideoWindow {
     }
 
     function resetSelectionCanvas() {
+        selectionStart = Qt.point(0, 0);
+        selectionEnd = Qt.point(0, 0);
+        isSelecting = false;
+        isProcessingSelection = false;
         selectionCanvas.requestPaint();
+    }
+
+    // OSD Overlay
+    Rectangle {
+        visible: videoWindow.osdState > 0
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+        anchors.bottomMargin: 30
+        anchors.rightMargin: 10
+        width: osdText.width + 20
+        height: osdText.height + 20
+        color: "black"
+        opacity: 0.8
+        radius: 5
+        z: 100 // Ensure it's on top
+
+        Text {
+            id: osdText
+            anchors.centerIn: parent
+            color: "white"
+            font.family: "monospace"
+            font.pixelSize: 12
+            text: {
+                if (videoWindow.osdState === 1) {
+                    // Basic info: duration and current frame / total frames
+                    var durationSec = Math.floor(videoWindow.duration / 1000);
+                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
+                    var durationMin = Math.floor(durationSec / 60);
+                    var currentMin = Math.floor(currentSec / 60);
+                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame;
+                } else if (videoWindow.osdState === 2) {
+                    // Detailed info: add pixel format, timebase/pts, aspect ratio
+                    var durationSec = Math.floor(videoWindow.duration / 1000);
+                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
+                    var durationMin = Math.floor(durationSec / 60);
+                    var currentMin = Math.floor(currentSec / 60);
+                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
+                        + "\n" + "Resolution: " + videoWindow.videoResolution + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
+                        + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Color Space: "
+                        + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
+                }
+                return "";
+            }
+        }
     }
 }

@@ -6,9 +6,10 @@
 #include <QtConcurrent>
 #include <map>
 
+#include "controller/compareController.h"
+#include "controller/frameController.h"
 #include "controller/timer.h"
 #include "decoder/videoDecoder.h"
-#include "frameController.h"
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
 #include "frames/frameQueue.h"
@@ -26,7 +27,9 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
 
   public:
-    VideoController(QObject* parent, std::vector<VideoFileInfo> videoFiles = {});
+    VideoController(QObject* parent,
+                    std::shared_ptr<CompareController> compareController,
+                    std::vector<VideoFileInfo> videoFiles = {});
     ~VideoController();
     void start();
 
@@ -38,9 +41,11 @@ class VideoController : public QObject {
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
 
+    // void createDiffWindow();
+
   public slots:
     void onReady(int index);
-    void onFCEndOfVideo(int index);
+    void onFCEndOfVideo(bool end, int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void togglePlayPause();
@@ -52,6 +57,7 @@ class VideoController : public QObject {
     void setSpeed(float speed);
     void toggleDirection();
     void removeVideo(int index);
+    void setDiffMode(bool diffMode, int id1, int id2);
 
   signals:
     void playTimer();
@@ -73,7 +79,8 @@ class VideoController : public QObject {
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
     std::vector<AVRational> m_timeBases;
 
-    int m_videoCount = 0;
+    int m_fcIndex = 0;
+    int m_realCount = 0;
 
     std::shared_ptr<Timer> m_timer;
 
@@ -95,4 +102,8 @@ class VideoController : public QObject {
 
     bool m_isPlaying = false;
     bool m_reachedEnd = false;
+
+    bool m_diffMode = false;
+
+    std::shared_ptr<CompareController> m_compareController;
 };

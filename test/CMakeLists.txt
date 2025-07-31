@@ -31,12 +31,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googletest)
 
 if(TARGET gtest)
-    set_target_properties(gtest PROPERTIES 
+    set_target_properties(gtest PROPERTIES
         INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ""
     )
 endif()
 if(TARGET gmock)
-    set_target_properties(gmock PROPERTIES 
+    set_target_properties(gmock PROPERTIES
         INTERFACE_SYSTEM_INCLUDE_DIRECTORIES ""
     )
 endif()
@@ -63,11 +63,11 @@ set(TEST_SOURCES
 
 foreach(test_file ${TEST_SOURCES})
     get_filename_component(test_name ${test_file} NAME_WE)
-    
+
     add_executable(
-        ${test_name} 
-        ${test_file} 
-        ${SRC_SOURCES} 
+        ${test_name}
+        ${test_file}
+        ${SRC_SOURCES}
         ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_decoder.h
         ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
     )
@@ -90,7 +90,7 @@ foreach(test_file ${TEST_SOURCES})
         ${FFMPEG_INCLUDE_DIRS}
     )
 
-    target_link_libraries(${test_name} PRIVATE 
+    target_link_libraries(${test_name} PRIVATE
         Qt6::Core
         Qt6::Gui
         Qt6::Quick

@@ -7,6 +7,10 @@
 #include "rendering/videoRenderNode.h"
 #include "rendering/videoRenderer.h"
 
+extern "C" {
+#include <libavutil/pixdesc.h>
+}
+
 VideoWindow::VideoWindow(QQuickItem* parent) :
     QQuickItem(parent) {
     setFlag(ItemHasContents, true);
@@ -15,7 +19,16 @@ VideoWindow::VideoWindow(QQuickItem* parent) :
 }
 
 void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
+    m_frameMeta = metaPtr; // Store the frameMeta for OSD access
     m_renderer = new VideoRenderer(this, metaPtr);
+
+    // Set aspect ratio based on actual frame dimensions from frameMeta
+    if (metaPtr && metaPtr->yHeight() > 0) {
+        m_videoAspectRatio = static_cast<qreal>(metaPtr->yWidth()) / metaPtr->yHeight();
+        qDebug() << "[VideoWindow] Setting aspect ratio to" << m_videoAspectRatio << "from frame dimensions"
+                 << metaPtr->yWidth() << "x" << metaPtr->yHeight();
+    }
+
     if (window()) {
         update();
     } else {
@@ -24,6 +37,7 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
             update();
         });
     }
+    emit metadataInitialized();
 }
 
 void VideoWindow::setAspectRatio(int width, int height) {
@@ -191,6 +205,124 @@ void VideoWindow::syncColorSpaceMenu() {
                               "setColorSpaceIndex",
                               Q_RETURN_ARG(QVariant, foo),
                               Q_ARG(QVariant, idx));
+}
+
+// OSD-related implementations
+void VideoWindow::setOsdState(int state) {
+    if (m_osdState != state) {
+        m_osdState = state;
+        emit osdStateChanged(m_osdState);
+    }
+}
+
+void VideoWindow::toggleOsd() {
+    m_osdState = (m_osdState + 1) % 3; // Cycle through 0, 1, 2
+    emit osdStateChanged(m_osdState);
+}
+
+void VideoWindow::updateFrameInfo(int currentFrame, double currentTimeMs) {
+    if (m_currentFrame != currentFrame) {
+        m_currentFrame = currentFrame;
+        emit currentFrameChanged();
+    }
+    if (m_currentTimeMs != currentTimeMs) {
+        m_currentTimeMs = currentTimeMs;
+        emit currentTimeMsChanged();
+    }
+}
+
+int VideoWindow::currentFrame() const {
+    return m_currentFrame;
+}
+
+QString VideoWindow::pixelFormat() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVPixelFormat fmt = m_frameMeta->format();
+    const char* name = av_get_pix_fmt_name(fmt);
+    return name ? QString(name) : QString("Unknown");
+}
+
+QString VideoWindow::timeBase() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVRational timeBase = m_frameMeta->timeBase();
+    return QString("%1/%2").arg(timeBase.num).arg(timeBase.den);
+}
+
+qint64 VideoWindow::duration() const {
+    return m_frameMeta ? m_frameMeta->duration() : 0;
+}
+
+double VideoWindow::currentTimeMs() const {
+    return m_currentTimeMs;
+}
+
+QString VideoWindow::colorSpace() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+    AVColorSpace colorSpace = m_frameMeta->colorSpace();
+
+    // Convert AVColorSpace enum to readable string
+    switch (colorSpace) {
+    case AVCOL_SPC_BT709:
+        return QString("BT.709");
+    case AVCOL_SPC_BT470BG:
+        return QString("BT.470BG");
+    case AVCOL_SPC_SMPTE170M:
+        return QString("SMPTE 170M");
+    case AVCOL_SPC_SMPTE240M:
+        return QString("SMPTE 240M");
+    case AVCOL_SPC_BT2020_NCL:
+        return QString("BT.2020 NCL");
+    case AVCOL_SPC_BT2020_CL:
+        return QString("BT.2020 CL");
+    case AVCOL_SPC_SMPTE2085:
+        return QString("SMPTE 2085");
+    case AVCOL_SPC_CHROMA_DERIVED_NCL:
+        return QString("Chroma Derived NCL");
+    case AVCOL_SPC_CHROMA_DERIVED_CL:
+        return QString("Chroma Derived CL");
+    case AVCOL_SPC_ICTCP:
+        return QString("ICtCp");
+    case AVCOL_SPC_RGB:
+        return QString("RGB");
+    case AVCOL_SPC_UNSPECIFIED:
+        return QString("Unspecified");
+    default:
+        return QString("Unknown (%1)").arg(static_cast<int>(colorSpace));
+    }
+}
+
+QString VideoWindow::colorRange() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    AVColorRange colorRange = m_frameMeta->colorRange();
+
+    switch (colorRange) {
+    case AVCOL_RANGE_MPEG:
+        return QString("Limited");
+    case AVCOL_RANGE_JPEG:
+        return QString("Full");
+    default:
+        return QString("Unspecified");
+    }
+}
+
+QString VideoWindow::videoResolution() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    int width = m_frameMeta->yWidth();
+    int height = m_frameMeta->yHeight();
+
+    return QString("%1x%2").arg(width).arg(height);
 }
 
 QVariant VideoWindow::getYUV(int x, int y) const {

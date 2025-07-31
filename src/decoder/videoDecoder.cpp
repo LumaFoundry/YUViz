@@ -112,10 +112,10 @@ void VideoDecoder::openFile() {
         return;
     }
 
-    if (isYUV(codecContext->codec_id)) {
-        codecContext->pix_fmt = m_format;
-        // codecContext->width = m_width;
-        // codecContext->height = m_height;
+    if (!isYUV(codecContext->codec_id)) {
+        m_width = codecContext->width;
+        m_height = codecContext->height;
+        setFramerate(videoStream->avg_frame_rate.num / (double)videoStream->avg_frame_rate.den);
     }
 
     // Open codec
@@ -142,6 +142,7 @@ void VideoDecoder::openFile() {
     int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
     int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
 
+    setDimensions(m_width, m_height);
     metadata.setYWidth(m_width);
     metadata.setYHeight(m_height);
     metadata.setUVWidth(uvWidth);
@@ -154,6 +155,7 @@ void VideoDecoder::openFile() {
     metadata.setFilename(m_fileName);
     metadata.setDuration(getDurationMs());
     metadata.setTotalFrames(getTotalFrames());
+    setFormat(codecContext->pix_fmt);
 
     if (isYUV(codecContext->codec_id)) {
         int ySize = m_width * m_height;
@@ -232,6 +234,20 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             temp_pts = loadCompressedFrame();
             qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
+
+        // Check if we've reached EOF (indicated by -1 PTS)
+        if (temp_pts == -1) {
+            qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
+            if (currentFrameIndex > 0) {
+                FrameData* lastFrame = m_frameQueue->getTailFrame(currentFrameIndex - 1);
+                if (lastFrame) {
+                    lastFrame->setEndFrame(true);
+                    qDebug() << "VideoDecoder: Marked frame " << (currentFrameIndex - 1) << " as end frame";
+                }
+            }
+            break;
+        }
+
         maxpts = std::max(maxpts, temp_pts);
         minpts = std::min(minpts, std::max(temp_pts, 0LL));
     }
@@ -315,6 +331,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
     int ret;
     int64_t pts = -1;
+    int totalFrames = getTotalFrames();
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
@@ -378,6 +395,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                     // Use currentFrameIndex for consistent frame numbering with timer
                     frameData->setPts(currentFrameIndex);
+                    frameData->setEndFrame(false);
                     currentFrameIndex++;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
@@ -463,12 +481,12 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
 }
 
 int VideoDecoder::getTotalFrames() {
-    if (!formatContext || videoStreamIndex < 0) {
-        return -1;
-    }
-
     if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
         return yuvTotalFrames;
+    }
+
+    if (!formatContext || videoStreamIndex < 0) {
+        return -1;
     }
 
     AVStream* videoStream = formatContext->streams[videoStreamIndex];

@@ -6,10 +6,10 @@
 #include <QtQml/qqml.h>
 #include <memory>
 #include "frames/frameData.h"
-#include "rendering/videoRenderer.h"
+#include "rendering/diffRenderer.h"
 #include "utils/sharedViewProperties.h"
 
-class VideoWindow : public QQuickItem {
+class DiffWindow : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
@@ -17,43 +17,48 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
     Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
-    Q_PROPERTY(QString pixelFormat READ pixelFormat CONSTANT)
-    Q_PROPERTY(QString timeBase READ timeBase CONSTANT)
-    Q_PROPERTY(qint64 duration READ duration CONSTANT)
+    Q_PROPERTY(int totalFrames READ totalFrames)
+    Q_PROPERTY(QString pixelFormat READ pixelFormat)
+    Q_PROPERTY(QString timeBase READ timeBase)
+    Q_PROPERTY(qint64 duration READ duration)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
-    Q_PROPERTY(QString colorSpace READ colorSpace CONSTANT)
-    Q_PROPERTY(QString colorRange READ colorRange CONSTANT)
-    Q_PROPERTY(QString videoResolution READ videoResolution CONSTANT)
+    Q_PROPERTY(int displayMode READ displayMode WRITE setDisplayMode NOTIFY displayModeChanged)
+    Q_PROPERTY(float diffMultiplier READ diffMultiplier WRITE setDiffMultiplier NOTIFY diffMultiplierChanged)
+    Q_PROPERTY(int diffMethod READ diffMethod WRITE setDiffMethod NOTIFY diffMethodChanged)
 
   public:
-    explicit VideoWindow(QQuickItem* parent = nullptr);
+    explicit DiffWindow(QQuickItem* parent = nullptr);
     SharedViewProperties* sharedView() const;
     void setSharedView(SharedViewProperties* view);
     void initialize(std::shared_ptr<FrameMeta> metaPtr);
-    VideoRenderer* m_renderer = nullptr;
+    DiffRenderer* m_renderer = nullptr;
     void setAspectRatio(int width, int height);
     qreal getAspectRatio() const;
     qreal maxZoom() const;
     void setMaxZoom(qreal zoom);
-    void syncColorSpaceMenu();
-    Q_INVOKABLE QVariant getYUV(int x, int y) const;
+    Q_INVOKABLE QVariant getDiffValue(int x, int y) const;
 
     // OSD-related methods
     int osdState() const { return m_osdState; }
     void setOsdState(int state);
     int currentFrame() const;
+    int totalFrames() const;
     QString pixelFormat() const;
     QString timeBase() const;
     qint64 duration() const;
     double currentTimeMs() const;
-    QString colorSpace() const;
-    QString colorRange() const;
-    QString videoResolution() const;
+
+    // Diff configuration methods
+    int displayMode() const { return m_displayMode; }
+    void setDisplayMode(int mode);
+    float diffMultiplier() const { return m_diffMultiplier; }
+    void setDiffMultiplier(float multiplier);
+    int diffMethod() const { return m_diffMethod; }
+    void setDiffMethod(int method);
 
   public slots:
-    void uploadFrame(FrameData* frame);
+    void uploadFrame(FrameData* frame1, FrameData* frame2);
     void renderFrame();
-    void setColorParams(AVColorSpace space, AVColorRange range);
     void batchIsFull();
     void batchIsEmpty();
     void rendererError();
@@ -76,10 +81,12 @@ class VideoWindow : public QQuickItem {
     void maxZoomChanged();
     void sharedViewChanged();
     void frameReady();
-    void osdStateChanged(int newState);
+    void osdStateChanged();
     void currentFrameChanged();
     void currentTimeMsChanged();
-    void metadataInitialized();
+    void displayModeChanged();
+    void diffMultiplierChanged();
+    void diffMethodChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
@@ -99,6 +106,11 @@ class VideoWindow : public QQuickItem {
     std::shared_ptr<FrameMeta> m_frameMeta;
     int m_currentFrame = 0;
     double m_currentTimeMs = 0.0;
+
+    // Diff configuration members
+    int m_displayMode = 0;         // 0=Grayscale Classic, 1=Heatmap, 2=Binary
+    float m_diffMultiplier = 4.0f; // diff multiplier
+    int m_diffMethod = 0;          // 0=Direct Subtraction, 1=Squared Difference, 2=Normalized, 3=Absolute Difference
 
     QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;

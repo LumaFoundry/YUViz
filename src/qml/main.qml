@@ -9,6 +9,7 @@ ApplicationWindow {
 
     property int videoCount: 0
     property var videoWindows: []
+    property int globalOsdState: 0
 
     QtObject {
         id: qmlBridge
@@ -24,10 +25,24 @@ ApplicationWindow {
                 obj.objectName = "videoWindow_" + index;
                 mainWindow.videoCount += 1;
                 obj.requestRemove.connect(mainWindow.removeVideoWindowById);
+
+                // Sync OSD state with existing video windows
+                obj.osdState = mainWindow.globalOsdState;
+                console.log("[qmlBridge] Synced OSD state to:", mainWindow.globalOsdState);
             }
             return obj;
         }
+
+        function createDiffWindow() {
+            let obj = videoWindowComponent.createObject(diffPopupComponent, {
+                videoId: -1,
+                assigned: true
+            });
+            obj.objectName = "diffWindow";
+            return obj;
+        }
     }
+
     title: "videoplayer"
     width: 800
     height: 600
@@ -38,7 +53,6 @@ ApplicationWindow {
 
     property bool videoLoaded: false
     property bool isCtrlPressed: false
-    property bool isSelecting: false
     property bool wasPlayingBeforeResize: false
     property bool resizing: false
 
@@ -49,12 +63,27 @@ ApplicationWindow {
     property string importedFormat: ""
     property bool importedAdd: false
 
+    property var diffPopupInstance: null
+
     ImportPopup {
         id: importDialog
         onVideoImported: function (filePath, width, height, fps, format, add) {
             importVideoFromParams(filePath, width, height, fps, format, add);
         }
     }
+
+    Component {
+        id: diffPopupComponent
+        DiffWindow {}
+    }
+
+
+    ResolutionWarningPopup {
+        id: resolutionWarningDialog
+        newWidth: importedWidth
+        newHeight: importedHeight
+    }
+
     Timer {
         id: resizeDebounce
         interval: 100
@@ -89,8 +118,6 @@ ApplicationWindow {
             sharedViewProperties.reset();
             selectionStart = Qt.point(0, 0);
             selectionEnd = Qt.point(0, 0);
-            isSelecting = false;
-            isProcessingSelection = false;
             keyHandler.focus = true;
         }
     }
@@ -144,6 +171,12 @@ ApplicationWindow {
 
             if (event.key === Qt.Key_Control) {
                 isCtrlPressed = true;
+                event.accepted = true;
+            }
+
+            if (event.key === Qt.Key_O) {
+                console.log("O key pressed, toggling global OSD state");
+                mainWindow.toggleGlobalOsdState();
                 event.accepted = true;
             }
         }
@@ -250,6 +283,27 @@ ApplicationWindow {
                     id: videoWindowInstance
                     width: (videoArea.width / videoWindowContainer.columns)
                     height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
+
+                    onMetadataInitialized: {
+                        // Check if this window is the last one added and it was an 'add' operation
+                        if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
+                            if (mainWindow.videoCount > 1) {
+                                const firstVideoWindow = videoWindowContainer.children[0];
+                                const firstMeta = firstVideoWindow.getFrameMeta();
+                                const thisMeta = this.getFrameMeta();
+
+                                if (firstMeta && thisMeta && (firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight)) {
+                                    resolutionWarningDialog.firstWidth = firstMeta.yWidth;
+                                    resolutionWarningDialog.firstHeight = firstMeta.yHeight;
+                                    resolutionWarningDialog.newWidth = thisMeta.yWidth;
+                                    resolutionWarningDialog.newHeight = thisMeta.yHeight;
+                                    resolutionWarningDialog.open();
+                                }
+                            }
+                            // Reset the flag after checking, to prevent re-triggering for this add operation.
+                            mainWindow.importedAdd = false;
+                        }
+                    }
                 }
             }
 
@@ -348,7 +402,7 @@ ApplicationWindow {
                         }
                         ComboBox {
                             id: speedSelector
-                            model: ["0.25x", "0.5x", "1.0x", "1.5x", "2.0x"]
+                            model: ["2.0x", "1.5x", "1.0x", "0.5x", "0.25x"]
                             currentIndex: 2
                             Layout.preferredWidth: 80
                             Layout.preferredHeight: Theme.comboBoxHeight
@@ -374,11 +428,57 @@ ApplicationWindow {
                         font.pixelSize: Theme.fontSizeSmall
                         onClicked: {
                             sharedViewProperties.reset();
-                            selectionStart = Qt.point(0, 0);
-                            selectionEnd = Qt.point(0, 0);
-                            isSelecting = false;
-                            isProcessingSelection = false;
+
+                            for (var i = 0; i < videoWindowContainer.children.length; ++i) {
+                                var child = videoWindowContainer.children[i];
+                                if (child && child.resetSelectionCanvas) {
+                                    child.resetSelectionCanvas();
+                                }
+                            }
+
                             keyHandler.focus = true;
+                        }
+                    }
+
+                    Button {
+                        text: "Diff"
+                        Layout.preferredWidth: Theme.buttonWidth
+                        Layout.preferredHeight: Theme.buttonHeight
+                        font.pixelSize: Theme.fontSizeSmall
+                        enabled: videoWindowContainer.children.length == 2
+
+                        onClicked: {
+                            // Only one diff at a time
+                            if (diffPopupInstance && diffPopupInstance.visible) {
+                                diffPopupInstance.raise();
+                                return;
+                            }
+
+                            let leftId = videoWindowContainer.children[0].videoId;
+                            let rightId = videoWindowContainer.children[1].videoId;
+
+                            console.log("Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
+
+                            // Pass video IDs
+                            diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
+                                leftVideoId: leftId,
+                                rightVideoId: rightId
+                            });
+                            diffPopupInstance.objectName = "diffPopupInstance";
+                            console.log("Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
+
+                            diffPopupInstance.visible = true;
+                            // Cleanup when window closes
+                            diffPopupInstance.onVisibleChanged.connect(function () {
+                                if (!diffPopupInstance.visible) {
+                                    diffPopupInstance.destroy();
+                                    videoController.setDiffMode(false, leftId, rightId);
+                                    diffPopupInstance = null;
+                                }
+                            });
+                            videoLoader.setupDiffWindow(leftId, rightId);
+                            diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+                            keyHandler.forceActiveFocus();
                         }
                     }
 
@@ -492,8 +592,9 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
         importedAdd = add;
+
         console.log("[importVideoFromParams] calling videoLoader");
-        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, true);
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
     }
@@ -509,6 +610,11 @@ ApplicationWindow {
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
+        if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
+            console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
+            videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
+            diffPopupInstance.visible = false;
+        }
         for (let i = 0; i < videoWindowContainer.children.length; ++i) {
             let child = videoWindowContainer.children[i];
             if (child.videoId === id) {
@@ -517,7 +623,27 @@ ApplicationWindow {
                 break;
             }
         }
+
+        // If no windows left, reset global OSD state
+        if (videoWindowContainer.children.length === 0) {
+            mainWindow.globalOsdState = 0;
+            console.log("[mainWindow] Reset global OSD state to 0");
+        }
+
         videoController.removeVideo(id);
         keyHandler.forceActiveFocus();
+    }
+
+    function toggleGlobalOsdState() {
+        mainWindow.globalOsdState = (mainWindow.globalOsdState + 1) % 3;
+        for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+            let child = videoWindowContainer.children[i];
+            if (child && child.osdState !== undefined) {
+                child.osdState = mainWindow.globalOsdState;
+            }
+        }
+        if (diffPopupInstance && diffPopupInstance.diffVideoWindow) {
+            diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+        }
     }
 }
