@@ -12,7 +12,8 @@ layout(binding = 4) uniform ColorSpaceParams {
     int colorSpace; // AVColorSpace: 1=BT.709, 5=BT.470BG, 6=SMPTE170M, 9=BT.2020_NCL,
                     // 10=BT.2020_CL
     int colorRange; // AVColorRange: 1=MPEG (16-235), 2=JPEG (0-255)
-    int padding[2]; // Alignment to 16-byte boundary
+    int componentDisplayMode; // 0=RGB, 1=Y only, 2=U only, 3=V only
+    int padding; // Alignment to 16-byte boundary
 };
 
 void main() {
@@ -38,6 +39,30 @@ void main() {
     u = u - 0.5;
     v = v - 0.5;
 
+    // Handle component display modes
+    if (componentDisplayMode == 1) {
+        // Y only - display as grayscale
+        fragColor = vec4(y, y, y, 1.0);
+        return;
+    } else if (componentDisplayMode == 2) {
+        // U only - display as blue-green gradient
+        // Convert U from [-0.5, 0.5] to [0, 1] for color mapping
+        float u_normalized = u + 0.5;
+        // Blue-green gradient: green (0) -> cyan (0.5) -> blue (1)
+        vec3 rgb = vec3(0.0, 1.0 - u_normalized, u_normalized);
+        fragColor = vec4(rgb, 1.0);
+        return;
+    } else if (componentDisplayMode == 3) {
+        // V only - display as green-red gradient
+        // Convert V from [-0.5, 0.5] to [0, 1] for color mapping
+        float v_normalized = v + 0.5;
+        // Green-red gradient: green (0) -> yellow (0.5) -> red (1)
+        vec3 rgb = vec3(v_normalized, 1.0 - v_normalized, 0.0);
+        fragColor = vec4(rgb, 1.0);
+        return;
+    }
+
+    // Default RGB conversion
     // Select conversion matrix based on color space (using FFmpeg standard enum values)
     vec3 rgb;
     switch (colorSpace) {

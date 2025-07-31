@@ -106,9 +106,20 @@ QByteArray VideoRenderer::loadShaderSource(const QString& path) {
 
 void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
     struct ColorParams {
-        int colorSpace, colorRange, padding[2];
+        int colorSpace, colorRange, componentDisplayMode, padding;
     };
-    ColorParams cp = {space, range, {0, 0}};
+    ColorParams cp = {space, range, m_componentDisplayMode, 0};
+    m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
+    m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
+}
+
+void VideoRenderer::setComponentDisplayMode(int mode) {
+    m_componentDisplayMode = mode;
+    // Update the uniform buffer with the new display mode
+    struct ColorParams {
+        int colorSpace, colorRange, componentDisplayMode, padding;
+    };
+    ColorParams cp = {m_metaPtr->colorSpace(), m_metaPtr->colorRange(), mode, 0};
     m_colorParamsBatch = m_rhi->nextResourceUpdateBatch();
     m_colorParamsBatch->updateDynamicBuffer(m_colorParams.get(), 0, sizeof(cp), &cp);
 }
