@@ -1,18 +1,19 @@
 #include "frameQueue.h"
 
-FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta) :
-    m_metaPtr(meta) {
+FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta, int queueSize) :
+    m_metaPtr(meta),
+    m_queueSize(queueSize) {
     int ySize = m_metaPtr->ySize();
     int uvSize = m_metaPtr->uvSize();
     size_t frameSize = ySize + uvSize * 2;
-    size_t bufferSize = frameSize * queueSize;
+    size_t bufferSize = frameSize * m_queueSize;
 
     m_bufferPtr = std::make_shared<std::vector<uint8_t>>();
     m_bufferPtr->reserve(bufferSize);
 
     // Allocate frame data queue
-    m_queue.reserve(queueSize);
-    for (int i = 0; i < queueSize; ++i) {
+    m_queue.reserve(m_queueSize);
+    for (int i = 0; i < m_queueSize; ++i) {
         m_queue.emplace_back(ySize, uvSize, m_bufferPtr, i * frameSize);
     }
 }
@@ -29,9 +30,9 @@ int FrameQueue::getEmpty(int direction) {
     int empty = 0;
 
     if (direction == 1) {
-        empty = (headVal + queueSize / 2) - tailVal;
+        empty = (headVal + m_queueSize / 2) - tailVal;
     } else {
-        empty = (tailVal + queueSize / 2) - headVal;
+        empty = (tailVal + m_queueSize / 2) - headVal;
     }
 
     // qDebug() << "Queue:: empty frames: " << empty;
@@ -46,7 +47,7 @@ int FrameQueue::getEmpty(int direction) {
 // IMPORTANT: Must not call decoder when seeking / stepping
 FrameData* FrameQueue::getHeadFrame(int64_t pts) {
     // qDebug() << "Queue:: Tail: " << (tail.load(std::memory_order_acquire));
-    FrameData* target = &m_queue[pts % queueSize];
+    FrameData* target = &m_queue[pts % m_queueSize];
 
     // Check if target is loaded in queue
     if (target->pts() == pts) {
@@ -59,8 +60,8 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 }
 
 FrameData* FrameQueue::getTailFrame(int64_t pts) {
-    // qDebug() << "Queue:: Tail index: " << (pts % queueSize);
-    return &m_queue[pts % queueSize];
+    // qDebug() << "Queue:: Tail index: " << (pts % m_queueSize);
+    return &m_queue[pts % m_queueSize];
 }
 
 // IMPORTANT: Needs to be called after done decoding

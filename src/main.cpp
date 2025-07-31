@@ -16,6 +16,7 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
+#include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
 
@@ -50,6 +51,9 @@ int main(int argc, char* argv[]) {
     QCommandLineOption yuvFormatOption({"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
     parser.addOption(yuvFormatOption);
 
+    QCommandLineOption queueSizeOption({"q", "queue-size"}, QLatin1String("Frame queue size"), QLatin1String("size"));
+    parser.addOption(queueSizeOption);
+
     parser.process(app);
     const QStringList args = parser.positionalArguments();
 
@@ -80,6 +84,20 @@ int main(int argc, char* argv[]) {
             ErrorReporter::instance().report(QString("Invalid YUV format: %1").arg(yuvFormat), LogLevel::Error);
             return -1;
         }
+    }
+
+    // Parse queue size option
+    if (parser.isSet(queueSizeOption)) {
+        bool ok;
+        int queueSize = parser.value(queueSizeOption).toInt(&ok);
+        if (!ok || queueSize <= 0) {
+            qWarning() << "Invalid queue size:" << parser.value(queueSizeOption);
+            ErrorReporter::instance().report(QString("Invalid queue size: %1").arg(parser.value(queueSizeOption)),
+                                             LogLevel::Error);
+            return -1;
+        }
+        AppConfig::instance().setQueueSize(queueSize);
+        qDebug() << "Setting frame queue size to:" << queueSize;
     }
 
     QQmlApplicationEngine engine;

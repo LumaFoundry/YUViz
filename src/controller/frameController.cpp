@@ -1,6 +1,7 @@
 #include "frameController.h"
 #include <QDebug>
 #include <QThread>
+#include "utils/appConfig.h"
 
 FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index) :
     QObject(parent),
@@ -15,7 +16,7 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     m_Decoder->openFile();
 
     m_frameMeta = std::make_shared<FrameMeta>(m_Decoder->getMetaData());
-    m_frameQueue = std::make_shared<FrameQueue>(m_frameMeta);
+    m_frameQueue = std::make_shared<FrameQueue>(m_frameMeta, AppConfig::instance().getQueueSize());
 
     m_Decoder->setFrameQueue(m_frameQueue);
 
