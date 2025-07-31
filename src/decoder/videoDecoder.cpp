@@ -628,12 +628,3 @@ void VideoDecoder::seek(int64_t targetPts) {
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
     emit frameSeeked(targetPts);
 }
-
-void VideoDecoder::updateCurrentFrameIndex(int64_t pts) {
-    currentFrameIndex = pts;
-    m_frameQueue->updateTail(pts);
-    int framesToFill = m_frameQueue->getEmpty(1);
-    qDebug() << "Requesting to fill " << framesToFill << " frames after seeking";
-    loadFrames(framesToFill, 1);
-    qDebug() << "Current frame index updated to: " << currentFrameIndex;
-}
