@@ -151,7 +151,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
         emit requestDecode(framesToFill, direction);
     }
 
-    qDebug() << "\n";
+    // qDebug() << "\n";
 }
 
 void FrameController::onTimerStep(int64_t pts, int direction) {
@@ -186,7 +186,7 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         }
     }
 
-    qDebug() << "\n";
+    // qDebug() << "\n";
 
     m_direction = direction;
 }
@@ -256,7 +256,7 @@ void FrameController::onFrameRendered() {
 }
 
 void FrameController::onSeek(int64_t pts) {
-    // qDebug() << "\n Seeking to " << pts << " for index" << m_index;
+    qDebug() << "\n Seeking to " << pts << " for index" << m_index;
     // Check if frameQueue has the frame
     FrameData* frame = m_frameQueue->getHeadFrame(pts);
     m_seeking = pts;
@@ -268,14 +268,17 @@ void FrameController::onSeek(int64_t pts) {
     double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
     m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
-    if (frame) {
-        // qDebug() << "Frame found in queue, requesting upload";
+    if (frame && !m_frameQueue->isLargeGap(pts)) {
+        qDebug() << "Frame " << pts << " found in queue, requesting upload";
         emit requestUpload(frame, m_index);
 
-        int framesToFill = m_frameQueue->getEmpty(1);
-        emit requestDecode(framesToFill, 1);
+        int direction = m_frameQueue->isForwardSeek(pts);
+        int framesToFill = m_frameQueue->getEmpty(direction);
+
+        emit requestDecode(framesToFill, direction);
+
     } else {
-        // qDebug() << "Frame not in queue, requesting seek";
+        qDebug() << "Frame " << pts << " not in queue, requesting seek";
         emit requestSeek(pts, m_frameQueue->getSize() / 2);
     }
 

@@ -27,6 +27,9 @@ class FrameQueue {
 
     void updateTail(int64_t pts);
 
+    int isForwardSeek(int64_t pts);
+    bool isLargeGap(int64_t pts);
+
     const int getSize() const { return m_queueSize; }
 
     int getEmpty(int direction);
