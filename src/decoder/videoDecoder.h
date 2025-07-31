@@ -41,6 +41,7 @@ class VideoDecoder : public QObject {
   public slots:
     virtual void loadFrames(int num_frames, int direction);
     virtual void seek(int64_t timestamp);
+    virtual void updateCurrentFrameIndex(int64_t pts);
 
   signals:
     void framesLoaded(bool success);

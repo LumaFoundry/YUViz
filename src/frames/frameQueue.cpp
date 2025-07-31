@@ -25,7 +25,6 @@ FrameQueue::~FrameQueue() = default;
 int FrameQueue::getEmpty(int direction) {
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
-    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal;
 
     int empty = 0;
 
@@ -35,7 +34,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + m_queueSize / 2) - headVal;
     }
 
-    // qDebug() << "Queue:: empty frames: " << empty;
+    qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal << "empty: " << empty;
 
     if (empty < 0) {
         empty = 0;
@@ -70,4 +69,16 @@ void FrameQueue::updateTail(int64_t pts) {
     if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }
+}
+
+void FrameQueue::realignPointers(int64_t pts) {
+    head.store(pts, std::memory_order_release);
+    tail.store(pts, std::memory_order_release);
+}
+
+bool FrameQueue::isStale(int64_t pts) {
+    int64_t tailVal = tail.load(std::memory_order_acquire);
+    int size = m_queueSize;
+    // Window is [tailVal - size + 1, tailVal]
+    return !((pts >= tailVal - size + 1) && (pts <= tailVal));
 }

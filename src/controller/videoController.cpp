@@ -193,10 +193,10 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
     if (end) {
         qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
         m_endCount++;
+        qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
     } else {
         m_endCount = std::max(0, m_endCount - 1);
     }
-    qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
 
     if (m_endCount == m_realCount) {
         // Note: it should actually be m_currentTimeMs == duration

@@ -57,6 +57,7 @@ class FrameController : public QObject {
     void requestRender(int index);
     void endOfVideo(bool end, int index);
     void requestSeek(int64_t pts, int loadCount);
+    void smartSeekUpdate(int64_t pts);
 
   private:
     // YUVReader to read frames from video file
