@@ -546,8 +546,10 @@ void VideoDecoder::seekTo(int64_t targetPts) {
     AVFrame* frame = av_frame_alloc();
     if (!packet || !frame) {
         ErrorReporter::instance().report("Failed to allocate packet or frame for seeking", LogLevel::Error);
-        if (packet) av_packet_free(&packet);
-        if (frame) av_frame_free(&frame);
+        if (packet)
+            av_packet_free(&packet);
+        if (frame)
+            av_frame_free(&frame);
         return;
     }
 
@@ -588,9 +590,11 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 }
 
 void VideoDecoder::seek(int64_t targetPts) {
-    seekTo(targetPts);
+    // Load past & future frames around the target PTS
+    int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 2, 0LL);
+    seekTo(startPts);
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(m_frameQueue->getSize() / 2);
+    loadFrames(m_frameQueue->getSize());
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
     emit frameSeeked(targetPts);
 }
