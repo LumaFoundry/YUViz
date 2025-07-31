@@ -27,6 +27,63 @@ Window {
     property bool isMouseDown: false
     property bool isZoomed: false
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
+    property bool resizing: false
+
+    onWidthChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onHeightChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onXChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onYChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    Timer {
+        id: resizeDebounce
+        interval: 200
+        repeat: false
+        onTriggered: {
+            resizing = false;
+            if (wasPlayingBeforeResize) {
+                videoController.play();
+            }
+        }
+    }
 
     DiffWindow {
         id: diffVideoWindow

@@ -35,6 +35,7 @@ class FrameController : public QObject {
 
     AVRational getTimeBase();
     std::shared_ptr<FrameMeta> getFrameMeta() const { return m_frameMeta; }
+    std::shared_ptr<FrameQueue> getFrameQueue() const { return m_frameQueue; }
 
     int m_index; // Index of current FC, for VC orchestration
 

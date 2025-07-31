@@ -16,7 +16,10 @@ class CompareController : public QObject {
     ~CompareController() override = default;
 
     void setVideoIds(int id1, int id2);
-    void setMetadata(std::shared_ptr<FrameMeta> meta1, std::shared_ptr<FrameMeta> meta2);
+    void setMetadata(std::shared_ptr<FrameMeta> meta1,
+                     std::shared_ptr<FrameMeta> meta2,
+                     std::shared_ptr<FrameQueue> queue1,
+                     std::shared_ptr<FrameQueue> queue2);
     void setDiffWindow(DiffWindow* diffWindow) { m_diffWindow = diffWindow; }
     PSNRResult getPSNRResult() const { return m_psnrResult; }
     double getPSNR() const { return m_psnr; } // For backward compatibility

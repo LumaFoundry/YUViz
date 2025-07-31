@@ -120,14 +120,14 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         return;
     }
 
-    m_currentFrame1 = frame1;
-    m_currentFrame2 = frame2;
+    m_currentPts1 = frame1->pts();
+    m_currentPts2 = frame2->pts();
 
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     QRhiTextureUploadDescription yDesc1;
     {
-        QRhiTextureSubresourceUploadDescription sd(m_currentFrame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        QRhiTextureSubresourceUploadDescription sd(frame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc1.setEntries({{0, 0, sd}});
     }
@@ -135,7 +135,7 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
 
     QRhiTextureUploadDescription yDesc2;
     {
-        QRhiTextureSubresourceUploadDescription sd(m_currentFrame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
+        QRhiTextureSubresourceUploadDescription sd(frame2->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc2.setEntries({{0, 0, sd}});
     }

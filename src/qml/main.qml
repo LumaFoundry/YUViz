@@ -86,7 +86,7 @@ ApplicationWindow {
 
     Timer {
         id: resizeDebounce
-        interval: 100
+        interval: 200
         repeat: false
         onTriggered: {
             resizing = false;
@@ -134,6 +134,28 @@ ApplicationWindow {
     }
 
     onHeightChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onXChanged: {
+        if (!resizing) {
+            resizing = true;
+            wasPlayingBeforeResize = videoController.isPlaying;
+            if (wasPlayingBeforeResize) {
+                videoController.pause();
+            }
+        }
+        resizeDebounce.restart();
+    }
+
+    onYChanged: {
         if (!resizing) {
             resizing = true;
             wasPlayingBeforeResize = videoController.isPlaying;

@@ -18,8 +18,12 @@ DiffWindow::DiffWindow(QQuickItem* parent) :
     setAcceptHoverEvents(true);
 }
 
-void DiffWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
+void DiffWindow::initialize(std::shared_ptr<FrameMeta> metaPtr,
+                            std::shared_ptr<FrameQueue> queuePtr1,
+                            std::shared_ptr<FrameQueue> queuePtr2) {
     m_frameMeta = metaPtr; // Store the frameMeta for OSD access
+    m_frameQueue1 = queuePtr1;
+    m_frameQueue2 = queuePtr2;
     m_renderer = new DiffRenderer(this, metaPtr);
 
     // Set aspect ratio based on actual frame dimensions from frameMeta
@@ -123,8 +127,10 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
         return QVariant();
 
     // Get the two frames from renderer
-    FrameData* frame1 = m_renderer->getCurrentFrame1();
-    FrameData* frame2 = m_renderer->getCurrentFrame2();
+    uint64_t pts1 = m_renderer->getCurrentPts1();
+    uint64_t pts2 = m_renderer->getCurrentPts2();
+    FrameData* frame1 = m_frameQueue1->getHeadFrame(pts1);
+    FrameData* frame2 = m_frameQueue2->getHeadFrame(pts2);
     auto meta = m_renderer->getFrameMeta();
 
     if (!frame1 || !frame2 || !meta)
