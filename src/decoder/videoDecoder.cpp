@@ -541,20 +541,20 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 
     avcodec_flush_buffers(codecContext);
 
-    // Decode frames until we reach the exact target PTS
-    AVPacket* packet = av_packet_alloc();
-    AVFrame* frame = av_frame_alloc();
-    if (!packet || !frame) {
-        ErrorReporter::instance().report("Failed to allocate packet or frame for seeking", LogLevel::Error);
-        if (packet)
-            av_packet_free(&packet);
-        if (frame)
-            av_frame_free(&frame);
-        return;
-    }
-
     int64_t current_pts = -1;
     while (current_pts < targetPts) {
+        // Decode frames until we reach the exact target PTS
+        AVPacket* packet = av_packet_alloc();
+        AVFrame* frame = av_frame_alloc();
+        if (!packet || !frame) {
+            ErrorReporter::instance().report("Failed to allocate packet or frame for seeking", LogLevel::Error);
+            if (packet)
+                av_packet_free(&packet);
+            if (frame)
+                av_frame_free(&frame);
+            return;
+        }
+
         int ret = av_read_frame(formatContext, packet);
         if (ret < 0) {
             qDebug() << "Decoder::seekTo reached EOF while seeking to frame" << targetPts;
@@ -581,10 +581,9 @@ void VideoDecoder::seekTo(int64_t targetPts) {
             }
         }
         av_packet_unref(packet);
+        av_packet_free(&packet);
+        av_frame_free(&frame);
     }
-
-    av_packet_free(&packet);
-    av_frame_free(&frame);
 
     currentFrameIndex = targetPts;
 }
