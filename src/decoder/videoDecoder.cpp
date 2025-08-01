@@ -330,8 +330,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
     }
 
     int ret;
-    int64_t pts = -1;
-    int totalFrames = getTotalFrames();
+    int64_t normalized_pts = -1;
+
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
         if (tempPacket->stream_index == videoStreamIndex) {
@@ -352,17 +352,19 @@ int64_t VideoDecoder::loadCompressedFrame() {
             }
 
             ret = avcodec_receive_frame(codecContext, tempFrame);
-            pts = tempFrame->pts;
+            int64_t raw_pts = tempFrame->pts;
 
-            if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
+            // Normalize PTS to frame number
+            normalized_pts = raw_pts;
+            if (m_needsTimebaseConversion && raw_pts != AV_NOPTS_VALUE) {
                 AVStream* videoStream = formatContext->streams[videoStreamIndex];
-                AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
-                pts = av_rescale_q(pts, videoStream->time_base, targetTimebase);
+                double frame_time = av_q2d(videoStream->time_base) * raw_pts;
+                normalized_pts = llrint(frame_time * m_framerate);
             }
 
-            FrameData* frameData = m_frameQueue->getTailFrame(currentFrameIndex);
-
             if (ret == 0) {
+                FrameData* frameData = m_frameQueue->getTailFrame(normalized_pts);
+
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
 
@@ -393,24 +395,30 @@ int64_t VideoDecoder::loadCompressedFrame() {
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
-                    // Use currentFrameIndex for consistent frame numbering with timer
-                    frameData->setPts(currentFrameIndex);
+                    // Set pts to normalized pts
+                    frameData->setPts(normalized_pts);
                     frameData->setEndFrame(false);
-                    currentFrameIndex++;
+                    currentFrameIndex = normalized_pts;
+
+                    qDebug() << "VideoDecoder::loadCompressedFrame loaded frame" << normalized_pts << "from raw PTS"
+                             << raw_pts << "at queue index" << normalized_pts;
+
+                    av_frame_free(&tempFrame);
+                    av_packet_unref(tempPacket);
+                    av_packet_free(&tempPacket);
+                    return normalized_pts;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                     emit framesLoaded(false);
                 }
-
-                av_frame_free(&tempFrame);
-                av_packet_unref(tempPacket);
-                return currentFrameIndex - 1; // Return the frame number we just processed
             } else if (ret != AVERROR(EAGAIN)) {
                 av_frame_free(&tempFrame);
                 break;
             } else {
                 av_frame_free(&tempFrame);
             }
+
+            av_frame_free(&tempFrame);
         }
         av_packet_unref(tempPacket);
     }
