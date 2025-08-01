@@ -202,7 +202,12 @@ void FrameController::onFrameDecoded(bool success) {
     if (m_prefill) {
         // qDebug() << "Prefill completed for index" << m_index;
         // Assume first frame has pts 0 and upload to buffer
-        emit requestUpload(m_frameQueue->getHeadFrame(0), m_index);
+        FrameData* firstFrame = m_frameQueue->getHeadFrame(0);
+        if (firstFrame) {
+            emit requestUpload(firstFrame, m_index);
+        } else {
+            qDebug() << "FrameController::onFrameUploaded - No frame found for PTS 0 at index" << m_index;
+        }
     }
 }
 
@@ -295,6 +300,10 @@ void FrameController::onFrameSeeked(int64_t pts) {
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(targetPts);
     if (!frameSeeked) {
         // qDebug() << "Frame is not seeked";
+        qDebug() << "FrameController::onFrameSeeked - No frame found for PTS" << targetPts << "at index" << m_index;
+        // Still emit endOfVideo signal to maintain state consistency
+        emit endOfVideo(m_endOfVideo, m_index);
+        return; // Don't proceed if frame is null
     } else if (frameSeeked->isEndFrame()) {
         // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
         m_endOfVideo = true;
