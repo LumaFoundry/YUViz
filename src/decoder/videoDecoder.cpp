@@ -239,13 +239,36 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         if (temp_pts == -1) {
             // qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
             if (currentFrameIndex > 0) {
-                FrameData* lastFrame = m_frameQueue->getTailFrame(currentFrameIndex - 1);
+                // For compressed video, check if we have a valid total frame count
+                int totalFrames = getTotalFrames();
+                int64_t lastFramePts = currentFrameIndex - 1;
+
+                // If we have a total frame count and we're near it, use that as the last frame
+                if (totalFrames > 0 && lastFramePts < totalFrames - 1) {
+                    lastFramePts = totalFrames - 1;
+                }
+
+                FrameData* lastFrame = m_frameQueue->getTailFrame(lastFramePts);
                 if (lastFrame) {
                     lastFrame->setEndFrame(true);
-                    // qDebug() << "VideoDecoder: Marked frame " << (currentFrameIndex - 1) << " as end frame";
+                    qDebug() << "VideoDecoder: Marked frame " << lastFramePts
+                             << " as end frame (total frames: " << totalFrames << ")";
                 }
             }
             break;
+        }
+
+        // Also check if we're at the last frame for compressed videos
+        if (!isRawYUV) {
+            int totalFrames = getTotalFrames();
+            if (totalFrames > 0 && temp_pts >= totalFrames - 1) {
+                FrameData* endFrame = m_frameQueue->getTailFrame(temp_pts);
+                if (endFrame) {
+                    endFrame->setEndFrame(true);
+                    qDebug() << "VideoDecoder: Marked frame " << temp_pts
+                             << " as end frame (reached total frames: " << totalFrames << ")";
+                }
+            }
         }
 
         maxpts = std::max(maxpts, temp_pts);
@@ -331,10 +354,15 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
     int ret;
     int64_t normalized_pts = -1;
+    bool eof_reached = false;
 
     // Read frames until we get a video frame
-    while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
-        if (tempPacket->stream_index == videoStreamIndex) {
+    while ((ret = av_read_frame(formatContext, tempPacket)) >= 0 || !eof_reached) {
+        if (ret < 0) {
+            // EOF reached, send NULL packet to flush decoder
+            eof_reached = true;
+            ret = avcodec_send_packet(codecContext, nullptr);
+        } else if (tempPacket->stream_index == videoStreamIndex) {
             // Send packet to decoder
             ret = avcodec_send_packet(codecContext, tempPacket);
             if (ret < 0) {
@@ -342,27 +370,36 @@ int64_t VideoDecoder::loadCompressedFrame() {
                 av_packet_unref(tempPacket);
                 break;
             }
+        } else {
+            av_packet_unref(tempPacket);
+            continue;
+        }
 
+        // Try to receive a frame from the decoder
+        while (true) {
             // Allocate a temporary frame for decoding
             AVFrame* tempFrame = av_frame_alloc();
             if (!tempFrame) {
                 ErrorReporter::instance().report("Could not allocate temporary frame", LogLevel::Error);
-                av_packet_unref(tempPacket);
-                break;
+                if (!eof_reached)
+                    av_packet_unref(tempPacket);
+                av_packet_free(&tempPacket);
+                return -1;
             }
 
             ret = avcodec_receive_frame(codecContext, tempFrame);
-            int64_t raw_pts = tempFrame->pts;
-
-            // Normalize PTS to frame number
-            normalized_pts = raw_pts;
-            if (m_needsTimebaseConversion && raw_pts != AV_NOPTS_VALUE) {
-                AVStream* videoStream = formatContext->streams[videoStreamIndex];
-                double frame_time = av_q2d(videoStream->time_base) * raw_pts;
-                normalized_pts = llrint(frame_time * m_framerate);
-            }
 
             if (ret == 0) {
+                int64_t raw_pts = tempFrame->pts;
+
+                // Normalize PTS to frame number
+                normalized_pts = raw_pts;
+                if (m_needsTimebaseConversion && raw_pts != AV_NOPTS_VALUE) {
+                    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+                    double frame_time = av_q2d(videoStream->time_base) * raw_pts;
+                    normalized_pts = llrint(frame_time * m_framerate);
+                }
+
                 FrameData* frameData = m_frameQueue->getTailFrame(normalized_pts);
 
                 int width = metadata.yWidth();
@@ -404,23 +441,38 @@ int64_t VideoDecoder::loadCompressedFrame() {
                              << raw_pts << "at queue index" << normalized_pts;
 
                     av_frame_free(&tempFrame);
-                    av_packet_unref(tempPacket);
+                    if (!eof_reached)
+                        av_packet_unref(tempPacket);
                     av_packet_free(&tempPacket);
                     return normalized_pts;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                     emit framesLoaded(false);
+                    av_frame_free(&tempFrame);
+                    if (!eof_reached)
+                        av_packet_unref(tempPacket);
+                    av_packet_free(&tempPacket);
+                    return -1;
                 }
-            } else if (ret != AVERROR(EAGAIN)) {
+            } else if (ret == AVERROR(EAGAIN)) {
+                // Need more input, break inner loop to read another packet
                 av_frame_free(&tempFrame);
                 break;
-            } else {
+            } else if (ret == AVERROR_EOF) {
+                // No more frames available
                 av_frame_free(&tempFrame);
+                av_packet_free(&tempPacket);
+                return -1;
+            } else {
+                // Other error
+                av_frame_free(&tempFrame);
+                break;
             }
-
-            av_frame_free(&tempFrame);
         }
-        av_packet_unref(tempPacket);
+
+        if (!eof_reached) {
+            av_packet_unref(tempPacket);
+        }
     }
 
     if (ret < 0 && ret != AVERROR_EOF) {
