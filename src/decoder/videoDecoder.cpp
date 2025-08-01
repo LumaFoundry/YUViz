@@ -226,13 +226,16 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
 
     localTail = currentFrameIndex;
 
+    qDebug() << "VideoDecoder::loadFrames called with num_frames: " << num_frames << ", direction: " << direction
+             << ", currentFrameIndex: " << currentFrameIndex;
+
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
         if (isRawYUV) {
             temp_pts = loadYUVFrame();
         } else {
             temp_pts = loadCompressedFrame();
-            qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
+            // qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
 
         // Check if we've reached EOF (indicated by -1 PTS)
@@ -251,8 +254,8 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
                 FrameData* lastFrame = m_frameQueue->getTailFrame(lastFramePts);
                 if (lastFrame) {
                     lastFrame->setEndFrame(true);
-                    qDebug() << "VideoDecoder: Marked frame " << lastFramePts
-                             << " as end frame (total frames: " << totalFrames << ")";
+                    // qDebug() << "VideoDecoder: Marked frame " << lastFramePts
+                    //          << " as end frame (total frames: " << totalFrames << ")";
                 }
             }
             break;
@@ -265,8 +268,8 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
                 FrameData* endFrame = m_frameQueue->getTailFrame(temp_pts);
                 if (endFrame) {
                     endFrame->setEndFrame(true);
-                    qDebug() << "VideoDecoder: Marked frame " << temp_pts
-                             << " as end frame (reached total frames: " << totalFrames << ")";
+                    // qDebug() << "VideoDecoder: Marked frame " << temp_pts
+                    //          << " as end frame (reached total frames: " << totalFrames << ")";
                 }
             }
         }
@@ -274,6 +277,8 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         maxpts = std::max(maxpts, temp_pts);
         minpts = std::min(minpts, std::max(temp_pts, int64_t{0}));
     }
+
+    qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
 
     if (direction == 1) {
         m_frameQueue->updateTail(maxpts);
@@ -633,7 +638,7 @@ void VideoDecoder::seekTo(int64_t targetPts) {
     avcodec_flush_buffers(codecContext);
 
     int64_t current_pts = -1;
-    while (current_pts < targetPts) {
+    while (current_pts < targetPts - 1) {
         // Decode frames until we reach the exact target PTS
         AVPacket* packet = av_packet_alloc();
         AVFrame* frame = av_frame_alloc();

@@ -313,6 +313,7 @@ void FrameController::onFrameSeeked(int64_t pts) {
 
     emit requestUpload(frameSeeked, m_index);
     emit endOfVideo(m_endOfVideo, m_index);
+    emit seekCompleted(m_index);
 }
 
 void FrameController::onRenderError() {

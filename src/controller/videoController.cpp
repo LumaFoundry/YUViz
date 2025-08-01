@@ -56,6 +56,12 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
             Qt::AutoConnection);
     // qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
 
+    connect(frameController.get(),
+            &FrameController::seekCompleted,
+            this,
+            &VideoController::onSeekCompleted,
+            Qt::AutoConnection);
+
     m_timeBases.push_back(frameController->getTimeBase());
 
     // Get the max duration from all FC (in theory they should all be the same)
@@ -241,20 +247,10 @@ void VideoController::play() {
         m_reachedEnd = false;
         m_direction = 1;
         m_uiDirection = 1;
+        m_pendingPlay = true;
         emit directionChanged();
 
-        // Add a small delay before starting playback
-        QTimer::singleShot(100, this, [this]() {
-            m_isPlaying = true;
-            emit isPlayingChanged();
-
-            if (m_direction == 1) {
-                emit playForwardTimer();
-            } else {
-                emit playBackwardTimer();
-            }
-        });
-        // Prevent double-starting playback
+        // Return early instead of immediately play
         return;
     }
 
@@ -326,6 +322,9 @@ void VideoController::seekTo(double timeMs) {
         // qDebug() << "VideoController: Pausing playback";
         pause();
     }
+
+    m_isSeeking = true;
+    m_seekedCount = 0;
 
     m_reachedEnd = false;
 
@@ -470,5 +469,29 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
         m_compareController->setVideoIds(-1, -1);
         m_compareController->setMetadata(nullptr, nullptr, nullptr, nullptr);
+    }
+}
+
+void VideoController::onSeekCompleted(int index) {
+    m_seekedCount++;
+    qDebug() << "Seek completed for FC" << index << "(" << m_seekedCount << "/" << m_realCount << ")";
+
+    if (m_seekedCount >= m_realCount) {
+        // All FrameControllers have completed seeking
+        m_isSeeking = false;
+        qDebug() << "All seeks completed, playback can resume";
+
+        // Play if pending due to end of video
+        if (m_pendingPlay) {
+            m_pendingPlay = false;
+            m_isPlaying = true;
+            emit isPlayingChanged();
+
+            if (m_direction == 1) {
+                emit playForwardTimer();
+            } else {
+                emit playBackwardTimer();
+            }
+        }
     }
 }

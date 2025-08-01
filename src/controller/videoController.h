@@ -58,6 +58,7 @@ class VideoController : public QObject {
     void toggleDirection();
     void removeVideo(int index);
     void setDiffMode(bool diffMode, int id1, int id2);
+    void onSeekCompleted(int index);
 
   signals:
     void playTimer();
@@ -104,6 +105,10 @@ class VideoController : public QObject {
     bool m_reachedEnd = false;
 
     bool m_diffMode = false;
+
+    bool m_isSeeking = false;
+    int m_seekedCount = 0;
+    bool m_pendingPlay = false;
 
     std::shared_ptr<CompareController> m_compareController;
 };
