@@ -325,6 +325,20 @@ QString VideoWindow::videoResolution() const {
     return QString("%1x%2").arg(width).arg(height);
 }
 
+int VideoWindow::componentDisplayMode() const {
+    return m_componentDisplayMode;
+}
+
+void VideoWindow::setComponentDisplayMode(int mode) {
+    if (m_componentDisplayMode != mode) {
+        m_componentDisplayMode = mode;
+        if (m_renderer) {
+            m_renderer->setComponentDisplayMode(mode);
+        }
+        emit componentDisplayModeChanged();
+    }
+}
+
 QVariant VideoWindow::getYUV(int x, int y) const {
     if (!m_renderer)
         return QVariant();

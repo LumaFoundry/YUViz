@@ -117,6 +117,24 @@ VideoWindow {
                 }
 
                 MenuItem {
+                    contentItem: ComboBox {
+                        id: componentDisplaySelector
+                        objectName: "componentDisplaySelector"
+                        model: ["RGB", "Y Only", "U Only", "V Only"]
+                        width: 160
+                        currentIndex: videoWindow.componentDisplayMode
+
+                        onCurrentIndexChanged: {
+                            videoWindow.componentDisplayMode = currentIndex;
+                        }
+                        onActivated: keyHandler.forceActiveFocus()
+                    }
+                }
+
+                MenuSeparator {
+                }
+
+                MenuItem {
                     text: "Close the Video"
                     onTriggered: videoWindow.requestRemove(videoWindow.videoId)
                 }

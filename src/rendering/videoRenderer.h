@@ -14,6 +14,7 @@ class VideoRenderer : public QObject {
 
     void initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp);
     void setColorParams(AVColorSpace space, AVColorRange range);
+    void setComponentDisplayMode(int mode); // 0=RGB, 1=Y only, 2=U only, 3=V only
     void uploadFrame(FrameData* frame);
     void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
     void releaseBatch();
@@ -47,6 +48,7 @@ class VideoRenderer : public QObject {
     std::unique_ptr<QRhiShaderResourceBindings> m_resourceBindings;
     std::unique_ptr<QRhiBuffer> m_vbuf;
     float m_windowAspect = 0;
+    int m_componentDisplayMode = 0; // 0=RGB, 1=Y only, 2=U only, 3=V only
 
     QRhiResourceUpdateBatch* m_initBatch = nullptr;
     QRhiResourceUpdateBatch* m_frameBatch = nullptr;

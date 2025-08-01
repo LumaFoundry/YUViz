@@ -24,6 +24,8 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(QString colorSpace READ colorSpace CONSTANT)
     Q_PROPERTY(QString colorRange READ colorRange CONSTANT)
     Q_PROPERTY(QString videoResolution READ videoResolution CONSTANT)
+    Q_PROPERTY(int componentDisplayMode READ componentDisplayMode WRITE setComponentDisplayMode NOTIFY
+                   componentDisplayModeChanged)
 
   public:
     explicit VideoWindow(QQuickItem* parent = nullptr);
@@ -49,6 +51,8 @@ class VideoWindow : public QQuickItem {
     QString colorSpace() const;
     QString colorRange() const;
     QString videoResolution() const;
+    int componentDisplayMode() const;
+    void setComponentDisplayMode(int mode);
 
   public slots:
     void uploadFrame(FrameData* frame);
@@ -80,6 +84,7 @@ class VideoWindow : public QQuickItem {
     void currentFrameChanged();
     void currentTimeMsChanged();
     void metadataInitialized();
+    void componentDisplayModeChanged();
 
   protected:
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
@@ -99,6 +104,7 @@ class VideoWindow : public QQuickItem {
     std::shared_ptr<FrameMeta> m_frameMeta;
     int m_currentFrame = 0;
     double m_currentTimeMs = 0.0;
+    int m_componentDisplayMode = 0; // 0=RGB, 1=Y only, 2=U only, 3=V only
 
     QRectF getVideoRect() const;
     QPointF convertToVideoCoordinates(const QPointF& point) const;
