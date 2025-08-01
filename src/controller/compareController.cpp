@@ -34,10 +34,10 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1, std::share
 void CompareController::onReceiveFrame(FrameData* frame, int index) {
 
     // Make a copy of the frame data
-    if (index == m_index1) {
+    if (index == m_index1 && frame) {
         m_frame1 = std::make_unique<FrameData>(*frame);
         // qDebug() << "Received frame from index:" << index;
-    } else if (index == m_index2) {
+    } else if (index == m_index2 && frame) {
         m_frame2 = std::make_unique<FrameData>(*frame);
         // qDebug() << "Received frame from index:" << index;
     } else {
