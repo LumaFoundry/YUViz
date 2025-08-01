@@ -98,7 +98,7 @@ Popup {
             visible: isYUV
             editable: true
             Layout.fillWidth: true
-            model: ["3840x2160", "2560x1440", "1920x1080", "1280x720", "720x480", "640x360"]
+            model: ["3840x2160", "2560x1440", "1920x1080", "1280x720", "720x480", "640x360", "352x288", "176x144"]
             onActivated: {
                 editText = currentText;
             }
