@@ -621,10 +621,10 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 
 void VideoDecoder::seek(int64_t targetPts) {
     // Load past & future frames around the target PTS
-    int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 2, 0LL);
+    int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 4, 0LL);
     seekTo(startPts);
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(m_frameQueue->getSize());
+    loadFrames(m_frameQueue->getSize() / 2);
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
     emit frameSeeked(targetPts);
 }
