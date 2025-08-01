@@ -1,12 +1,13 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
+import QtQuick.Controls 6.2
 import QtQuick.Layouts 6.0
 import QtQuick.Dialogs 6.2
 
 Popup {
     id: importPopup
-    width: 420
-    height: 420
+    width: Math.min(360, parent.width - 40)
+    height: Math.min(400, parent.height - 40)
     modal: true
     focus: true
     clip: true
@@ -30,10 +31,15 @@ Popup {
         border.color: "#aaa"
     }
 
-    ColumnLayout {
+    ScrollView {
+        id: scrollView
         anchors.fill: parent
-        anchors.margins: 20
+        anchors.margins: 8
+        clip: true
+    ColumnLayout {
+        width: parent.width
         spacing: 12
+        x: width < scrollView.width ? (scrollView.width - width) / 2 : 0
 
         Label {
             text: "Select a video file:"
@@ -137,13 +143,9 @@ Popup {
             displayText: model[currentIndex]
         }
 
-        Item {
-            Layout.fillHeight: true
-        }  // Spacer to push buttons to the bottom
-
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 10
+            spacing: 8
 
             Button {
                 text: "Cancel"
@@ -167,5 +169,6 @@ Popup {
                 }
             }
         }
+    }
     }
 }

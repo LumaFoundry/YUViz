@@ -67,6 +67,8 @@ ApplicationWindow {
 
     ImportPopup {
         id: importDialog
+        mainWindow: mainWindow
+        anchors.centerIn: parent
         onVideoImported: function (filePath, width, height, fps, format, add) {
             importVideoFromParams(filePath, width, height, fps, format, add);
         }
