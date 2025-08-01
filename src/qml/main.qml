@@ -470,19 +470,33 @@ ApplicationWindow {
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         enabled: {
-                            if (videoWindowContainer.children.length !== 2) {
+                            const videos = videoWindowContainer.children;
+
+                            if (videos.length < 2) {
                                 return false;
                             }
-                            var video1 = videoWindowContainer.children[0];
-                            var video2 = videoWindowContainer.children[1];
-                            if (video1.metadataReady && video2.metadataReady) {
-                                var meta1 = video1.getFrameMeta();
-                                var meta2 = video2.getFrameMeta();
-                                if (meta1 && meta2) {
-                                    return meta1.yWidth === meta2.yWidth && meta1.yHeight === meta2.yHeight;
+
+                            const firstVideo = videos[0];
+                            if (!firstVideo || !firstVideo.metadataReady) return false;
+                            const firstMeta = firstVideo.getFrameMeta();
+                            if (!firstMeta) return false;
+
+                            // Check all subsequent videos against the first one.
+                            for (let i = 1; i < videos.length; i++) {
+                                const currentVideo = videos[i];
+
+                                if (!currentVideo || !currentVideo.metadataReady) return false;
+                                const currentMeta = currentVideo.getFrameMeta();
+                                if (!currentMeta) return false;
+
+                                // If mismatch, disable the button.
+                                if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {
+                                    return false;
                                 }
                             }
-                            return false;
+
+                            // All videos have the same resolution.
+                            return true;
                         }
 
                         onClicked: {
