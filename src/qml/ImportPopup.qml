@@ -1,12 +1,13 @@
 import QtQuick 6.0
 import QtQuick.Controls.Basic 6.0
+import QtQuick.Controls 6.2
 import QtQuick.Layouts 6.0
 import QtQuick.Dialogs 6.2
 
 Popup {
     id: importPopup
-    width: 420
-    height: 420
+    width: Math.min(360, parent.width - 40)
+    height: Math.min(400, parent.height - 40)
     modal: true
     focus: true
     clip: true
@@ -30,10 +31,15 @@ Popup {
         border.color: "#aaa"
     }
 
-    ColumnLayout {
+    ScrollView {
+        id: scrollView
         anchors.fill: parent
-        anchors.margins: 20
+        anchors.margins: 8
+        clip: true
+    ColumnLayout {
+        width: parent.width
         spacing: 12
+        x: width < scrollView.width ? (scrollView.width - width) / 2 : 0
 
         Label {
             text: "Select a video file:"
@@ -66,15 +72,15 @@ Popup {
                     // Strict match: resolution followed by underscore/dash and FPS
                     const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
                     if (match) {
-                        resolutionInput.text = match[1] + "x" + match[2];
+                        resolutionInput.editText = match[1] + "x" + match[2];
                         fpsInput.text = match[3];
                     } else {
                         // Fallback: just try to extract resolution anywhere
                         const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
                         if (resMatch) {
-                            resolutionInput.text = resMatch[0];
+                            resolutionInput.editText = resMatch[0];
                         } else {
-                            resolutionInput.text = "";
+                            resolutionInput.editText = "";
                         }
                         fpsInput.text = "";
                     }
@@ -93,15 +99,14 @@ Popup {
             Layout.fillWidth: true
         }
 
-        TextField {
+        ComboBox {
             id: resolutionInput
             visible: isYUV
-            placeholderText: "1920x1080"
+            editable: true
             Layout.fillWidth: true
-            onAccepted: {
-                if (resolutionInput.text === "") {
-                    resolutionInput.text = resolutionInput.placeholderText;
-                }
+            model: ["3840x2160", "2560x1440", "1920x1080", "1280x720", "720x480", "640x360", "352x288", "176x144"]
+            onActivated: {
+                editText = currentText;
             }
         }
 
@@ -138,13 +143,9 @@ Popup {
             displayText: model[currentIndex]
         }
 
-        Item {
-            Layout.fillHeight: true
-        }  // Spacer to push buttons to the bottom
-
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
-            spacing: 10
+            spacing: 8
 
             Button {
                 text: "Cancel"
@@ -153,9 +154,9 @@ Popup {
 
             Button {
                 text: mode === "add" ? "Add" : "Load"
-                enabled: importPopup.selectedFile !== "" && (!isYUV || (filePathInput.text !== "" && resolutionInput.text.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))))
+                enabled: importPopup.selectedFile !== "" && (!isYUV || (filePathInput.text !== "" && resolutionInput.editText.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))))
                 onClicked: {
-                    const res = resolutionInput.text.split("x");
+                    const res = resolutionInput.editText.split("x");
                     const filePath = fileDialog.selectedFile;
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
@@ -168,5 +169,6 @@ Popup {
                 }
             }
         }
+    }
     }
 }

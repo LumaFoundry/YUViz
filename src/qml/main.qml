@@ -67,6 +67,8 @@ ApplicationWindow {
 
     ImportPopup {
         id: importDialog
+        mainWindow: mainWindow
+        anchors.centerIn: parent
         onVideoImported: function (filePath, width, height, fps, format, add) {
             importVideoFromParams(filePath, width, height, fps, format, add);
         }
@@ -230,6 +232,7 @@ ApplicationWindow {
             }
             Action {
                 text: "Add Video"
+                enabled: videoCount < 2
                 onTriggered: {
                     importDialog.mode = "add";
                     importDialog.open();
@@ -307,6 +310,7 @@ ApplicationWindow {
                     height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
 
                     onMetadataInitialized: {
+                        metadataReady = true;
                         // Check if this window is the last one added and it was an 'add' operation
                         if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
                             if (mainWindow.videoCount > 1) {
@@ -467,7 +471,35 @@ ApplicationWindow {
                         Layout.preferredWidth: Theme.buttonWidth
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
-                        enabled: videoWindowContainer.children.length == 2
+                        enabled: {
+                            const videos = videoWindowContainer.children;
+
+                            if (videos.length < 2) {
+                                return false;
+                            }
+
+                            const firstVideo = videos[0];
+                            if (!firstVideo || !firstVideo.metadataReady) return false;
+                            const firstMeta = firstVideo.getFrameMeta();
+                            if (!firstMeta) return false;
+
+                            // Check all subsequent videos against the first one.
+                            for (let i = 1; i < videos.length; i++) {
+                                const currentVideo = videos[i];
+
+                                if (!currentVideo || !currentVideo.metadataReady) return false;
+                                const currentMeta = currentVideo.getFrameMeta();
+                                if (!currentMeta) return false;
+
+                                // If mismatch, disable the button.
+                                if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {
+                                    return false;
+                                }
+                            }
+
+                            // All videos have the same resolution.
+                            return true;
+                        }
 
                         onClicked: {
                             // Only one diff at a time

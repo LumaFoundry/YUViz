@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.15
 VideoWindow {
     id: videoWindow
     property int videoId: -1
+    property bool metadataReady: false
     property bool assigned: false
     property bool isSelecting: false
     property point selectionStart: Qt.point(0, 0)
