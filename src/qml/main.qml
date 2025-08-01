@@ -308,6 +308,7 @@ ApplicationWindow {
                     height: (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns))
 
                     onMetadataInitialized: {
+                        metadataReady = true;
                         // Check if this window is the last one added and it was an 'add' operation
                         if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
                             if (mainWindow.videoCount > 1) {
@@ -468,7 +469,21 @@ ApplicationWindow {
                         Layout.preferredWidth: Theme.buttonWidth
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
-                        enabled: videoWindowContainer.children.length == 2
+                        enabled: {
+                            if (videoWindowContainer.children.length !== 2) {
+                                return false;
+                            }
+                            var video1 = videoWindowContainer.children[0];
+                            var video2 = videoWindowContainer.children[1];
+                            if (video1.metadataReady && video2.metadataReady) {
+                                var meta1 = video1.getFrameMeta();
+                                var meta2 = video2.getFrameMeta();
+                                if (meta1 && meta2) {
+                                    return meta1.yWidth === meta2.yWidth && meta1.yHeight === meta2.yHeight;
+                                }
+                            }
+                            return false;
+                        }
 
                         onClicked: {
                             // Only one diff at a time
