@@ -230,6 +230,7 @@ ApplicationWindow {
             }
             Action {
                 text: "Add Video"
+                enabled: videoCount < 2
                 onTriggered: {
                     importDialog.mode = "add";
                     importDialog.open();
