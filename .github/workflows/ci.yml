@@ -1,0 +1,119 @@
+name: CI
+
+on:
+  push:
+    branches: [ try-ci ]
+  pull_request:
+    branches: [ try-ci ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build pkg-config
+        sudo apt-get install -y libavcodec-dev libavutil-dev libswscale-dev libavformat-dev libavfilter-dev
+        
+    - name: Install Qt 6.9.1
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: 6.9.1
+        arch: gcc_64
+        modules: qtbase qtdeclarative qtshadertools
+        
+    - name: Set up environment (Option A from README)
+      run: |
+        echo "${{ env.QT_DIR }}/bin" >> $GITHUB_PATH
+        echo "CMAKE_PREFIX_PATH=${{ env.QT_DIR }}" >> $GITHUB_ENV
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      run: |
+        cd build
+        ls -la videoplayer
+        file videoplayer
+        ldd videoplayer || true
+
+  windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-qt6-base
+          mingw-w64-x86_64-qt6-declarative
+          mingw-w64-x86_64-qt6-shadertools
+          mingw-w64-x86_64-ffmpeg
+          mingw-w64-x86_64-pkgconf
+          
+    - name: Configure with CMake
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      shell: msys2 {0}
+      run: |
+        cd build
+        ls -la videoplayer.exe
+        file videoplayer.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies (Homebrew)
+      run: |
+        brew install cmake ninja pkg-config
+        brew install qt@6 ffmpeg
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      run: |
+        cd build
+        ls -la videoplayer
+        file videoplayer
+        otool -L videoplayer || true 
