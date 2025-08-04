@@ -33,6 +33,23 @@ A lightweight video inspection tool for YUV format files.
 
     ### Linux (Ubuntu/Debian)
     ```bash
+    sudo wget https://download.qt.io/official_releases/online_installers/qt-online-installer-linux-x64-online.run
+    sudo chmod +x qt-online-installer-linux-x64-online.run 
+    ./qt-online-installer-linux-x64-online.run install qt6.9.1-sdk  # Follow the steps, you will need a Qt account
+    ```
+    
+    **Configure environment variables (choose one option):**
+    
+    **Option A: Set environment variables once**
+    ```bash
+    export PATH=$HOME/Qt/6.9.1/gcc_64/bin:$PATH
+    export CMAKE_PREFIX_PATH=$HOME/Qt/6.9.1/gcc_64
+    ```
+    
+    **Option B: Use Qt's built-in qt-cmake**
+    ```bash
+    # Use this command in step 2 if you choose Option B
+    $HOME/Qt/6.9.1/gcc_64/bin/qt-cmake .. -G Ninja
     ```
 
 2. Clone and build
@@ -40,7 +57,7 @@ A lightweight video inspection tool for YUV format files.
     git clone https://github.com/LokiW-03/qt6-videoplayer.git
     cd qt6-videoplayer
     mkdir build && cd build
-    cmake .. -G Ninja
+    cmake .. -G Ninja # Linux option B user should use the command mentioned
     ninja
     ```
 
