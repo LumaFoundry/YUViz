@@ -676,9 +676,21 @@ int64_t VideoDecoder::getDurationMs() {
         return -1;
     }
 
+    // Stream Context
     AVStream* videoStream = formatContext->streams[videoStreamIndex];
     if (videoStream->duration != AV_NOPTS_VALUE) {
         return av_rescale_q(videoStream->duration, videoStream->time_base, AVRational{1, 1000});
+    }
+
+    // Format Context Fallback
+    if (formatContext->duration > 0) {
+        return av_rescale_q(formatContext->duration, AV_TIME_BASE_Q, AVRational{1, 1000});
+    }
+
+    // Estimation from framerate Fallback
+    if (videoStream->nb_frames > 0 && videoStream->avg_frame_rate.num > 0) {
+        double fps = av_q2d(videoStream->avg_frame_rate);
+        return static_cast<int64_t>((videoStream->nb_frames / fps) * 1000.0);
     }
 
     return -1;
