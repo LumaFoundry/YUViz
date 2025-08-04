@@ -217,6 +217,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         currentFrameIndex -= num_frames + 1;
         if (currentFrameIndex < 0) {
             currentFrameIndex = 0;
+            direction = 1; // Change direction to forward if we hit the beginning
         }
         seekTo(currentFrameIndex);
         qDebug() << "VideoDecoder::seeking to " << currentFrameIndex;
