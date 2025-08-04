@@ -138,8 +138,9 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
     if (future) {
+        qDebug() << "Request upload for frame with PTS" << (pts + 1 * direction);
         emit requestUpload(future, m_index);
-        // qDebug() << "Requested upload for frame with PTS" << (pts + 1 * direction);
+
     } else {
         qWarning() << "Cannot upload frame" << (pts + 1 * direction);
     }
