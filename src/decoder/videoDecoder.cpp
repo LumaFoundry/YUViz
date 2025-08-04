@@ -91,47 +91,43 @@ void VideoDecoder::openFile() {
 
     // Find decoder for the video stream, try hardware decoding if possible
     const AVCodec* codec = nullptr;
-    // Try hardware decoders based on platform
-#if defined(Q_OS_MACOS)
-    codec = avcodec_find_decoder_by_name("h264_videotoolbox");
-    if (!codec)
-        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
-    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0) < 0) {
-        ErrorReporter::instance().report("Failed to create VideoToolbox device", LogLevel::Error);
-        closeFile();
-        return;
-    }
-    if (hw_device_ctx)
-        hw_pix_fmt = AV_PIX_FMT_VIDEOTOOLBOX;
-#elif defined(Q_OS_LINUX)
-    codec = avcodec_find_decoder_by_name("h264_vaapi");
-    if (!codec)
-        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
-    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0) < 0) {
-        ErrorReporter::instance().report("Failed to create VAAPI device", LogLevel::Error);
-        closeFile();
-        return;
-    }
-    if (hw_device_ctx)
-        hw_pix_fmt = AV_PIX_FMT_VAAPI;
-#elif defined(Q_OS_WIN)
-    codec = avcodec_find_decoder_by_name("h264_d3d11va");
-    if (!codec)
-        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
-    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, nullptr, nullptr, 0) < 0) {
-        ErrorReporter::instance().report("Failed to create D3D11VA device", LogLevel::Error);
-        closeFile();
-        return;
-    }
-    if (hw_device_ctx)
-        hw_pix_fmt = AV_PIX_FMT_D3D11;
-#else
-    codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
-#endif
+    AVCodecID codecId = videoStream->codecpar->codec_id;
+
+    // Find the standard decoder first
+    codec = avcodec_find_decoder(codecId);
     if (!codec) {
-        ErrorReporter::instance().report("Unsupported codec", LogLevel::Error);
-        closeFile();
+        qDebug() << "✗ No decoder found for codec:" << avcodec_get_name(codecId);
         return;
+    }
+
+    qDebug() << "Found decoder:" << codec->name << "for codec:" << avcodec_get_name(codecId);
+
+    // Try to enable hardware acceleration (only for compressed formats)
+    if (isYUV(codecId)) {
+        qDebug() << "RAW/YUV format detected - hardware acceleration not applicable";
+    } else {
+        // Only try hardware acceleration for compressed formats
+#if defined(Q_OS_MACOS)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_VIDEOTOOLBOX, AV_PIX_FMT_VIDEOTOOLBOX)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: VideoToolbox for" << codec->name;
+        } else {
+            qDebug() << "VideoToolbox hardware acceleration not available, using software decoding";
+        }
+#elif defined(Q_OS_LINUX)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: VAAPI for" << codec->name;
+        } else {
+            qDebug() << "VAAPI hardware acceleration not available, using software decoding";
+        }
+#elif defined(Q_OS_WIN)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_D3D11VA, AV_PIX_FMT_D3D11)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: D3D11VA for" << codec->name;
+        } else {
+            qDebug() << "D3D11VA hardware acceleration not available, using software decoding";
+        }
+#else
+        qDebug() << "No hardware acceleration available on this platform";
+#endif
     }
 
     // Allocate codec context
@@ -165,6 +161,23 @@ void VideoDecoder::openFile() {
         ErrorReporter::instance().report("Could not open codec", LogLevel::Error);
         closeFile();
         return;
+    }
+
+    // Print final decoder status based on actual codec and hardware context
+    bool isActuallyUsingHardware = (hw_device_ctx != nullptr) && (codecContext->hw_device_ctx != nullptr);
+
+    if (isYUV(codecId)) {
+        qDebug() << "FINAL STATUS: RAW format processing -" << codec->name << "(no decoding required)";
+    } else if (isActuallyUsingHardware) {
+#if defined(Q_OS_MACOS)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with VideoToolbox";
+#elif defined(Q_OS_LINUX)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with VAAPI";
+#elif defined(Q_OS_WIN)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with D3D11VA";
+#endif
+    } else {
+        qDebug() << "FINAL STATUS: Software decoding active -" << codec->name;
     }
 
     AVRational timeBase;
@@ -210,12 +223,6 @@ void VideoDecoder::openFile() {
     }
 
     currentFrameIndex = 0;
-
-    if (codecContext && codecContext->codec) {
-        qDebug() << "VideoDecoder: Using decoder:" << codecContext->codec->name;
-    } else {
-        qDebug() << "VideoDecoder: Decoder information unavailable";
-    }
     return;
 }
 
@@ -370,6 +377,20 @@ bool VideoDecoder::isYUV(AVCodecID codecId) {
     default:
         return false;
     }
+}
+
+bool VideoDecoder::initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt) {
+    if (av_hwdevice_ctx_create(&hw_device_ctx, deviceType, nullptr, nullptr, 0) < 0) {
+        const char* deviceName = av_hwdevice_get_type_name(deviceType);
+        ErrorReporter::instance().report(
+            QString("Failed to create %1 device").arg(deviceName ? deviceName : "unknown").toStdString(),
+            LogLevel::Warning);
+        return false;
+    }
+
+    hw_pix_fmt = pixFmt;
+    qDebug() << "Successfully initialized hardware decoder:" << av_hwdevice_get_type_name(deviceType);
+    return true;
 }
 
 int64_t VideoDecoder::loadYUVFrame() {
