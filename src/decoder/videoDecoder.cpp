@@ -120,21 +120,7 @@ void VideoDecoder::openFile() {
             qDebug() << "VAAPI hardware acceleration not available, using software decoding";
         }
 #elif defined(Q_OS_WIN)
-        // On Windows, D3D11VA can be unstable with certain codecs and containers
-        // Add conservative approach for problematic combinations
-        std::string fileName = m_fileName;
-        bool isMOVFile = (fileName.find(".mov") != std::string::npos || fileName.find(".MOV") != std::string::npos);
-
-        // List of codecs that are known to be problematic with D3D11VA on Windows
-        bool isProblematicCodec =
-            (codecId == AV_CODEC_ID_PRORES || codecId == AV_CODEC_ID_MJPEG || codecId == AV_CODEC_ID_HEVC);
-
-        if (isProblematicCodec) {
-            qDebug() << "Codec" << avcodec_get_name(codecId) << "- using software decoding for Windows stability";
-        } else if (isMOVFile && codecId != AV_CODEC_ID_H264) {
-            // For MOV files, only trust H.264 hardware decoding on Windows
-            qDebug() << "MOV file with codec" << avcodec_get_name(codecId) << "- using software decoding for stability";
-        } else if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_D3D11VA, AV_PIX_FMT_D3D11)) {
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_D3D11VA, AV_PIX_FMT_D3D11)) {
             qDebug() << "HARDWARE ACCELERATION ENABLED: D3D11VA for" << codec->name;
         } else {
             qDebug() << "D3D11VA hardware acceleration not available, using software decoding";
@@ -402,20 +388,6 @@ bool VideoDecoder::initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelF
         return false;
     }
 
-#if defined(Q_OS_WIN)
-    // Additional validation for Windows D3D11VA
-    if (deviceType == AV_HWDEVICE_TYPE_D3D11VA) {
-        // Verify the device context is valid
-        if (!hw_device_ctx || !hw_device_ctx->data) {
-            qDebug() << "D3D11VA device context validation failed";
-            av_buffer_unref(&hw_device_ctx);
-            hw_device_ctx = nullptr;
-            return false;
-        }
-        qDebug() << "D3D11VA device context validated successfully";
-    }
-#endif
-
     hw_pix_fmt = pixFmt;
     qDebug() << "Successfully initialized hardware decoder:" << av_hwdevice_get_type_name(deviceType);
     return true;
@@ -531,25 +503,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
                         av_packet_unref(tempPacket);
                         break;
                     }
-
-                    // Add extra safety for Windows D3D11VA
-#if defined(Q_OS_WIN)
-                    // Ensure frame dimensions are valid before transfer
-                    if (tempFrame->width <= 0 || tempFrame->height <= 0) {
-                        ErrorReporter::instance().report("Invalid frame dimensions for hardware transfer",
-                                                         LogLevel::Error);
-                        av_frame_free(&outputFrame);
-                        av_frame_free(&tempFrame);
-                        av_packet_unref(tempPacket);
-                        break;
-                    }
-#endif
-
                     if (av_hwframe_transfer_data(outputFrame, tempFrame, 0) < 0) {
                         ErrorReporter::instance().report("Failed to transfer frame from GPU to CPU", LogLevel::Error);
-#if defined(Q_OS_WIN)
-                        qDebug() << "Hardware frame transfer failed - this may indicate D3D11VA compatibility issues";
-#endif
                         av_frame_free(&outputFrame);
                         av_frame_free(&tempFrame);
                         av_packet_unref(tempPacket);
