@@ -519,8 +519,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     frameData->setEndFrame(false);
                     currentFrameIndex = normalized_pts;
 
-                    qDebug() << "VideoDecoder::loadCompressedFrame loaded frame" << normalized_pts << "from raw PTS"
-                             << raw_pts << "at queue index" << normalized_pts;
+                    // qDebug() << "VideoDecoder::loadCompressedFrame loaded frame" << normalized_pts << "from raw PTS"
+                    //          << raw_pts << "at queue index" << normalized_pts;
 
                     av_frame_free(&tempFrame);
                     if (!eof_reached)
@@ -694,7 +694,7 @@ void VideoDecoder::seekTo(int64_t targetPts) {
             return;
         }
 
-        qDebug() << "Decoder::seekTo YUV file to frame" << targetPts << "at byte position" << bytePosition;
+        // qDebug() << "Decoder::seekTo YUV file to frame" << targetPts << "at byte position" << bytePosition;
         currentFrameIndex = targetPts;
         return;
     }
@@ -705,8 +705,8 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         double timestamp_seconds = targetPts / m_framerate;
         seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
 
-        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
-                 << seek_timestamp;
+        // qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
+        //          << seek_timestamp;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
@@ -754,7 +754,7 @@ void VideoDecoder::seekTo(int64_t targetPts) {
                     AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
                     current_pts = av_rescale_q(current_pts, videoStream->time_base, targetTimebase);
                 }
-                qDebug() << "Decoder::seekTo decoded frame with PTS:" << current_pts << "target:" << targetPts;
+                // qDebug() << "Decoder::seekTo decoded frame with PTS:" << current_pts << "target:" << targetPts;
             }
         }
         av_packet_unref(packet);

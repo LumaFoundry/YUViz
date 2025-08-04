@@ -144,11 +144,11 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
         qWarning() << "Cannot upload frame" << (pts + 1 * direction);
     }
 
-    if (!m_endOfVideo) {
+    if (!m_endOfVideo && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
-        // qDebug() << "Frames to fill in queue:" << framesToFill;
-
+        qDebug() << "FC::Request decode for" << framesToFill;
+        m_decodeInProgress = true;
         emit requestDecode(framesToFill, direction);
     }
 
@@ -199,6 +199,9 @@ void FrameController::onFrameDecoded(bool success) {
         // TODO: What to do if decoding fails?
         ErrorReporter::instance().report("Decoding error occurred", LogLevel::Error);
     }
+
+    // Safe guard for stack calling decode
+    m_decodeInProgress = false;
 
     if (m_prefill) {
         // qDebug() << "Prefill completed for index" << m_index;
@@ -269,6 +272,9 @@ void FrameController::onSeek(int64_t pts) {
 
     m_endOfVideo = false;
 
+    // Reset any pending decode
+    m_decodeInProgress = false;
+
     // Update VideoWindow with current frame info
     AVRational timeBase = getTimeBase();
     double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
@@ -280,6 +286,7 @@ void FrameController::onSeek(int64_t pts) {
 
         int framesToFill = m_frameQueue->getEmpty(1);
         qDebug() << "Requesting to fill " << framesToFill << " frames after seeking";
+        m_decodeInProgress = true;
         emit requestDecode(framesToFill, 1);
 
     } else {

@@ -388,7 +388,7 @@ void VideoController::toggleDirection() {
     if (m_uiDirection == 1) {
         m_uiDirection = -1;
         m_direction = -1;
-        // qDebug() << "VideoController: Toggled direction to backward";
+        qDebug() << "VideoController: Toggled direction to backward";
     } else {
         m_uiDirection = 1;
         m_direction = 1;

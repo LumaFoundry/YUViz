@@ -87,4 +87,6 @@ class FrameController : public QObject {
     bool m_endOfVideo = false;
 
     int64_t m_seeking = -1;
+
+    bool m_decodeInProgress = false;
 };
