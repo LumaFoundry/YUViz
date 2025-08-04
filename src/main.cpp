@@ -32,6 +32,7 @@ int main(int argc, char* argv[]) {
         "Visual Inspection Tool\n\n"
         "Can import up to two videos from the command line.\n"
         "For YUV files, use the format: path/to/file.yuv:widthxheight:framerate:pixelformat\n"
+        "    (Supported pixel formats: 420P, 422P, 444P)\n"
         "Example: myvideo.yuv:1920x1080:25:420P\n"
         "For other formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
