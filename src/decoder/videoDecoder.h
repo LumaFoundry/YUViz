@@ -56,6 +56,8 @@ class VideoDecoder : public QObject {
     int currentFrameIndex = 0;
     int localTail = -1;
 
+    int64_t m_ptsOffset = -1;
+
     int m_width;
     int m_height;
     double m_framerate;

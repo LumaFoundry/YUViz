@@ -481,6 +481,12 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     normalized_pts = llrint(frame_time * m_framerate);
                 }
 
+                if (m_ptsOffset == -1 && normalized_pts >= 0) {
+                    m_ptsOffset = normalized_pts;
+                }
+
+                normalized_pts -= m_ptsOffset;
+
                 FrameData* frameData = m_frameQueue->getTailFrame(normalized_pts);
 
                 int width = metadata.yWidth();
