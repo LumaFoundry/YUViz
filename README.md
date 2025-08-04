@@ -66,14 +66,26 @@ A lightweight video inspection tool for YUV format files.
     ```
 
 ## Running the application
+### General Usage
 ```bash
-./videoplayer <input_file> -r <width>x<height> -f <fps> -d
+./videoplayer [file1] [file2] [options]
 ```
-Flags:
-- `-r`: resolution, needed for YUV files
-- `-f`: framerate, default=25
-- `-y`: YUV format, 420P, 422P, 444P
-- `-d`: debug flag
+
+### Example with one YUV file and debug flag
+```bash
+./videoplayer <path_to_file.yuv>:<width>x<height>:<framerate>:<pixel_format> -d
+./videoplayer video.yuv:1920x1080:30:420P -d
+```
+Note: Pixel Format supported values are 420P, 422P, or 444P.
+
+### Example with one MP4 file and one YUV file
+```bash
+./videoplayer video.mp4 video.yuv:1920x1080:30:420P
+```
+
+Options:
+- `--help`: print application information and instructions
+- `-d`, `--debug`: debug flag
 - `-q`: queueSize, default=50 frames
 - `-s`: force software decoding, default=false
 
