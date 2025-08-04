@@ -65,6 +65,9 @@ class VideoDecoder : public QObject {
 
     int yuvTotalFrames = -1;
 
+    AVBufferRef* hw_device_ctx = nullptr;
+    AVPixelFormat hw_pix_fmt = AV_PIX_FMT_NONE;
+
     void closeFile();
 
     bool isYUV(AVCodecID codecId);

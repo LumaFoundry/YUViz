@@ -89,8 +89,45 @@ void VideoDecoder::openFile() {
 
     AVStream* videoStream = formatContext->streams[videoStreamIndex];
 
-    // Find decoder for the video stream
-    const AVCodec* codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    // Find decoder for the video stream, try hardware decoding if possible
+    const AVCodec* codec = nullptr;
+    // Try hardware decoders based on platform
+#if defined(Q_OS_MACOS)
+    codec = avcodec_find_decoder_by_name("h264_videotoolbox");
+    if (!codec)
+        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VIDEOTOOLBOX, nullptr, nullptr, 0) < 0) {
+        ErrorReporter::instance().report("Failed to create VideoToolbox device", LogLevel::Error);
+        closeFile();
+        return;
+    }
+    if (hw_device_ctx)
+        hw_pix_fmt = AV_PIX_FMT_VIDEOTOOLBOX;
+#elif defined(Q_OS_LINUX)
+    codec = avcodec_find_decoder_by_name("h264_vaapi");
+    if (!codec)
+        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, nullptr, nullptr, 0) < 0) {
+        ErrorReporter::instance().report("Failed to create VAAPI device", LogLevel::Error);
+        closeFile();
+        return;
+    }
+    if (hw_device_ctx)
+        hw_pix_fmt = AV_PIX_FMT_VAAPI;
+#elif defined(Q_OS_WIN)
+    codec = avcodec_find_decoder_by_name("h264_d3d11va");
+    if (!codec)
+        codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    if (codec && av_hwdevice_ctx_create(&hw_device_ctx, AV_HWDEVICE_TYPE_D3D11VA, nullptr, nullptr, 0) < 0) {
+        ErrorReporter::instance().report("Failed to create D3D11VA device", LogLevel::Error);
+        closeFile();
+        return;
+    }
+    if (hw_device_ctx)
+        hw_pix_fmt = AV_PIX_FMT_D3D11;
+#else
+    codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+#endif
     if (!codec) {
         ErrorReporter::instance().report("Unsupported codec", LogLevel::Error);
         closeFile();
@@ -110,6 +147,11 @@ void VideoDecoder::openFile() {
         ErrorReporter::instance().report("Could not copy codec parameters to context", LogLevel::Error);
         closeFile();
         return;
+    }
+
+    // Bind hardware device context if present
+    if (hw_device_ctx) {
+        codecContext->hw_device_ctx = av_buffer_ref(hw_device_ctx);
     }
 
     if (!isYUV(codecContext->codec_id)) {
@@ -169,6 +211,11 @@ void VideoDecoder::openFile() {
 
     currentFrameIndex = 0;
 
+    if (codecContext && codecContext->codec) {
+        qDebug() << "VideoDecoder: Using decoder:" << codecContext->codec->name;
+    } else {
+        qDebug() << "VideoDecoder: Decoder information unavailable";
+    }
     return;
 }
 
@@ -305,6 +352,12 @@ void VideoDecoder::closeFile() {
         formatContext = nullptr;
     }
 
+    if (hw_device_ctx) {
+        av_buffer_unref(&hw_device_ctx);
+        hw_device_ctx = nullptr;
+    }
+
+    hw_pix_fmt = AV_PIX_FMT_NONE;
     videoStreamIndex = -1;
     currentFrameIndex = 0;
 }
@@ -361,7 +414,8 @@ int64_t VideoDecoder::loadCompressedFrame() {
     int ret;
     int64_t normalized_pts = -1;
     bool eof_reached = false;
-
+    // Set the target pixel format for output
+    AVPixelFormat dstFormat = AV_PIX_FMT_YUV420P;
     // Read frames until we get a video frame
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0 || !eof_reached) {
         if (ret < 0) {
@@ -411,18 +465,40 @@ int64_t VideoDecoder::loadCompressedFrame() {
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
 
-                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+                // Always use target format descriptor for output
+                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(dstFormat);
                 int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
 
                 uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
                 int dstLinesize[4] = {width, uvWidth, uvWidth, 0};
 
-                SwsContext* swsCtx = sws_getContext(codecContext->width,
-                                                    codecContext->height,
-                                                    (AVPixelFormat)tempFrame->format,
+                // Hardware frame transfer if needed
+                AVFrame* outputFrame = nullptr;
+                if (hw_device_ctx && tempFrame->format == hw_pix_fmt) {
+                    outputFrame = av_frame_alloc();
+                    if (!outputFrame) {
+                        ErrorReporter::instance().report("Could not allocate output frame", LogLevel::Error);
+                        av_frame_free(&tempFrame);
+                        av_packet_unref(tempPacket);
+                        break;
+                    }
+                    if (av_hwframe_transfer_data(outputFrame, tempFrame, 0) < 0) {
+                        ErrorReporter::instance().report("Failed to transfer frame from GPU to CPU", LogLevel::Error);
+                        av_frame_free(&outputFrame);
+                        av_frame_free(&tempFrame);
+                        av_packet_unref(tempPacket);
+                        break;
+                    }
+                } else {
+                    outputFrame = tempFrame;
+                }
+
+                SwsContext* swsCtx = sws_getContext(outputFrame->width,
+                                                    outputFrame->height,
+                                                    (AVPixelFormat)outputFrame->format,
                                                     width,
                                                     height,
-                                                    codecContext->pix_fmt, // Use the same format as codec context
+                                                    dstFormat,
                                                     SWS_BILINEAR,
                                                     nullptr,
                                                     nullptr,
@@ -430,10 +506,10 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 if (swsCtx) {
                     sws_scale(swsCtx,
-                              (const uint8_t* const*)tempFrame->data,
-                              tempFrame->linesize,
+                              (const uint8_t* const*)outputFrame->data,
+                              outputFrame->linesize,
                               0,
-                              tempFrame->height,
+                              outputFrame->height,
                               dstData,
                               dstLinesize);
                     sws_freeContext(swsCtx);
@@ -454,7 +530,11 @@ int64_t VideoDecoder::loadCompressedFrame() {
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                     emit framesLoaded(false);
-                    av_frame_free(&tempFrame);
+                    if (outputFrame != tempFrame)
+                        av_frame_free(&outputFrame);
+                    // Update metadata pixel format to dstFormat
+                    metadata.setPixelFormat(dstFormat);
+                    setFormat(dstFormat);
                     if (!eof_reached)
                         av_packet_unref(tempPacket);
                     av_packet_free(&tempPacket);
