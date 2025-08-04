@@ -10,13 +10,15 @@ Popup {
     property int newHeight: 0
     property int firstWidth: 0
     property int firstHeight: 0
+    property real newFps: 0.0
+    property real firstFps: 0.0
 
     width: 500
-    height: 180
+    height: 220
     modal: true
     focus: true
-    x: (parent.width - width) / 2
-    y: (parent.height - height) / 2
+    x: (parent ? (parent.width - width) / 2 : 0)
+    y: (parent ? (parent.height - height) / 2 : 0)
     padding: 20
 
     background: Rectangle {
@@ -34,7 +36,24 @@ Popup {
             wrapMode: Text.WordWrap
             color: Theme.textColor
             font.pixelSize: Theme.fontSizeNormal
-            text: "Resolution Mismatch Warning:\n\nThe newly added video has a resolution of " + newWidth + "x" + newHeight + ", which is different from the first video's resolution of " + firstWidth + "x" + firstHeight + ".\n\nThis may lead to unexpected behavior."
+            text: {
+                let warningText = "Mismatch Warning:\n";
+                const resMismatch = (newWidth !== firstWidth || newHeight !== firstHeight);
+                const fpsMismatch = (firstFps !== newFps);
+
+                if (resMismatch) {
+                    warningText += "\n• The new video's resolution (" + newWidth + "x" + newHeight + ") "
+                                 + "differs from the first video's (" + firstWidth + "x" + firstHeight + ").";
+                }
+
+                if (fpsMismatch) {
+                    warningText += "\n• The new video's frame rate (" + newFps + " fps) "
+                                 + "differs from the first video's (" + firstFps + " fps).";
+                }
+
+                warningText += "\n\nThis may lead to unexpected behavior.";
+                return warningText;
+            }
         }
 
         RowLayout {

@@ -331,12 +331,44 @@ ApplicationWindow {
                                 const firstMeta = firstVideoWindow.getFrameMeta();
                                 const thisMeta = this.getFrameMeta();
 
-                                if (firstMeta && thisMeta && (firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight)) {
-                                    resolutionWarningDialog.firstWidth = firstMeta.yWidth;
-                                    resolutionWarningDialog.firstHeight = firstMeta.yHeight;
-                                    resolutionWarningDialog.newWidth = thisMeta.yWidth;
-                                    resolutionWarningDialog.newHeight = thisMeta.yHeight;
-                                    resolutionWarningDialog.open();
+                                if (firstMeta && thisMeta) {
+                                    const resMismatch = firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight;
+                                    let fpsMismatch = false;
+                                    let firstFps = 0;
+                                    let thisFps = 0;
+
+                                    {
+                                        const firstTimeBaseString = firstVideoWindow.timeBase;
+                                        const thisTimeBaseString = this.timeBase;
+                                        const thisParts = thisTimeBaseString.split('/');
+                                        const firstParts = firstTimeBaseString.split('/');
+                                        const firstNum = parseInt(firstParts[0], 10);
+                                        const firstDen = parseInt(firstParts[1], 10);
+                                        const thisNum = parseInt(thisParts[0], 10);
+                                        const thisDen = parseInt(thisParts[1], 10);
+
+                                        if (firstNum > 0) {
+                                            firstFps = (firstDen / firstNum).toFixed(2);
+                                        }
+                                        if (thisNum > 0) {
+                                            thisFps = (thisDen / thisNum).toFixed(2);
+                                        }
+                                    }
+
+                                    if (firstFps !== thisFps) {
+                                        fpsMismatch = true;
+                                    }
+
+                                    // Trigger popup if either resolution or FPS don't match
+                                    if (resMismatch || fpsMismatch) {
+                                        resolutionWarningDialog.firstWidth = firstMeta.yWidth;
+                                        resolutionWarningDialog.firstHeight = firstMeta.yHeight;
+                                        resolutionWarningDialog.newWidth = thisMeta.yWidth;
+                                        resolutionWarningDialog.newHeight = thisMeta.yHeight;
+                                        resolutionWarningDialog.firstFps = firstFps;
+                                        resolutionWarningDialog.newFps = thisFps;
+                                        resolutionWarningDialog.open();
+                                    }
                                 }
                             }
                             // Reset the flag after checking, to prevent re-triggering for this add operation.
