@@ -28,28 +28,18 @@ int main(int argc, char* argv[]) {
     qSetMessagePattern("");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription("Visual Inspection Tool");
+    parser.setApplicationDescription(
+        "Visual Inspection Tool\n\n"
+        "Can import up to two videos from the command line.\n"
+        "For YUV files, use the format: path/to/file.yuv:widthxheight:framerate:pixelformat\n"
+        "Example: myvideo.yuv:1920x1080:25:420P\n"
+        "For other formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
     parser.addHelpOption();
-    parser.addPositionalArgument("file", "File path");
-
-    int width = 1920;
-    int height = 1080;
-    double framerate = 25.0;
-    QString yuvFormat = "420P"; // Default to 420
+    parser.addPositionalArgument("files", "Video files to open. Up to 2 are supported.", "[file1] [file2]");
 
     QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
     parser.addOption(debugOption);
-
-    QCommandLineOption framerateOption({"f", "framerate"}, QLatin1String("Framerate"), QLatin1String("framerate"));
-    parser.addOption(framerateOption);
-
-    QCommandLineOption resolutionOption(
-        {"r", "resolution"}, QLatin1String("Video resolution"), QLatin1String("resolution"));
-    parser.addOption(resolutionOption);
-
-    QCommandLineOption yuvFormatOption({"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
-    parser.addOption(yuvFormatOption);
 
     QCommandLineOption queueSizeOption({"q", "queue-size"}, QLatin1String("Frame queue size"), QLatin1String("size"));
     parser.addOption(queueSizeOption);
@@ -65,29 +55,10 @@ int main(int argc, char* argv[]) {
         qSetMessagePattern("[%{type}] %{message}");
     }
 
-    if (parser.isSet(framerateOption)) {
-        framerate = parser.value(framerateOption).toDouble();
-    }
-
-    if (parser.isSet(resolutionOption)) {
-        bool ok1, ok2;
-        width = parser.value(resolutionOption).split("x")[0].toInt(&ok1);
-        height = parser.value(resolutionOption).split("x")[1].toInt(&ok2);
-        if (!ok1 || !ok2) {
-            qWarning() << "Invalid dimensions for video:" << parser.value(resolutionOption);
-            ErrorReporter::instance().report(
-                QString("Invalid dimensions for video: %1").arg(parser.value(resolutionOption)), LogLevel::Error);
-            return -1;
-        }
-    }
-
-    if (parser.isSet(yuvFormatOption)) {
-        yuvFormat = parser.value(yuvFormatOption);
-        if (yuvFormat != "420P" && yuvFormat != "422P" && yuvFormat != "444P") {
-            qWarning() << "Invalid YUV format:" << yuvFormat;
-            ErrorReporter::instance().report(QString("Invalid YUV format: %1").arg(yuvFormat), LogLevel::Error);
-            return -1;
-        }
+    if (args.size() > 2) {
+        qWarning() << "A maximum of 2 video files can be specified.";
+        ErrorReporter::instance().report("A maximum of 2 video files can be specified.", LogLevel::Error);
+        return -1;
     }
 
     // Parse queue size option
@@ -122,7 +93,6 @@ int main(int argc, char* argv[]) {
         videoLoader.setGlobalForceSoftwareDecoding(true);
     }
 
-    std::vector<VideoFileInfo> videoFiles;
     engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
     engine.rootContext()->setContextProperty("compareController", compareController.get());
     engine.rootContext()->setContextProperty("videoController", videoController.get());
@@ -134,45 +104,69 @@ int main(int argc, char* argv[]) {
     }
 
     if (!args.isEmpty()) {
-        QString filename = args.first();
-
-        if (filename.toLower().endsWith(".yuv")) {
-            bool hasAllFlags =
-                parser.isSet(framerateOption) && parser.isSet(resolutionOption) && parser.isSet(yuvFormatOption);
-
-            if (!hasAllFlags) {
-                qWarning() << "For .yuv files, all required flags must be specified";
-                ErrorReporter::instance().report("For .yuv files, all required flags must be specified",
-                                                 LogLevel::Error);
-                return -1;
-            }
-        }
-
-        qDebug() << "Parsed command-line options. File: " << filename
-                 << "Resolution: " << parser.value(resolutionOption) << "Framerate: " << parser.value(framerateOption);
-
-        if (!QFile::exists(filename)) {
-            qWarning() << "YUV file does not exist:" << filename;
-            ErrorReporter::instance().report(QString("YUV file does not exist: %1").arg(filename), LogLevel::Error);
-            return -1;
-        }
-
-        // Delay property update until after QML is loaded
         QObject* root = engine.rootObjects().first();
         bool forceSoftware = parser.isSet(softwareOption);
-        QMetaObject::invokeMethod(root,
-                                  "importVideoFromParams",
-                                  Qt::QueuedConnection,
-                                  Q_ARG(QVariant, filename),
-                                  Q_ARG(QVariant, width),
-                                  Q_ARG(QVariant, height),
-                                  Q_ARG(QVariant, framerate),
-                                  Q_ARG(QVariant, yuvFormat),
-                                  Q_ARG(QVariant, true),
-                                  Q_ARG(QVariant, forceSoftware));
-    }
 
-    qDebug() << "Number of video files to play:" << videoFiles.size();
+        for (const QString& arg : args) {
+            QStringList parts = arg.split(':');
+            QString filename = parts[0];
+
+            if (!QFile::exists(filename)) {
+                QString errorMsg = QString("File does not exist: %1").arg(filename);
+                qWarning() << errorMsg;
+                ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                return -1;
+            }
+
+            // Default values
+            int width = 0, height = 0;
+            double framerate = 0.0;
+            QString yuvFormat = "";
+            bool isYuv = false;
+
+            if (filename.toLower().endsWith(".yuv")) {
+                isYuv = true;
+                if (parts.size() != 4) {
+                    QString errorMsg =
+                        QString(
+                            "Invalid format for .yuv file. Expected path:resolution:framerate:yuv_format, but got %1")
+                            .arg(arg);
+                    qWarning() << errorMsg;
+                    ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                    return -1;
+                }
+
+                QStringList resParts = parts[1].split('x');
+                if (resParts.size() != 2) {
+                    return -1;
+                }
+
+                bool ok1, ok2, ok3;
+                width = resParts[0].toInt(&ok1);
+                height = resParts[1].toInt(&ok2);
+                framerate = parts[2].toDouble(&ok3);
+                yuvFormat = parts[3].toUpper();
+
+                if (!ok1 || !ok2 || !ok3 || width <= 0 || height <= 0 || framerate <= 0) {
+                    return -1;
+                }
+                if (yuvFormat != "420P" && yuvFormat != "422P" && yuvFormat != "444P") {
+                    return -1;
+                }
+            }
+
+            QMetaObject::invokeMethod(root,
+                                      "importVideoFromParams",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QVariant, filename),
+                                      Q_ARG(QVariant, width),
+                                      Q_ARG(QVariant, height),
+                                      Q_ARG(QVariant, framerate),
+                                      Q_ARG(QVariant, yuvFormat),
+                                      Q_ARG(QVariant, isYuv),
+                                      Q_ARG(QVariant, forceSoftware));
+        }
+    }
 
     return app.exec();
 }
