@@ -50,6 +50,13 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     // qDebug() << "Connected FrameController::ready to VideoController::onReady";
 
     connect(frameController.get(),
+            &FrameController::startOfVideo,
+            this,
+            &VideoController::onFCStartOfVideo,
+            Qt::AutoConnection);
+    // qDebug() << "Connected FrameController::startOfVideo to VideoController::onFCStartOfVideo";
+
+    connect(frameController.get(),
             &FrameController::endOfVideo,
             this,
             &VideoController::onFCEndOfVideo,
@@ -193,6 +200,19 @@ void VideoController::onReady(int index) {
     }
 }
 
+void VideoController::onFCStartOfVideo(int index) {
+    m_startCount++;
+
+    if (m_startCount == m_realCount) {
+        m_startCount = 0;
+        m_reachedEnd = false;
+        m_direction = 1;
+        m_uiDirection = 1;
+        pause();
+        emit directionChanged();
+    }
+}
+
 void VideoController::onFCEndOfVideo(bool end, int index) {
     // Handle end of video for specific FC
 
@@ -205,27 +225,15 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
     }
 
     if (m_endCount == m_realCount) {
-        // Note: it should actually be m_currentTimeMs == duration
-        // But for some reason currentTimeMs does not reach duration
-        qDebug() << "CurrentTimeMs" << m_currentTimeMs << "/ Duration" << m_duration;
-        if (m_currentTimeMs > 0) {
-            qDebug() << "All FrameControllers reached end of video, stopping playback";
+        qDebug() << "All FrameControllers reached end of video, stopping playback";
 
-            // Update UI
-            m_currentTimeMs = m_duration;
-            emit currentTimeMsChanged();
+        // Update UI
+        m_currentTimeMs = m_duration;
+        emit currentTimeMsChanged();
 
-            m_reachedEnd = true;
-            pause();
-            m_endCount = 0;
-        } else {
-            m_reachedEnd = false;
-            m_direction = 1;
-            m_uiDirection = 1;
-            pause();
-            emit directionChanged();
-            play();
-        }
+        m_reachedEnd = true;
+        pause();
+        m_endCount = 0;
     }
 }
 

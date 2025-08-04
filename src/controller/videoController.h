@@ -45,6 +45,7 @@ class VideoController : public QObject {
 
   public slots:
     void onReady(int index);
+    void onFCStartOfVideo(int index);
     void onFCEndOfVideo(bool end, int index);
     void onTick(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
     void onStep(std::vector<int64_t> pts, std::vector<bool> update, int64_t playingTimeMs);
@@ -91,6 +92,7 @@ class VideoController : public QObject {
     int m_readyCount = 0;
     bool m_ready = false;
 
+    int m_startCount = 0;
     int m_endCount = 0;
 
     int64_t m_duration = 0;

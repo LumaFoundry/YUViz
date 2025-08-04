@@ -132,7 +132,8 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     int64_t futurePts = pts + 1 * direction;
     if (futurePts < 0) {
         qWarning() << "Future PTS is negative, cannot upload frame";
-        emit endOfVideo(false, m_index);
+        emit startOfVideo(m_index);
+        m_endOfVideo = false;
         return;
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
