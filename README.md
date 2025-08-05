@@ -68,7 +68,10 @@ A lightweight video inspection tool for YUV format files.
 Flags:
 - `-r`: resolution, needed for YUV files
 - `-f`: framerate, default=25
+- `-y`: YUV format, 420P, 422P, 444P
 - `-d`: debug flag
+- `-q`: queueSize, default=50 frames
+- `-s`: force software decoding, default=false
 
 Note: `-d` flag could affect performance and behaviour
 

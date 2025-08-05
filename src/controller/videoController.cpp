@@ -50,11 +50,24 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     // qDebug() << "Connected FrameController::ready to VideoController::onReady";
 
     connect(frameController.get(),
+            &FrameController::startOfVideo,
+            this,
+            &VideoController::onFCStartOfVideo,
+            Qt::AutoConnection);
+    // qDebug() << "Connected FrameController::startOfVideo to VideoController::onFCStartOfVideo";
+
+    connect(frameController.get(),
             &FrameController::endOfVideo,
             this,
             &VideoController::onFCEndOfVideo,
             Qt::AutoConnection);
     // qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
+
+    connect(frameController.get(),
+            &FrameController::seekCompleted,
+            this,
+            &VideoController::onSeekCompleted,
+            Qt::AutoConnection);
 
     m_timeBases.push_back(frameController->getTimeBase());
 
@@ -187,39 +200,40 @@ void VideoController::onReady(int index) {
     }
 }
 
+void VideoController::onFCStartOfVideo(int index) {
+    m_startCount++;
+
+    if (m_startCount == m_realCount) {
+        m_startCount = 0;
+        m_reachedEnd = false;
+        m_direction = 1;
+        m_uiDirection = 1;
+        pause();
+        emit directionChanged();
+    }
+}
+
 void VideoController::onFCEndOfVideo(bool end, int index) {
     // Handle end of video for specific FC
 
     if (end) {
         qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
         m_endCount++;
+        qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
     } else {
         m_endCount = std::max(0, m_endCount - 1);
     }
-    qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
 
     if (m_endCount == m_realCount) {
-        // Note: it should actually be m_currentTimeMs == duration
-        // But for some reason currentTimeMs does not reach duration
-        qDebug() << "CurrentTimeMs" << m_currentTimeMs << "/ Duration" << m_duration;
-        if (m_currentTimeMs > 0) {
-            qDebug() << "All FrameControllers reached end of video, stopping playback";
+        qDebug() << "All FrameControllers reached end of video, stopping playback";
 
-            // Update UI
-            m_currentTimeMs = m_duration;
-            emit currentTimeMsChanged();
+        // Update UI
+        m_currentTimeMs = m_duration;
+        emit currentTimeMsChanged();
 
-            m_reachedEnd = true;
-            pause();
-            m_endCount = 0;
-        } else {
-            m_reachedEnd = false;
-            m_direction = 1;
-            m_uiDirection = 1;
-            pause();
-            emit directionChanged();
-            play();
-        }
+        m_reachedEnd = true;
+        pause();
+        m_endCount = 0;
     }
 }
 
@@ -227,6 +241,11 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
 void VideoController::play() {
 
     if (!m_ready) {
+        return;
+    }
+
+    // Don't start playback if seeking is in progress
+    if (m_isSeeking) {
         return;
     }
 
@@ -241,7 +260,11 @@ void VideoController::play() {
         m_reachedEnd = false;
         m_direction = 1;
         m_uiDirection = 1;
+        m_pendingPlay = true;
         emit directionChanged();
+
+        // Return early instead of immediately play
+        return;
     }
 
     m_isPlaying = true;
@@ -261,6 +284,12 @@ void VideoController::pause() {
 }
 
 void VideoController::stepForward() {
+
+    // Disable step forward if seeking is in progress
+    if (m_isSeeking) {
+        return;
+    }
+
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Step forward requested while playing, pausing first";
         pause();
@@ -279,6 +308,12 @@ void VideoController::stepForward() {
 }
 
 void VideoController::stepBackward() {
+
+    // Disable step backward if seeking is in progress
+    if (m_isSeeking) {
+        return;
+    }
+
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Step backward requested while playing, pausing first";
         pause();
@@ -307,11 +342,20 @@ void VideoController::togglePlayPause() {
 }
 
 void VideoController::seekTo(double timeMs) {
+
+    // Disable seek if seeking is in progress
+    if (m_isSeeking) {
+        return;
+    }
+
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Pausing playback";
         pause();
     }
+
+    m_isSeeking = true;
+    m_seekedCount = 0;
 
     m_reachedEnd = false;
 
@@ -367,7 +411,7 @@ void VideoController::toggleDirection() {
     if (m_uiDirection == 1) {
         m_uiDirection = -1;
         m_direction = -1;
-        // qDebug() << "VideoController: Toggled direction to backward";
+        qDebug() << "VideoController: Toggled direction to backward";
     } else {
         m_uiDirection = 1;
         m_direction = 1;
@@ -424,7 +468,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                 &CompareController::onRequestRender);
 
         // Defer the seek operation using QTimer
-        QTimer::singleShot(100, this, [this]() { seekTo(m_currentTimeMs); });
+        QTimer::singleShot(150, this, [this]() { seekTo(m_currentTimeMs); });
 
     } else {
 
@@ -456,5 +500,29 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
         m_compareController->setVideoIds(-1, -1);
         m_compareController->setMetadata(nullptr, nullptr, nullptr, nullptr);
+    }
+}
+
+void VideoController::onSeekCompleted(int index) {
+    m_seekedCount++;
+    qDebug() << "Seek completed for FC" << index << "(" << m_seekedCount << "/" << m_realCount << ")";
+
+    if (m_seekedCount >= m_realCount) {
+        // All FrameControllers have completed seeking
+        m_isSeeking = false;
+        qDebug() << "All seeks completed, playback can resume";
+
+        // Play if pending due to end of video
+        if (m_pendingPlay) {
+            m_pendingPlay = false;
+            m_isPlaying = true;
+            emit isPlayingChanged();
+
+            if (m_direction == 1) {
+                emit playForwardTimer();
+            } else {
+                emit playBackwardTimer();
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
+#include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
 
@@ -50,6 +51,13 @@ int main(int argc, char* argv[]) {
     QCommandLineOption yuvFormatOption({"y", "yuv-format"}, QLatin1String("YUV pixel format"), QLatin1String("format"));
     parser.addOption(yuvFormatOption);
 
+    QCommandLineOption queueSizeOption({"q", "queue-size"}, QLatin1String("Frame queue size"), QLatin1String("size"));
+    parser.addOption(queueSizeOption);
+
+    QCommandLineOption softwareOption({"s", "software"},
+                                      QLatin1String("Force software decoding (disable hardware acceleration)"));
+    parser.addOption(softwareOption);
+
     parser.process(app);
     const QStringList args = parser.positionalArguments();
 
@@ -82,6 +90,20 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Parse queue size option
+    if (parser.isSet(queueSizeOption)) {
+        bool ok;
+        int queueSize = parser.value(queueSizeOption).toInt(&ok);
+        if (!ok || queueSize <= 0) {
+            qWarning() << "Invalid queue size:" << parser.value(queueSizeOption);
+            ErrorReporter::instance().report(QString("Invalid queue size: %1").arg(parser.value(queueSizeOption)),
+                                             LogLevel::Error);
+            return -1;
+        }
+        AppConfig::instance().setQueueSize(queueSize);
+        qDebug() << "Setting frame queue size to:" << queueSize;
+    }
+
     QQmlApplicationEngine engine;
 
     SharedViewProperties sharedViewProperties;
@@ -94,6 +116,11 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<CompareController> compareController = std::make_shared<CompareController>(nullptr);
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr, compareController);
     VideoLoader videoLoader(&engine, nullptr, videoController, compareController, &sharedViewProperties);
+
+    // Apply global software decoding setting if -s flag is used
+    if (parser.isSet(softwareOption)) {
+        videoLoader.setGlobalForceSoftwareDecoding(true);
+    }
 
     std::vector<VideoFileInfo> videoFiles;
     engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
@@ -132,6 +159,7 @@ int main(int argc, char* argv[]) {
 
         // Delay property update until after QML is loaded
         QObject* root = engine.rootObjects().first();
+        bool forceSoftware = parser.isSet(softwareOption);
         QMetaObject::invokeMethod(root,
                                   "importVideoFromParams",
                                   Qt::QueuedConnection,
@@ -140,7 +168,8 @@ int main(int argc, char* argv[]) {
                                   Q_ARG(QVariant, height),
                                   Q_ARG(QVariant, framerate),
                                   Q_ARG(QVariant, yuvFormat),
-                                  Q_ARG(QVariant, true));
+                                  Q_ARG(QVariant, true),
+                                  Q_ARG(QVariant, forceSoftware));
     }
 
     qDebug() << "Number of video files to play:" << videoFiles.size();

@@ -55,8 +55,10 @@ class FrameController : public QObject {
     void requestDecode(int numFrames, int direction);
     void requestUpload(FrameData* frame, int index);
     void requestRender(int index);
+    void startOfVideo(int index);
     void endOfVideo(bool end, int index);
     void requestSeek(int64_t pts, int loadCount);
+    void seekCompleted(int index);
 
   private:
     // YUVReader to read frames from video file
@@ -85,4 +87,6 @@ class FrameController : public QObject {
     bool m_endOfVideo = false;
 
     int64_t m_seeking = -1;
+
+    bool m_decodeInProgress = false;
 };

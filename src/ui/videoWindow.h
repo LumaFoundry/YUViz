@@ -12,18 +12,18 @@
 class VideoWindow : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(qreal getAspectRatio READ getAspectRatio CONSTANT)
+    Q_PROPERTY(qreal getAspectRatio READ getAspectRatio NOTIFY metadataInitialized)
     Q_PROPERTY(qreal maxZoom READ maxZoom WRITE setMaxZoom NOTIFY maxZoomChanged)
     Q_PROPERTY(SharedViewProperties* sharedView READ sharedView WRITE setSharedView NOTIFY sharedViewChanged)
     Q_PROPERTY(int osdState READ osdState WRITE setOsdState NOTIFY osdStateChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY currentFrameChanged)
-    Q_PROPERTY(QString pixelFormat READ pixelFormat CONSTANT)
-    Q_PROPERTY(QString timeBase READ timeBase CONSTANT)
-    Q_PROPERTY(qint64 duration READ duration CONSTANT)
+    Q_PROPERTY(QString pixelFormat READ pixelFormat NOTIFY metadataInitialized)
+    Q_PROPERTY(QString timeBase READ timeBase NOTIFY metadataInitialized)
+    Q_PROPERTY(qint64 duration READ duration NOTIFY metadataInitialized)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
-    Q_PROPERTY(QString colorSpace READ colorSpace CONSTANT)
-    Q_PROPERTY(QString colorRange READ colorRange CONSTANT)
-    Q_PROPERTY(QString videoResolution READ videoResolution CONSTANT)
+    Q_PROPERTY(QString colorSpace READ colorSpace NOTIFY metadataInitialized)
+    Q_PROPERTY(QString colorRange READ colorRange NOTIFY metadataInitialized)
+    Q_PROPERTY(QString videoResolution READ videoResolution NOTIFY metadataInitialized)
     Q_PROPERTY(int componentDisplayMode READ componentDisplayMode WRITE setComponentDisplayMode NOTIFY
                    componentDisplayModeChanged)
 

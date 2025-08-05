@@ -1,6 +1,7 @@
 #include "frameController.h"
 #include <QDebug>
 #include <QThread>
+#include "utils/appConfig.h"
 
 FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index) :
     QObject(parent),
@@ -12,10 +13,11 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     m_Decoder->setDimensions(videoFileInfo.width, videoFileInfo.height);
     m_Decoder->setFramerate(videoFileInfo.framerate);
     m_Decoder->setFormat(videoFileInfo.pixelFormat);
+    m_Decoder->setForceSoftwareDecoding(videoFileInfo.forceSoftwareDecoding);
     m_Decoder->openFile();
 
     m_frameMeta = std::make_shared<FrameMeta>(m_Decoder->getMetaData());
-    m_frameQueue = std::make_shared<FrameQueue>(m_frameMeta);
+    m_frameQueue = std::make_shared<FrameQueue>(m_frameMeta, AppConfig::instance().getQueueSize());
 
     m_Decoder->setFrameQueue(m_frameQueue);
 
@@ -102,10 +104,7 @@ void FrameController::start() {
 void FrameController::onTimerTick(int64_t pts, int direction) {
     // qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
+    m_direction = direction;
 
     // Render target frame if inside frameQueue
     FrameData* target = m_frameQueue->getHeadFrame(pts);
@@ -129,26 +128,28 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     int64_t futurePts = pts + 1 * direction;
     if (futurePts < 0) {
         qWarning() << "Future PTS is negative, cannot upload frame";
-        emit endOfVideo(false, m_index);
+        emit startOfVideo(m_index);
+        m_endOfVideo = false;
         return;
     }
     FrameData* future = m_frameQueue->getHeadFrame(futurePts);
     if (future) {
+        qDebug() << "Request upload for frame with PTS" << (pts + 1 * direction);
         emit requestUpload(future, m_index);
-        // qDebug() << "Requested upload for frame with PTS" << (pts + 1 * direction);
+
     } else {
         qWarning() << "Cannot upload frame" << (pts + 1 * direction);
     }
 
-    if (!m_endOfVideo) {
+    if (!m_endOfVideo && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
-        // qDebug() << "Frames to fill in queue:" << framesToFill;
-
+        qDebug() << "FC::Request decode for" << framesToFill;
+        m_decodeInProgress = true;
         emit requestDecode(framesToFill, direction);
     }
 
-    qDebug() << "\n";
+    // qDebug() << "\n";
 }
 
 void FrameController::onTimerStep(int64_t pts, int direction) {
@@ -160,11 +161,6 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         emit endOfVideo(true, m_index);
         return;
     }
-
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
     m_stepping = pts;
 
@@ -183,7 +179,7 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         }
     }
 
-    qDebug() << "\n";
+    // qDebug() << "\n";
 
     m_direction = direction;
 }
@@ -196,10 +192,18 @@ void FrameController::onFrameDecoded(bool success) {
         ErrorReporter::instance().report("Decoding error occurred", LogLevel::Error);
     }
 
+    // Safe guard for stack calling decode
+    m_decodeInProgress = false;
+
     if (m_prefill) {
         // qDebug() << "Prefill completed for index" << m_index;
         // Assume first frame has pts 0 and upload to buffer
-        emit requestUpload(m_frameQueue->getHeadFrame(0), m_index);
+        FrameData* firstFrame = m_frameQueue->getHeadFrame(0);
+        if (firstFrame) {
+            emit requestUpload(firstFrame, m_index);
+        } else {
+            qDebug() << "FrameController::onFrameUploaded - No frame found for PTS 0 at index" << m_index;
+        }
     }
 }
 
@@ -260,14 +264,22 @@ void FrameController::onSeek(int64_t pts) {
 
     m_endOfVideo = false;
 
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
+    // Reset any pending decode
+    m_decodeInProgress = false;
 
-    emit requestSeek(pts, m_frameQueue->getSize() / 2);
+    if (frame && !m_frameQueue->isStale(pts)) {
+        qDebug() << "Frame " << pts << " found in queue, requesting upload";
+        emit requestUpload(frame, m_index);
 
-    // TODO: implement smart seek to check if frame is in frame Queue
+        int framesToFill = m_frameQueue->getEmpty(1);
+        qDebug() << "Requesting to fill " << framesToFill << " frames after seeking";
+        m_decodeInProgress = true;
+        emit requestDecode(framesToFill, 1);
+
+    } else {
+        qDebug() << "Frame " << pts << " not in queue, requesting seek";
+        emit requestSeek(pts, m_frameQueue->getSize() / 2);
+    }
 
     qDebug() << "\n";
 }
@@ -283,6 +295,10 @@ void FrameController::onFrameSeeked(int64_t pts) {
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(targetPts);
     if (!frameSeeked) {
         // qDebug() << "Frame is not seeked";
+        qDebug() << "FrameController::onFrameSeeked - No frame found for PTS" << targetPts << "at index" << m_index;
+        // Still emit endOfVideo signal to maintain state consistency
+        emit endOfVideo(m_endOfVideo, m_index);
+        return; // Don't proceed if frame is null
     } else if (frameSeeked->isEndFrame()) {
         // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
         m_endOfVideo = true;
@@ -292,6 +308,7 @@ void FrameController::onFrameSeeked(int64_t pts) {
 
     emit requestUpload(frameSeeked, m_index);
     emit endOfVideo(m_endOfVideo, m_index);
+    emit seekCompleted(m_index);
 }
 
 void FrameController::onRenderError() {

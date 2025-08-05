@@ -125,7 +125,7 @@ void VideoRenderer::setComponentDisplayMode(int mode) {
 }
 
 void VideoRenderer::uploadFrame(FrameData* frame) {
-    if (!frame) {
+    if (!frame || !frame->yPtr() || !frame->uPtr() || !frame->vPtr()) {
         qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
         emit rendererError();
         return;

@@ -46,6 +46,13 @@ void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
     m_frameQueue = frameQueue;
 }
 
+void VideoDecoder::setForceSoftwareDecoding(bool force) {
+    m_forceSoftwareDecoding = force;
+    if (force) {
+        qDebug() << "Software decoding enforced - hardware acceleration disabled";
+    }
+}
+
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
  */
@@ -89,12 +96,47 @@ void VideoDecoder::openFile() {
 
     AVStream* videoStream = formatContext->streams[videoStreamIndex];
 
-    // Find decoder for the video stream
-    const AVCodec* codec = avcodec_find_decoder(videoStream->codecpar->codec_id);
+    // Find decoder for the video stream, try hardware decoding if possible
+    const AVCodec* codec = nullptr;
+    AVCodecID codecId = videoStream->codecpar->codec_id;
+
+    // Find the standard decoder first
+    codec = avcodec_find_decoder(codecId);
     if (!codec) {
-        ErrorReporter::instance().report("Unsupported codec", LogLevel::Error);
-        closeFile();
+        qDebug() << "✗ No decoder found for codec:" << avcodec_get_name(codecId);
         return;
+    }
+
+    qDebug() << "Found decoder:" << codec->name << "for codec:" << avcodec_get_name(codecId);
+
+    // Try to enable hardware acceleration (only for compressed formats)
+    if (m_forceSoftwareDecoding) {
+        qDebug() << "Software decoding forced - skipping hardware acceleration";
+    } else if (isYUV(codecId)) {
+        qDebug() << "RAW/YUV format detected - hardware acceleration not applicable";
+    } else {
+        // Only try hardware acceleration for compressed formats
+#if defined(Q_OS_MACOS)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_VIDEOTOOLBOX, AV_PIX_FMT_VIDEOTOOLBOX)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: VideoToolbox for" << codec->name;
+        } else {
+            qDebug() << "VideoToolbox hardware acceleration not available, using software decoding";
+        }
+#elif defined(Q_OS_LINUX)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_VAAPI, AV_PIX_FMT_VAAPI)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: VAAPI for" << codec->name;
+        } else {
+            qDebug() << "VAAPI hardware acceleration not available, using software decoding";
+        }
+#elif defined(Q_OS_WIN)
+        if (initializeHardwareDecoder(AV_HWDEVICE_TYPE_D3D11VA, AV_PIX_FMT_D3D11)) {
+            qDebug() << "HARDWARE ACCELERATION ENABLED: D3D11VA for" << codec->name;
+        } else {
+            qDebug() << "D3D11VA hardware acceleration not available, using software decoding";
+        }
+#else
+        qDebug() << "No hardware acceleration available on this platform";
+#endif
     }
 
     // Allocate codec context
@@ -112,6 +154,11 @@ void VideoDecoder::openFile() {
         return;
     }
 
+    // Bind hardware device context if present
+    if (hw_device_ctx) {
+        codecContext->hw_device_ctx = av_buffer_ref(hw_device_ctx);
+    }
+
     if (!isYUV(codecContext->codec_id)) {
         m_width = codecContext->width;
         m_height = codecContext->height;
@@ -123,6 +170,23 @@ void VideoDecoder::openFile() {
         ErrorReporter::instance().report("Could not open codec", LogLevel::Error);
         closeFile();
         return;
+    }
+
+    // Print final decoder status based on actual codec and hardware context
+    bool isActuallyUsingHardware = (hw_device_ctx != nullptr) && (codecContext->hw_device_ctx != nullptr);
+
+    if (isYUV(codecId)) {
+        qDebug() << "FINAL STATUS: RAW format processing -" << codec->name << "(no decoding required)";
+    } else if (isActuallyUsingHardware) {
+#if defined(Q_OS_MACOS)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with VideoToolbox";
+#elif defined(Q_OS_LINUX)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with VAAPI";
+#elif defined(Q_OS_WIN)
+        qDebug() << "FINAL STATUS: Hardware decoding active -" << codec->name << "with D3D11VA";
+#endif
+    } else {
+        qDebug() << "FINAL STATUS: Software decoding active -" << codec->name;
     }
 
     AVRational timeBase;
@@ -168,7 +232,6 @@ void VideoDecoder::openFile() {
     }
 
     currentFrameIndex = 0;
-
     return;
 }
 
@@ -217,6 +280,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         currentFrameIndex -= num_frames + 1;
         if (currentFrameIndex < 0) {
             currentFrameIndex = 0;
+            direction = 1; // Change direction to forward if we hit the beginning
         }
         seekTo(currentFrameIndex);
         qDebug() << "VideoDecoder::seeking to " << currentFrameIndex;
@@ -226,31 +290,59 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
 
     localTail = currentFrameIndex;
 
+    qDebug() << "VideoDecoder::loadFrames called with num_frames: " << num_frames << ", direction: " << direction
+             << ", currentFrameIndex: " << currentFrameIndex;
+
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
         if (isRawYUV) {
             temp_pts = loadYUVFrame();
         } else {
             temp_pts = loadCompressedFrame();
-            qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
+            // qDebug() << "VideoDecoder::loadCompressedFrame returned pts: " << temp_pts;
         }
 
         // Check if we've reached EOF (indicated by -1 PTS)
         if (temp_pts == -1) {
-            qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
+            // qDebug() << "VideoDecoder: Reached EOF, marking last frame as end frame";
             if (currentFrameIndex > 0) {
-                FrameData* lastFrame = m_frameQueue->getTailFrame(currentFrameIndex - 1);
+                // For compressed video, check if we have a valid total frame count
+                int totalFrames = getTotalFrames();
+                int64_t lastFramePts = currentFrameIndex - 1;
+
+                // If we have a total frame count and we're near it, use that as the last frame
+                if (totalFrames > 0 && lastFramePts < totalFrames - 1) {
+                    lastFramePts = totalFrames - 1;
+                }
+
+                FrameData* lastFrame = m_frameQueue->getTailFrame(lastFramePts);
                 if (lastFrame) {
                     lastFrame->setEndFrame(true);
-                    qDebug() << "VideoDecoder: Marked frame " << (currentFrameIndex - 1) << " as end frame";
+                    // qDebug() << "VideoDecoder: Marked frame " << lastFramePts
+                    //          << " as end frame (total frames: " << totalFrames << ")";
                 }
             }
             break;
         }
 
+        // Also check if we're at the last frame for compressed videos
+        if (!isRawYUV) {
+            int totalFrames = getTotalFrames();
+            if (totalFrames > 0 && temp_pts >= totalFrames - 1) {
+                FrameData* endFrame = m_frameQueue->getTailFrame(temp_pts);
+                if (endFrame) {
+                    endFrame->setEndFrame(true);
+                    // qDebug() << "VideoDecoder: Marked frame " << temp_pts
+                    //          << " as end frame (reached total frames: " << totalFrames << ")";
+                }
+            }
+        }
+
         maxpts = std::max(maxpts, temp_pts);
         minpts = std::min(minpts, std::max(temp_pts, int64_t{0}));
     }
+
+    qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
 
     if (direction == 1) {
         m_frameQueue->updateTail(maxpts);
@@ -276,6 +368,12 @@ void VideoDecoder::closeFile() {
         formatContext = nullptr;
     }
 
+    if (hw_device_ctx) {
+        av_buffer_unref(&hw_device_ctx);
+        hw_device_ctx = nullptr;
+    }
+
+    hw_pix_fmt = AV_PIX_FMT_NONE;
     videoStreamIndex = -1;
     currentFrameIndex = 0;
 }
@@ -288,6 +386,20 @@ bool VideoDecoder::isYUV(AVCodecID codecId) {
     default:
         return false;
     }
+}
+
+bool VideoDecoder::initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt) {
+    if (av_hwdevice_ctx_create(&hw_device_ctx, deviceType, nullptr, nullptr, 0) < 0) {
+        const char* deviceName = av_hwdevice_get_type_name(deviceType);
+        ErrorReporter::instance().report(
+            QString("Failed to create %1 device").arg(deviceName ? deviceName : "unknown").toStdString(),
+            LogLevel::Warning);
+        return false;
+    }
+
+    hw_pix_fmt = pixFmt;
+    qDebug() << "Successfully initialized hardware decoder:" << av_hwdevice_get_type_name(deviceType);
+    return true;
 }
 
 int64_t VideoDecoder::loadYUVFrame() {
@@ -330,11 +442,17 @@ int64_t VideoDecoder::loadCompressedFrame() {
     }
 
     int ret;
-    int64_t pts = -1;
-    int totalFrames = getTotalFrames();
+    int64_t normalized_pts = -1;
+    bool eof_reached = false;
+    // Set the target pixel format for output
+    AVPixelFormat dstFormat = AV_PIX_FMT_YUV420P;
     // Read frames until we get a video frame
-    while ((ret = av_read_frame(formatContext, tempPacket)) >= 0) {
-        if (tempPacket->stream_index == videoStreamIndex) {
+    while ((ret = av_read_frame(formatContext, tempPacket)) >= 0 || !eof_reached) {
+        if (ret < 0) {
+            // EOF reached, send NULL packet to flush decoder
+            eof_reached = true;
+            ret = avcodec_send_packet(codecContext, nullptr);
+        } else if (tempPacket->stream_index == videoStreamIndex) {
             // Send packet to decoder
             ret = avcodec_send_packet(codecContext, tempPacket);
             if (ret < 0) {
@@ -342,42 +460,81 @@ int64_t VideoDecoder::loadCompressedFrame() {
                 av_packet_unref(tempPacket);
                 break;
             }
+        } else {
+            av_packet_unref(tempPacket);
+            continue;
+        }
 
+        // Try to receive a frame from the decoder
+        while (true) {
             // Allocate a temporary frame for decoding
             AVFrame* tempFrame = av_frame_alloc();
             if (!tempFrame) {
                 ErrorReporter::instance().report("Could not allocate temporary frame", LogLevel::Error);
-                av_packet_unref(tempPacket);
-                break;
+                if (!eof_reached)
+                    av_packet_unref(tempPacket);
+                av_packet_free(&tempPacket);
+                return -1;
             }
 
             ret = avcodec_receive_frame(codecContext, tempFrame);
-            pts = tempFrame->pts;
-
-            if (m_needsTimebaseConversion && pts != AV_NOPTS_VALUE) {
-                AVStream* videoStream = formatContext->streams[videoStreamIndex];
-                AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
-                pts = av_rescale_q(pts, videoStream->time_base, targetTimebase);
-            }
-
-            FrameData* frameData = m_frameQueue->getTailFrame(currentFrameIndex);
 
             if (ret == 0) {
+                int64_t raw_pts = tempFrame->pts;
+
+                // Normalize PTS to frame number
+                normalized_pts = raw_pts;
+                if (m_needsTimebaseConversion && raw_pts != AV_NOPTS_VALUE) {
+                    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+                    double frame_time = av_q2d(videoStream->time_base) * raw_pts;
+                    normalized_pts = llrint(frame_time * m_framerate);
+                }
+
+                if (m_ptsOffset == -1 && normalized_pts >= 0) {
+                    m_ptsOffset = normalized_pts;
+                }
+
+                normalized_pts -= m_ptsOffset;
+
+                FrameData* frameData = m_frameQueue->getTailFrame(normalized_pts);
+
                 int width = metadata.yWidth();
                 int height = metadata.yHeight();
 
-                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+                // Always use target format descriptor for output
+                const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(dstFormat);
                 int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
 
                 uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
                 int dstLinesize[4] = {width, uvWidth, uvWidth, 0};
 
-                SwsContext* swsCtx = sws_getContext(codecContext->width,
-                                                    codecContext->height,
-                                                    (AVPixelFormat)tempFrame->format,
+                // Hardware frame transfer if needed
+                AVFrame* outputFrame = nullptr;
+                if (hw_device_ctx && tempFrame->format == hw_pix_fmt) {
+                    outputFrame = av_frame_alloc();
+                    if (!outputFrame) {
+                        ErrorReporter::instance().report("Could not allocate output frame", LogLevel::Error);
+                        av_frame_free(&tempFrame);
+                        av_packet_unref(tempPacket);
+                        break;
+                    }
+                    if (av_hwframe_transfer_data(outputFrame, tempFrame, 0) < 0) {
+                        ErrorReporter::instance().report("Failed to transfer frame from GPU to CPU", LogLevel::Error);
+                        av_frame_free(&outputFrame);
+                        av_frame_free(&tempFrame);
+                        av_packet_unref(tempPacket);
+                        break;
+                    }
+                } else {
+                    outputFrame = tempFrame;
+                }
+
+                SwsContext* swsCtx = sws_getContext(outputFrame->width,
+                                                    outputFrame->height,
+                                                    (AVPixelFormat)outputFrame->format,
                                                     width,
                                                     height,
-                                                    codecContext->pix_fmt, // Use the same format as codec context
+                                                    dstFormat,
                                                     SWS_BILINEAR,
                                                     nullptr,
                                                     nullptr,
@@ -385,34 +542,59 @@ int64_t VideoDecoder::loadCompressedFrame() {
 
                 if (swsCtx) {
                     sws_scale(swsCtx,
-                              (const uint8_t* const*)tempFrame->data,
-                              tempFrame->linesize,
+                              (const uint8_t* const*)outputFrame->data,
+                              outputFrame->linesize,
                               0,
-                              tempFrame->height,
+                              outputFrame->height,
                               dstData,
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
-                    // Use currentFrameIndex for consistent frame numbering with timer
-                    frameData->setPts(currentFrameIndex);
+                    // Set pts to normalized pts
+                    frameData->setPts(normalized_pts);
                     frameData->setEndFrame(false);
-                    currentFrameIndex++;
+                    currentFrameIndex = normalized_pts;
+
+                    // qDebug() << "VideoDecoder::loadCompressedFrame loaded frame" << normalized_pts << "from raw PTS"
+                    //          << raw_pts << "at queue index" << normalized_pts;
+
+                    av_frame_free(&tempFrame);
+                    if (!eof_reached)
+                        av_packet_unref(tempPacket);
+                    av_packet_free(&tempPacket);
+                    return normalized_pts;
                 } else {
                     ErrorReporter::instance().report("Failed to create swsContext for YUV conversion", LogLevel::Error);
                     emit framesLoaded(false);
+                    if (outputFrame != tempFrame)
+                        av_frame_free(&outputFrame);
+                    // Update metadata pixel format to dstFormat
+                    metadata.setPixelFormat(dstFormat);
+                    setFormat(dstFormat);
+                    if (!eof_reached)
+                        av_packet_unref(tempPacket);
+                    av_packet_free(&tempPacket);
+                    return -1;
                 }
-
-                av_frame_free(&tempFrame);
-                av_packet_unref(tempPacket);
-                return currentFrameIndex - 1; // Return the frame number we just processed
-            } else if (ret != AVERROR(EAGAIN)) {
+            } else if (ret == AVERROR(EAGAIN)) {
+                // Need more input, break inner loop to read another packet
                 av_frame_free(&tempFrame);
                 break;
-            } else {
+            } else if (ret == AVERROR_EOF) {
+                // No more frames available
                 av_frame_free(&tempFrame);
+                av_packet_free(&tempPacket);
+                return -1;
+            } else {
+                // Other error
+                av_frame_free(&tempFrame);
+                break;
             }
         }
-        av_packet_unref(tempPacket);
+
+        if (!eof_reached) {
+            av_packet_unref(tempPacket);
+        }
     }
 
     if (ret < 0 && ret != AVERROR_EOF) {
@@ -503,9 +685,21 @@ int64_t VideoDecoder::getDurationMs() {
         return -1;
     }
 
+    // Stream Context
     AVStream* videoStream = formatContext->streams[videoStreamIndex];
     if (videoStream->duration != AV_NOPTS_VALUE) {
         return av_rescale_q(videoStream->duration, videoStream->time_base, AVRational{1, 1000});
+    }
+
+    // Format Context Fallback
+    if (formatContext->duration > 0) {
+        return av_rescale_q(formatContext->duration, AV_TIME_BASE_Q, AVRational{1, 1000});
+    }
+
+    // Estimation from framerate Fallback
+    if (videoStream->nb_frames > 0 && videoStream->avg_frame_rate.num > 0) {
+        double fps = av_q2d(videoStream->avg_frame_rate);
+        return static_cast<int64_t>((videoStream->nb_frames / fps) * 1000.0);
     }
 
     return -1;
@@ -522,14 +716,45 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         targetPts = 0;
     }
 
+    // Special handling for YUV files
+    if (isYUV(codecContext->codec_id)) {
+        // For YUV files, we need to seek directly to the byte position
+        if (targetPts >= yuvTotalFrames) {
+            targetPts = yuvTotalFrames - 1;
+        }
+
+        // Calculate frame size
+        const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+        int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
+        int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
+        int ySize = m_width * m_height;
+        int uvSize = uvWidth * uvHeight;
+        int frameSize = ySize + 2 * uvSize;
+
+        // Calculate byte position for target frame
+        int64_t bytePosition = targetPts * frameSize;
+
+        // Seek to the calculated position
+        int ret = avio_seek(formatContext->pb, bytePosition, SEEK_SET);
+        if (ret < 0) {
+            ErrorReporter::instance().report("Failed to seek in YUV file to frame: " + std::to_string(targetPts),
+                                             LogLevel::Error);
+            return;
+        }
+
+        // qDebug() << "Decoder::seekTo YUV file to frame" << targetPts << "at byte position" << bytePosition;
+        currentFrameIndex = targetPts;
+        return;
+    }
+
     int64_t seek_timestamp = targetPts;
     if (m_needsTimebaseConversion) {
         AVStream* videoStream = formatContext->streams[videoStreamIndex];
         double timestamp_seconds = targetPts / m_framerate;
         seek_timestamp = llrint(timestamp_seconds / av_q2d(videoStream->time_base));
 
-        qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
-                 << seek_timestamp;
+        // qDebug() << "Decoder::seekTo frame" << targetPts << "-> time" << timestamp_seconds << "s -> stream_ts"
+        //          << seek_timestamp;
     }
 
     int ret = av_seek_frame(formatContext, videoStreamIndex, seek_timestamp, AVSEEK_FLAG_BACKWARD);
@@ -541,11 +766,57 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 
     avcodec_flush_buffers(codecContext);
 
+    int64_t current_pts = -1;
+    while (current_pts < targetPts - 1) {
+        // Decode frames until we reach the exact target PTS
+        AVPacket* packet = av_packet_alloc();
+        AVFrame* frame = av_frame_alloc();
+        if (!packet || !frame) {
+            ErrorReporter::instance().report("Failed to allocate packet or frame for seeking", LogLevel::Error);
+            if (packet)
+                av_packet_free(&packet);
+            if (frame)
+                av_frame_free(&frame);
+            return;
+        }
+
+        int ret = av_read_frame(formatContext, packet);
+        if (ret < 0) {
+            qDebug() << "Decoder::seekTo reached EOF while seeking to frame" << targetPts;
+            break;
+        }
+
+        if (packet->stream_index == videoStreamIndex) {
+            ret = avcodec_send_packet(codecContext, packet);
+            if (ret < 0) {
+                qDebug() << "Decoder::seekTo failed to send packet to decoder";
+                av_packet_unref(packet);
+                continue;
+            }
+
+            ret = avcodec_receive_frame(codecContext, frame);
+            if (ret == 0) {
+                current_pts = frame->pts;
+                if (m_needsTimebaseConversion && current_pts != AV_NOPTS_VALUE) {
+                    AVStream* videoStream = formatContext->streams[videoStreamIndex];
+                    AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
+                    current_pts = av_rescale_q(current_pts, videoStream->time_base, targetTimebase);
+                }
+                // qDebug() << "Decoder::seekTo decoded frame with PTS:" << current_pts << "target:" << targetPts;
+            }
+        }
+        av_packet_unref(packet);
+        av_packet_free(&packet);
+        av_frame_free(&frame);
+    }
+
     currentFrameIndex = targetPts;
 }
 
 void VideoDecoder::seek(int64_t targetPts) {
-    seekTo(targetPts);
+    // Load past & future frames around the target PTS
+    int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 4, int64_t{0});
+    seekTo(startPts);
     qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
     loadFrames(m_frameQueue->getSize() / 2);
     qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;

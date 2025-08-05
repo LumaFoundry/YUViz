@@ -70,7 +70,7 @@ ApplicationWindow {
         mainWindow: mainWindow
         anchors.centerIn: parent
         onVideoImported: function (filePath, width, height, fps, format, add) {
-            importVideoFromParams(filePath, width, height, fps, format, add);
+            importVideoFromParams(filePath, width, height, fps, format, add, false);
         }
     }
 
@@ -639,7 +639,7 @@ ApplicationWindow {
         }
     }
 
-    function importVideoFromParams(filePath, width, height, fps, format, add) {
+    function importVideoFromParams(filePath, width, height, fps, format, add, forceSoftware) {
         importedFilePath = filePath;
         importedWidth = width;
         importedHeight = height;
@@ -648,7 +648,7 @@ ApplicationWindow {
         importedAdd = add;
 
         console.log("[importVideoFromParams] calling videoLoader");
-        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add);
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add, forceSoftware);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
     }

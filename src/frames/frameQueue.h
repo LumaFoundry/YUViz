@@ -11,7 +11,7 @@
 class FrameQueue {
   public:
     // Takes in FrameMeta to initialize the queue
-    FrameQueue(std::shared_ptr<FrameMeta> meta);
+    FrameQueue(std::shared_ptr<FrameMeta> meta, int queueSize = 50);
     ~FrameQueue();
 
     // Getter for metaData
@@ -27,13 +27,15 @@ class FrameQueue {
 
     void updateTail(int64_t pts);
 
-    const int getSize() const { return queueSize; }
+    const int getSize() const { return m_queueSize; }
 
     int getEmpty(int direction);
 
+    bool isStale(int64_t pts);
+
   private:
     // Size of the queue
-    const int queueSize = 50;
+    const int m_queueSize;
 
     // Points to current frame
     // access by using

@@ -59,6 +59,18 @@ void VideoWindow::uploadFrame(FrameData* frame) {
 
 void VideoWindow::renderFrame() {
     // qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
+
+    // Update frame info
+    if (m_renderer && m_frameMeta) {
+        FrameData* currentFrame = m_renderer->getCurrentFrame();
+        if (currentFrame) {
+            int64_t pts = currentFrame->pts();
+            AVRational timeBase = m_frameMeta->timeBase();
+            double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
+            updateFrameInfo(static_cast<int>(pts), currentTimeMs);
+        }
+    }
+
     update();
 }
 
