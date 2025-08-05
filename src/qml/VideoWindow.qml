@@ -63,8 +63,7 @@ VideoWindow {
             width: 0
             height: 40
             model: ["Don't remove this ComboBox"]
-            indicator: Canvas {
-            }
+            indicator: Canvas {}
         }
 
         Button {
@@ -138,8 +137,7 @@ VideoWindow {
                     }
                 }
 
-                MenuSeparator {
-                }
+                MenuSeparator {}
 
                 MenuItem {
                     contentItem: ComboBox {
@@ -156,8 +154,7 @@ VideoWindow {
                     }
                 }
 
-                MenuSeparator {
-                }
+                MenuSeparator {}
 
                 MenuItem {
                     text: "Close the Video"
@@ -501,29 +498,20 @@ VideoWindow {
             font.family: "monospace"
             font.pixelSize: 12
             text: {
+                var durationSec = Math.floor(videoWindow.duration / 1000);
+                var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
+                var durationMin = Math.floor(durationSec / 60);
+                var currentMin = Math.floor(currentSec / 60);
+                var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
+                var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
+
+                var osdStr = "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame;
                 if (videoWindow.osdState === 1) {
-                    // Basic info: duration and current frame / total frames
-                    var durationSec = Math.floor(videoWindow.duration / 1000);
-                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
-                    var durationMin = Math.floor(durationSec / 60);
-                    var currentMin = Math.floor(currentSec / 60);
-                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
-                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
-
-                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame;
+                    // Basic info: duration and current frame
+                    return osdStr;
                 } else if (videoWindow.osdState === 2) {
-                    // Detailed info: add pixel format, timebase/pts, aspect ratio
-                    var durationSec = Math.floor(videoWindow.duration / 1000);
-                    var currentSec = Math.floor(videoWindow.currentTimeMs / 1000);
-                    var durationMin = Math.floor(durationSec / 60);
-                    var currentMin = Math.floor(currentSec / 60);
-                    var durationStr = durationMin + ":" + (durationSec % 60).toString().padStart(2, '0');
-                    var currentStr = currentMin + ":" + (currentSec % 60).toString().padStart(2, '0');
-
-                    return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
-                        + "\n" + "Resolution: " + videoWindow.videoResolution + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
-                        + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Codec: " + videoWindow.codecName + "\n" + "Color Space: "
-                        + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
+                    // Detailed info: add resolution, timebase, aspect ratio, codec, color space, and range
+                    return osdStr + "\n" + "Resolution: " + videoWindow.videoResolution + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: " + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Codec: " + videoWindow.codecName + "\n" + "Color Space: " + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
                 }
                 return "";
             }
