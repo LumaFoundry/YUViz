@@ -34,6 +34,7 @@ void VideoLoader::loadVideo(
 
     AVPixelFormat yuvFormat = AV_PIX_FMT_NONE;
 
+    // Planar YUV formats
     if (pixelFormat == "420P") {
         yuvFormat = AV_PIX_FMT_YUV420P;
     } else if (pixelFormat == "422P") {
@@ -50,6 +51,12 @@ void VideoLoader::loadVideo(
         emit videoLoadFailed("Unsupported Video", userMessage);
 
         return;
+    }
+    // Packed YUV formats
+    else if (pixelFormat == "YUYV" || pixelFormat == "YUY2") {
+        yuvFormat = AV_PIX_FMT_YUYV422;
+    } else if (pixelFormat == "UYVY") {
+        yuvFormat = AV_PIX_FMT_UYVY422;
     }
 
     QObject* root = m_engine->rootObjects().first();
