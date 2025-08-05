@@ -164,7 +164,6 @@ int main(int argc, char* argv[]) {
                                       Q_ARG(QVariant, height),
                                       Q_ARG(QVariant, framerate),
                                       Q_ARG(QVariant, yuvFormat),
-                                      Q_ARG(QVariant, true), // always true for add operations
                                       Q_ARG(QVariant, forceSoftware));
         }
     }

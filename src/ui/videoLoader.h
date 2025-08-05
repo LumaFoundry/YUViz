@@ -24,7 +24,6 @@ class VideoLoader : public QObject {
                                int height,
                                double fps,
                                const QString& pixelFormat,
-                               bool add,
                                bool forceSoftware = false);
 
     Q_INVOKABLE void setupDiffWindow(int leftId, int rightId);

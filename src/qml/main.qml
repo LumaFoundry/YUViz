@@ -61,7 +61,6 @@ ApplicationWindow {
     property int importedHeight: 0
     property double importedFps: 0
     property string importedFormat: ""
-    property bool importedAdd: false
 
     property var diffPopupInstance: null
 
@@ -69,8 +68,8 @@ ApplicationWindow {
         id: importDialog
         mainWindow: mainWindow
         anchors.centerIn: parent
-        onVideoImported: function (filePath, width, height, fps, format, add) {
-            importVideoFromParams(filePath, width, height, fps, format, add, false);
+        onVideoImported: function (filePath, width, height, fps, format) {
+            importVideoFromParams(filePath, width, height, fps, format, false);
         }
     }
 
@@ -324,8 +323,8 @@ ApplicationWindow {
 
                     onMetadataInitialized: {
                         metadataReady = true;
-                        // Check if this window is the last one added and it was an 'add' operation
-                        if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
+                        // Check if this window is the last one added
+                        if (this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
                             if (mainWindow.videoCount > 1) {
                                 const firstVideoWindow = videoWindowContainer.children[0];
                                 const firstMeta = firstVideoWindow.getFrameMeta();
@@ -371,8 +370,6 @@ ApplicationWindow {
                                     }
                                 }
                             }
-                            // Reset the flag after checking, to prevent re-triggering for this add operation.
-                            mainWindow.importedAdd = false;
                         }
                     }
                 }
@@ -688,16 +685,15 @@ ApplicationWindow {
         }
     }
 
-    function importVideoFromParams(filePath, width, height, fps, format, add, forceSoftware) {
+    function importVideoFromParams(filePath, width, height, fps, format, forceSoftware) {
         importedFilePath = filePath;
         importedWidth = width;
         importedHeight = height;
         importedFps = fps;
         importedFormat = format;
-        importedAdd = add;
 
         console.log("[importVideoFromParams] calling videoLoader");
-        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add, forceSoftware);
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, forceSoftware);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
     }
