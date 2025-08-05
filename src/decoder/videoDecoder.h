@@ -85,4 +85,6 @@ class VideoDecoder : public QObject {
     bool m_wait = true;
 
     void seekTo(int64_t targetPts);
+    void seekToYUV(int64_t targetPts);
+    void seekToCompressed(int64_t targetPts);
 };
