@@ -716,37 +716,83 @@ void VideoDecoder::seekTo(int64_t targetPts) {
         targetPts = 0;
     }
 
-    // Special handling for YUV files
     if (isYUV(codecContext->codec_id)) {
-        // For YUV files, we need to seek directly to the byte position
-        if (targetPts >= yuvTotalFrames) {
-            targetPts = yuvTotalFrames - 1;
-        }
+        seekToYUV(targetPts);
+    } else {
+        seekToCompressed(targetPts);
+    }
+}
 
-        // Calculate frame size
-        const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
-        int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
-        int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
-        int ySize = m_width * m_height;
-        int uvSize = uvWidth * uvHeight;
-        int frameSize = ySize + 2 * uvSize;
+void VideoDecoder::seekToYUV(int64_t targetPts) {
+    // Special handling for YUV files
+    // Get file size for validation
+    QFileInfo info(QString::fromStdString(m_fileName));
+    int64_t fileSize = info.size();
 
-        // Calculate byte position for target frame
-        int64_t bytePosition = targetPts * frameSize;
+    // Calculate frame size
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
+    int uvWidth = AV_CEIL_RSHIFT(m_width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(m_height, pixDesc->log2_chroma_h);
+    int ySize = m_width * m_height;
+    int uvSize = uvWidth * uvHeight;
+    int frameSize = ySize + 2 * uvSize;
 
-        // Seek to the calculated position
-        int ret = avio_seek(formatContext->pb, bytePosition, SEEK_SET);
-        if (ret < 0) {
-            ErrorReporter::instance().report("Failed to seek in YUV file to frame: " + std::to_string(targetPts),
-                                             LogLevel::Error);
-            return;
-        }
+    // Recalculate total frames based on actual file size
+    int64_t actualTotalFrames = fileSize / frameSize;
+    if (actualTotalFrames != yuvTotalFrames) {
+        qDebug() << "Decoder:: YUV file size mismatch - calculated:" << yuvTotalFrames << "actual:" << actualTotalFrames
+                 << "fileSize:" << fileSize << "frameSize:" << frameSize;
+        yuvTotalFrames = actualTotalFrames;
+    }
 
-        // qDebug() << "Decoder::seekTo YUV file to frame" << targetPts << "at byte position" << bytePosition;
-        currentFrameIndex = targetPts;
+    // Calculate byte position for target frame
+    int64_t bytePosition = targetPts * frameSize;
+
+    // First, try to seek to the beginning to ensure we have a clean state
+    int ret = avio_seek(formatContext->pb, 0, SEEK_SET);
+    if (ret < 0) {
+        char errBuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+        ErrorReporter::instance().report("Failed to seek to beginning of YUV file (error: " + std::string(errBuf) + ")",
+                                         LogLevel::Error);
         return;
     }
 
+    // Now seek to the calculated position
+    ret = avio_seek(formatContext->pb, bytePosition, SEEK_SET);
+    if (ret < 0) {
+        // Try alternative seek method if direct seek fails
+        qDebug() << "Decoder:: Direct seek failed, trying alternative method";
+
+        // Try seeking from current position
+        int64_t currentPos = avio_tell(formatContext->pb);
+        if (currentPos >= 0) {
+            int64_t offset = bytePosition - currentPos;
+            if (offset > 0) {
+                ret = avio_seek(formatContext->pb, offset, SEEK_CUR);
+            } else if (offset < 0) {
+                ret = avio_seek(formatContext->pb, -offset, SEEK_CUR);
+            } else {
+                ret = 0; // Already at correct position
+            }
+        }
+
+        if (ret < 0) {
+            char errBuf[AV_ERROR_MAX_STRING_SIZE];
+            av_strerror(ret, errBuf, AV_ERROR_MAX_STRING_SIZE);
+            ErrorReporter::instance().report("Failed to seek in YUV file to frame: " + std::to_string(targetPts) +
+                                                 " (error: " + std::string(errBuf) + ")",
+                                             LogLevel::Error);
+            return;
+        }
+    }
+
+    currentFrameIndex = targetPts;
+    qDebug() << "Decoder:: Successfully seeked to frame" << targetPts;
+    return;
+}
+
+void VideoDecoder::seekToCompressed(int64_t targetPts) {
     int64_t seek_timestamp = targetPts;
     if (m_needsTimebaseConversion) {
         AVStream* videoStream = formatContext->streams[videoStreamIndex];
@@ -814,6 +860,17 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 }
 
 void VideoDecoder::seek(int64_t targetPts) {
+    qDebug() << "Decoder::seek called with targetPts:" << targetPts;
+
+    // For YUV files, check against total frames
+    if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
+        if (targetPts >= yuvTotalFrames) {
+            qDebug() << "Decoder::seek - Target PTS" << targetPts << "exceeds total frames" << yuvTotalFrames
+                     << ", adjusting to last frame";
+            targetPts = yuvTotalFrames - 1;
+        }
+    }
+
     // Load past & future frames around the target PTS
     int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 4, int64_t{0});
     seekTo(startPts);
