@@ -1,10 +1,10 @@
-name: CI
+name: CI - Build
 
 on:
   push:
-    branches: [ try-ci ]
+    branches: [ master, try-ci ]
   pull_request:
-    branches: [ try-ci ]
+    branches: [ master, try-ci ]
 
 jobs:
   linux:
@@ -18,24 +18,22 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y build-essential cmake ninja-build pkg-config
         sudo apt-get install -y libavcodec-dev libavutil-dev libswscale-dev libavformat-dev libavfilter-dev
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev
+        sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+        sudo apt-get install -y libfontconfig1-dev libfreetype6-dev
         
-    - name: Install Qt 6.9.1
-      uses: jurplel/install-qt-action@v4
-      with:
-        version: 6.9.1
-        arch: gcc_64
-        modules: qtbase qtdeclarative qtshadertools
-        
-    - name: Set up environment (Option A from README)
+    - name: Install Qt 6.9.1 (Pre-built)
       run: |
-        echo "${{ env.QT_DIR }}/bin" >> $GITHUB_PATH
-        echo "CMAKE_PREFIX_PATH=${{ env.QT_DIR }}" >> $GITHUB_ENV
+        # Install Qt using aqtinstall (much faster)
+        pip install aqtinstall
+        # Install Qt 6.9.1 with ShaderTools
+        python -m aqt install-qt linux desktop 6.9.1 linux_gcc_64 --modules qtshadertools --outputdir $HOME/Qt 
         
     - name: Configure with CMake
       run: |
         mkdir build
         cd build
-        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        $HOME/Qt/6.9.1/gcc_64/bin/qt-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
         
     - name: Build
       run: |
@@ -48,6 +46,8 @@ jobs:
         ls -la videoplayer
         file videoplayer
         ldd videoplayer || true
+        # Check if binary is executable
+        ./videoplayer --help || echo "Binary exists but may not be runnable in CI environment"
 
   windows:
     runs-on: windows-latest
@@ -61,6 +61,7 @@ jobs:
         msystem: MINGW64
         update: true
         install: >-
+          mingw-w64-x86_64-toolchain
           mingw-w64-x86_64-cmake
           mingw-w64-x86_64-ninja
           mingw-w64-x86_64-qt6-base
@@ -88,6 +89,8 @@ jobs:
         cd build
         ls -la videoplayer.exe
         file videoplayer.exe
+        # Check if binary is executable
+        ./videoplayer.exe --help || echo "Binary exists but may not be runnable in CI environment"
 
   macos:
     runs-on: macos-latest
@@ -114,6 +117,8 @@ jobs:
     - name: Verify binary
       run: |
         cd build
-        ls -la videoplayer
-        file videoplayer
-        otool -L videoplayer || true 
+        ls -la videoplayer.app/Contents/MacOS/videoplayer
+        file videoplayer.app/Contents/MacOS/videoplayer
+        otool -L videoplayer.app/Contents/MacOS/videoplayer || true
+        # Check if binary is executable
+        ./videoplayer.app/Contents/MacOS/videoplayer --help || echo "Binary exists but may not be runnable in CI environment" 

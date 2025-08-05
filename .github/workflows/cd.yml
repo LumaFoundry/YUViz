@@ -1,0 +1,756 @@
+name: CD - Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'try-ci'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-qt6-base
+          mingw-w64-x86_64-qt6-declarative
+          mingw-w64-x86_64-qt6-shadertools
+          mingw-w64-x86_64-ffmpeg
+          mingw-w64-x86_64-pkgconf
+          
+    - name: Configure with CMake
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        cd build
+        ninja
+        
+    - name: Collect dependencies and create package
+      shell: msys2 {0}
+      run: |
+        cd build
+        mkdir -p release-package
+        
+        # Copy main executable
+        cp videoplayer.exe release-package/
+        
+        # Debug: List available Qt tools
+        echo "Available Qt tools:"
+        find /mingw64 -name "*deployqt*" -type f 2>/dev/null || echo "No deployqt found"
+        find /mingw64 -name "qt-cmake*" -type f 2>/dev/null || echo "No qt-cmake found"
+        echo "Available DLLs in /mingw64/bin:"
+        ls -la /mingw64/bin/Qt6*.dll 2>/dev/null || echo "No Qt6 DLLs found"
+        
+        # Collect Qt and other dependency DLLs
+        # Find Qt installation path - use windeployqt6.exe directly
+        if [ -f "/mingw64/bin/windeployqt6.exe" ]; then
+          echo "Found windeployqt6.exe, using it for deployment"
+          # Run windeployqt with verbose output and ignore translation warnings
+          /mingw64/bin/windeployqt6.exe --qmldir .. --no-translations --no-compiler-runtime --dir release-package --verbose release-package/videoplayer.exe || {
+            echo "windeployqt failed, using manual DLL copying"
+            cp /mingw64/bin/Qt6*.dll release-package/ || true
+          }
+        else
+          echo "windeployqt6.exe not found, using manual DLL copying"
+          # Manual Qt DLL copying as fallback
+          cp /mingw64/bin/Qt6*.dll release-package/ || true
+        fi
+        
+        # Verify that essential Qt DLLs are present
+        echo "Verifying essential Qt DLLs..."
+        ls -la release-package/Qt6Core.dll release-package/Qt6Gui.dll release-package/Qt6Widgets.dll release-package/Qt6Quick.dll release-package/Qt6Qml.dll 2>/dev/null || {
+          echo "Essential Qt DLLs missing, copying manually..."
+          cp /mingw64/bin/Qt6Core.dll /mingw64/bin/Qt6Gui.dll /mingw64/bin/Qt6Widgets.dll /mingw64/bin/Qt6Quick.dll /mingw64/bin/Qt6Qml.dll /mingw64/bin/Qt6Network.dll /mingw64/bin/Qt6Concurrent.dll /mingw64/bin/Qt6ShaderTools.dll /mingw64/bin/Qt6OpenGL.dll /mingw64/bin/Qt6OpenGLWidgets.dll release-package/ 2>/dev/null || true
+        }
+        
+        # Manually copy potentially missing FFmpeg DLLs
+        echo "Copying FFmpeg libraries..."
+        # Copy all FFmpeg libraries
+        for lib in avcodec avformat avutil swscale swresample avfilter; do
+          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
+        done
+        
+        # Verify FFmpeg libraries
+        echo "Verifying FFmpeg libraries..."
+        ls -la release-package/avcodec*.dll release-package/avformat*.dll release-package/avutil*.dll 2>/dev/null || {
+          echo "Essential FFmpeg DLLs missing, copying manually..."
+          cp /mingw64/bin/avcodec*.dll /mingw64/bin/avformat*.dll /mingw64/bin/avutil*.dll /mingw64/bin/swscale*.dll /mingw64/bin/swresample*.dll /mingw64/bin/avfilter*.dll release-package/ 2>/dev/null || true
+        }
+        
+        # Copy MinGW runtime libraries
+        echo "Copying MinGW runtime libraries..."
+        find /mingw64/bin -name "libgcc_s_seh-1.dll" -exec cp {} release-package/ \; || true
+        find /mingw64/bin -name "libwinpthread-1.dll" -exec cp {} release-package/ \; || true
+        find /mingw64/bin -name "libstdc++-6.dll" -exec cp {} release-package/ \; || true
+        
+        # Copy additional required libraries
+        echo "Copying additional required libraries..."
+        for lib in libxml2 libiconv liblzma libbz2 libzstd libz; do
+          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
+        done
+        
+        # Copy specific libraries that might be missing
+        echo "Copying specific libraries..."
+        for lib in libxml2-2 libiconv-2 liblzma-5 libbz2-1 libzstd-1 zlib1; do
+          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
+        done
+        
+        # Copy additional system libraries that might be needed
+        echo "Copying additional system libraries..."
+        for lib in libwinpthread libgcc_s libstdc++; do
+          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
+        done
+        
+        # Copy OpenGL libraries
+        echo "Copying OpenGL libraries..."
+        find /mingw64/bin -name "libGL*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No OpenGL DLLs found"
+        find /mingw64/bin -name "libEGL*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No EGL DLLs found"
+        
+        # Copy additional Qt libraries that might be missing
+        echo "Copying additional Qt libraries..."
+        find /mingw64/bin -name "Qt6*.dll" -exec cp {} release-package/ \; || true
+        
+        # Copy Qt platform plugins
+        echo "Copying Qt platform plugins..."
+        mkdir -p release-package/platforms
+        find /mingw64 -name "qwindows.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qwindows.dll not found"
+        find /mingw64 -name "qminimal.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qminimal.dll not found"
+        find /mingw64 -name "qoffscreen.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qoffscreen.dll not found"
+        
+        # Copy Qt style plugins
+        echo "Copying Qt style plugins..."
+        mkdir -p release-package/styles
+        find /mingw64 -name "qwindowsvistastyle.dll" -exec cp {} release-package/styles/ \; 2>/dev/null || echo "qwindowsvistastyle.dll not found"
+        
+        # Copy Qt image format plugins
+        echo "Copying Qt image format plugins..."
+        mkdir -p release-package/imageformats
+        find /mingw64 -name "qjpeg.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qjpeg.dll not found"
+        find /mingw64 -name "qpng.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qpng.dll not found"
+        find /mingw64 -name "qgif.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qgif.dll not found"
+        
+        # Copy Qt multimedia plugins
+        echo "Copying Qt multimedia plugins..."
+        mkdir -p release-package/mediaservice
+        find /mingw64 -name "qwindowsmediaplayer.dll" -exec cp {} release-package/mediaservice/ \; 2>/dev/null || echo "qwindowsmediaplayer.dll not found"
+        find /mingw64 -name "qffmpegmediaplayer.dll" -exec cp {} release-package/mediaservice/ \; 2>/dev/null || echo "qffmpegmediaplayer.dll not found"
+        
+        # Copy Qt QML plugins
+        echo "Copying Qt QML plugins..."
+        mkdir -p release-package/qml
+        find /mingw64 -name "QtQml" -type d -exec cp -r {} release-package/qml/ \; 2>/dev/null || echo "QtQml directory not found"
+        find /mingw64 -name "QtQuick" -type d -exec cp -r {} release-package/qml/ \; 2>/dev/null || echo "QtQuick directory not found"
+        
+        # Copy Qt QML modules
+        echo "Copying Qt QML modules..."
+        mkdir -p release-package/qml/QtQml
+        mkdir -p release-package/qml/QtQuick
+        mkdir -p release-package/qml/QtQuick.2
+        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQml/ \; 2>/dev/null || echo "QtQml qmldir not found"
+        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQuick/ \; 2>/dev/null || echo "QtQuick qmldir not found"
+        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQuick.2/ \; 2>/dev/null || echo "QtQuick.2 qmldir not found"
+        
+        # Copy Qt audio plugins
+        echo "Copying Qt audio plugins..."
+        mkdir -p release-package/audio
+        find /mingw64 -name "qtaudio_*.dll" -exec cp {} release-package/audio/ \; 2>/dev/null || echo "qtaudio plugins not found"
+        
+        # Copy Qt video plugins
+        echo "Copying Qt video plugins..."
+        mkdir -p release-package/video
+        find /mingw64 -name "qtvideo_*.dll" -exec cp {} release-package/video/ \; 2>/dev/null || echo "qtvideo plugins not found"
+        
+        # Final verification
+        echo "Final verification of package contents..."
+        echo "Qt libraries:"
+        ls -la release-package/Qt6*.dll 2>/dev/null | wc -l || echo "0"
+        echo "FFmpeg libraries:"
+        ls -la release-package/av*.dll release-package/sw*.dll 2>/dev/null | wc -l || echo "0"
+        echo "Runtime libraries:"
+        ls -la release-package/lib*.dll 2>/dev/null | wc -l || echo "0"
+        echo "XML libraries:"
+        ls -la release-package/libxml*.dll 2>/dev/null | wc -l || echo "0"
+        echo "Iconv libraries:"
+        ls -la release-package/libiconv*.dll 2>/dev/null | wc -l || echo "0"
+        echo "Qt plugins:"
+        echo "  Platforms:"
+        ls -la release-package/platforms/ 2>/dev/null | wc -l || echo "0"
+        echo "  Styles:"
+        ls -la release-package/styles/ 2>/dev/null | wc -l || echo "0"
+        echo "  Image formats:"
+        ls -la release-package/imageformats/ 2>/dev/null | wc -l || echo "0"
+        echo "  Media services:"
+        ls -la release-package/mediaservice/ 2>/dev/null | wc -l || echo "0"
+        echo "Total files in package:"
+        ls -la release-package/ | wc -l || echo "0"
+        
+        # Test executable dependencies
+        echo "Testing executable dependencies..."
+        cd release-package
+        ldd videoplayer.exe 2>/dev/null || echo "ldd not available, checking with objdump"
+        objdump -p videoplayer.exe | grep "DLL Name" | head -10 || echo "objdump not available"
+        cd ..
+        
+        # Create README
+        cat > release-package/README.txt << 'EOF'
+        Qt6 VideoPlayer - Windows Release
+        
+        Usage Instructions:
+        1. Double-click videoplayer.exe to start the program
+        2. Ensure all DLL files are in the same directory as the executable
+        3. Supported video formats: MP4, AVI, MOV, MKV, etc.
+        
+        Troubleshooting:
+        - If you get "missing DLL" errors, ensure all files are extracted to the same folder
+        - Install Visual C++ Redistributable if needed: https://aka.ms/vs/17/release/vc_redist.x64.exe
+        - For libxml2-16.dll errors, ensure the file is in the same directory as videoplayer.exe
+        - For "Qt platform plugin" errors, ensure the platforms/ folder contains qwindows.dll
+        - For "Qt style plugin" errors, ensure the styles/ folder contains qwindowsvistastyle.dll
+        - If the app crashes immediately, try running videoplayer-debug.bat for more information
+        
+        System Requirements:
+        - Windows 10 or later
+        - x64 architecture
+        - Visual C++ Redistributable 2015-2022 (if not included)
+        EOF
+        
+        # Create debug batch file
+        cat > release-package/videoplayer-debug.bat << 'EOF'
+        @echo off
+        echo Starting videoplayer with debug information...
+        echo Current directory: %CD%
+        echo.
+        echo Checking for required files:
+        if exist "videoplayer.exe" echo [OK] videoplayer.exe found
+        if exist "Qt6Core.dll" echo [OK] Qt6Core.dll found
+        if exist "Qt6Gui.dll" echo [OK] Qt6Gui.dll found
+        if exist "Qt6Widgets.dll" echo [OK] Qt6Widgets.dll found
+        if exist "Qt6Quick.dll" echo [OK] Qt6Quick.dll found
+        if exist "Qt6Qml.dll" echo [OK] Qt6Qml.dll found
+        if exist "platforms\qwindows.dll" echo [OK] qwindows.dll found
+        echo.
+        echo Checking for optional files:
+        if exist "libxml2-2.dll" echo [OK] libxml2-2.dll found
+        if exist "libiconv-2.dll" echo [OK] libiconv-2.dll found
+        echo.
+        echo Checking for plugin directories:
+        if exist "platforms" echo [OK] platforms directory found
+        if exist "styles" echo [OK] styles directory found
+        if exist "imageformats" echo [OK] imageformats directory found
+        if exist "mediaservice" echo [OK] mediaservice directory found
+        if exist "qml" echo [OK] qml directory found
+        echo.
+        echo Listing files in current directory:
+        dir /b
+        echo.
+        echo Starting application with debug output...
+        set QT_DEBUG_PLUGINS=1
+        videoplayer.exe
+        echo.
+        echo Application exited with code: %ERRORLEVEL%
+        pause
+        EOF
+        
+        # Create a simple test batch file
+        cat > release-package/test-qt.bat << 'EOF'
+        @echo off
+        echo Testing Qt installation...
+        echo.
+        echo Checking Qt version:
+        if exist "Qt6Core.dll" (
+            echo Qt6Core.dll exists
+        ) else (
+            echo Qt6Core.dll missing
+        )
+        echo.
+        echo Checking platform plugins:
+        if exist "platforms\qwindows.dll" (
+            echo qwindows.dll exists
+        ) else (
+            echo qwindows.dll missing
+        )
+        echo.
+        echo Testing with Qt debug output:
+        set QT_DEBUG_PLUGINS=1
+        set QT_QPA_PLATFORM_PLUGIN_PATH=platforms
+        videoplayer.exe --help 2>&1
+        echo.
+        echo Test completed
+        pause
+        EOF
+        
+        # Create zip package using PowerShell (built into Windows)
+        powershell -Command "Compress-Archive -Path release-package\* -DestinationPath ..\videoplayer-windows.zip -Force"
+        
+    - name: Debug file existence
+      shell: msys2 {0}
+      run: |
+        echo "=== Checking file existence ==="
+        ls -la videoplayer-windows.zip || echo "File not found in current dir"
+        find . -name "videoplayer-windows.zip" -type f || echo "File not found anywhere"
+        
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: videoplayer-windows
+        path: videoplayer-windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies (Homebrew)
+      run: |
+        brew install cmake ninja pkg-config
+        brew install qt@6 ffmpeg
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        export Qt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DQt6_DIR=$Qt6_DIR
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Create macOS bundle and package
+      run: |
+        cd build
+        
+        # Ensure app bundle exists
+        if [ ! -d "videoplayer.app" ]; then
+          echo "Error: videoplayer.app not found"
+          ls -la
+          exit 1
+        fi
+        
+        # Use macdeployqt to handle dependencies
+        $(brew --prefix qt@6)/bin/macdeployqt videoplayer.app
+        
+        # Create DMG or ZIP package
+        mkdir -p release-package
+        cp -R videoplayer.app release-package/
+        
+        # Create README
+        cat > release-package/README.txt << 'EOF'
+        Qt6 VideoPlayer - macOS Release
+        
+        Installation Instructions:
+        1. Drag videoplayer.app to Applications folder
+        2. First run may require permission in "Security & Privacy" settings
+        3. Supported video formats: MP4, AVI, MOV, MKV, etc.
+        
+        System Requirements: macOS 10.15 or higher
+        EOF
+        
+        # Create zip package
+        zip -r ../videoplayer-macos.zip release-package/
+        
+    - name: Debug file existence
+      run: |
+        echo "=== Checking file existence ==="
+        ls -la videoplayer-macos.zip || echo "File not found in current dir"
+        find . -name "videoplayer-macos.zip" -type f || echo "File not found anywhere"
+        
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: videoplayer-macos
+        path: videoplayer-macos.zip
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build pkg-config
+        sudo apt-get install -y libavcodec-dev libavutil-dev libswscale-dev libavformat-dev libavfilter-dev
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev
+        sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+        sudo apt-get install -y libfontconfig1-dev libfreetype6-dev
+        sudo apt-get install -y libxcb1-dev libxcb-cursor0 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-xfixes0
+        
+    - name: Install Qt 6.9.1 (Pre-built)
+      run: |
+        # Install Qt using aqtinstall (much faster)
+        pip install aqtinstall
+        # Install Qt 6.9.1 with ShaderTools
+        python -m aqt install-qt linux desktop 6.9.1 linux_gcc_64 --modules qtshadertools --outputdir $HOME/Qt
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        $HOME/Qt/6.9.1/gcc_64/bin/qt-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Create Linux package
+      run: |
+        cd build
+        mkdir -p release-package
+        
+        # Copy main executable
+        cp videoplayer release-package/
+        
+        # Create launch script
+        cat > release-package/videoplayer.sh << 'EOF'
+        #!/bin/bash
+        # Get the directory where this script is located
+        DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+        
+        # Set LD_LIBRARY_PATH to include Qt libraries
+        export LD_LIBRARY_PATH="$DIR/lib:$LD_LIBRARY_PATH"
+        
+        # Set Qt plugin path
+        export QT_PLUGIN_PATH="$DIR/lib/qt6/plugins"
+        
+        # Set Qt QML path
+        export QML2_IMPORT_PATH="$DIR/lib/qt6/qml"
+        
+        # Launch the application
+        "$DIR/videoplayer" "$@"
+        EOF
+        chmod +x release-package/videoplayer.sh
+        
+        # Create debug script
+        cat > release-package/debug-linux.sh << 'EOF'
+        #!/bin/bash
+        echo "Qt6 VideoPlayer - Linux Debug Information"
+        echo "=========================================="
+        echo
+        echo "Current directory: $(pwd)"
+        echo
+        echo "Checking for required files:"
+        if [ -f "videoplayer" ]; then echo "[OK] videoplayer executable found"; else echo "[MISSING] videoplayer executable"; fi
+        if [ -d "lib" ]; then echo "[OK] lib directory found"; else echo "[MISSING] lib directory"; fi
+        if [ -d "lib/qt6" ]; then echo "[OK] lib/qt6 directory found"; else echo "[MISSING] lib/qt6 directory"; fi
+        if [ -d "lib/qt6/plugins" ]; then echo "[OK] lib/qt6/plugins directory found"; else echo "[MISSING] lib/qt6/plugins directory"; fi
+        if [ -d "lib/qt6/plugins/platforms" ]; then echo "[OK] platforms directory found"; else echo "[MISSING] platforms directory"; fi
+                 echo
+         echo "Qt libraries in lib/:"
+         ls -la lib/libQt6*.so* 2>/dev/null | wc -l || echo "0"
+         echo
+         echo "X11/XCB libraries in lib/:"
+         ls -la lib/libxcb*.so* lib/libX11*.so* 2>/dev/null | wc -l || echo "0"
+         echo
+         echo "Platform plugins:"
+         ls -la lib/qt6/plugins/platforms/ 2>/dev/null || echo "No platform plugins found"
+        echo
+        echo "Setting up environment and testing..."
+        export LD_LIBRARY_PATH="$(pwd)/lib:$LD_LIBRARY_PATH"
+        export QT_PLUGIN_PATH="$(pwd)/lib/qt6/plugins"
+        export QML2_IMPORT_PATH="$(pwd)/lib/qt6/qml"
+        export QT_DEBUG_PLUGINS=1
+        echo "Environment variables set:"
+        echo "  LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        echo "  QT_PLUGIN_PATH: $QT_PLUGIN_PATH"
+        echo "  QML2_IMPORT_PATH: $QML2_IMPORT_PATH"
+        echo
+        echo "Testing application..."
+        echo "Running with strace to see system calls..."
+        strace -o /tmp/videoplayer.strace ./videoplayer --help 2>&1
+        echo "strace output saved to /tmp/videoplayer.strace"
+        echo
+        echo "Checking for core dumps..."
+        ls -la /tmp/core* 2>/dev/null || echo "No core dumps found"
+        echo
+        echo "Testing with gdb for more detailed crash info..."
+        gdb -batch -ex "run --help" -ex "bt" ./videoplayer 2>&1 || echo "gdb not available"
+        
+        echo "Testing with valgrind for memory issues..."
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./videoplayer --help 2>&1 | head -50 || echo "valgrind not available"
+        echo
+        echo "Debug completed"
+        EOF
+        chmod +x release-package/debug-linux.sh
+        
+        # Create simple test script
+        cat > release-package/test-simple.sh << 'EOF'
+        #!/bin/bash
+        echo "Simple test for videoplayer..."
+        export LD_LIBRARY_PATH="$(pwd)/lib:$LD_LIBRARY_PATH"
+        export QT_PLUGIN_PATH="$(pwd)/lib/qt6/plugins"
+        export QML2_IMPORT_PATH="$(pwd)/lib/qt6/qml"
+        
+        echo "Testing basic startup..."
+        timeout 5s ./videoplayer --version 2>&1 || echo "Application crashed or timed out"
+        echo "Test completed"
+        EOF
+        chmod +x release-package/test-simple.sh
+        
+        # Create library check script
+        cat > release-package/check-libs.sh << 'EOF'
+        #!/bin/bash
+        echo "Checking for missing libraries..."
+        ldd ./videoplayer | grep "not found" || echo "All libraries found"
+        echo
+        echo "Checking Qt library versions..."
+        for lib in lib/libQt6*.so*; do
+          if [ -f "$lib" ]; then
+            echo "$lib: $(readelf -d "$lib" | grep SONAME || echo "No SONAME")"
+          fi
+        done
+        EOF
+        chmod +x release-package/check-libs.sh
+        
+        # Copy Qt libraries and dependencies
+        mkdir -p release-package/lib
+        
+        # Use linuxdeploy to collect dependencies
+        wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        chmod +x linuxdeploy-x86_64.AppImage
+        
+        # Create a temporary AppDir and extract libraries
+        mkdir -p AppDir/usr/bin
+        cp videoplayer AppDir/usr/bin/
+        
+        # Run linuxdeploy to collect dependencies
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --executable AppDir/usr/bin/videoplayer || true
+        
+        # Copy collected libraries to our package
+        if [ -d "AppDir/usr/lib" ]; then
+          cp -r AppDir/usr/lib/* release-package/lib/ || true
+        fi
+        
+        # Manually copy Qt libraries
+        cp -r $HOME/Qt/6.9.1/gcc_64/lib/libQt6*.so* release-package/lib/ || true
+        
+        # Copy Qt plugins
+        echo "Copying Qt plugins..."
+        mkdir -p release-package/lib/qt6/plugins
+        
+        # Copy platform plugins
+        mkdir -p release-package/lib/qt6/plugins/platforms
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/platforms/libqxcb.so release-package/lib/qt6/plugins/platforms/ || echo "libqxcb.so not found"
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/platforms/libqwayland.so release-package/lib/qt6/plugins/platforms/ || echo "libqwayland.so not found"
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/platforms/libqminimal.so release-package/lib/qt6/plugins/platforms/ || echo "libqminimal.so not found"
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/platforms/libqoffscreen.so release-package/lib/qt6/plugins/platforms/ || echo "libqoffscreen.so not found"
+        
+        # Copy image format plugins
+        mkdir -p release-package/lib/qt6/plugins/imageformats
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/imageformats/libqjpeg.so release-package/lib/qt6/plugins/imageformats/ || echo "libqjpeg.so not found"
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/imageformats/libqpng.so release-package/lib/qt6/plugins/imageformats/ || echo "libqpng.so not found"
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/imageformats/libqgif.so release-package/lib/qt6/plugins/imageformats/ || echo "libqgif.so not found"
+        
+        # Copy style plugins
+        mkdir -p release-package/lib/qt6/plugins/styles
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/styles/libqgtk3.so release-package/lib/qt6/plugins/styles/ || echo "libqgtk3.so not found"
+        
+        # Copy multimedia plugins
+        mkdir -p release-package/lib/qt6/plugins/mediaservice
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/mediaservice/libqgst*.so release-package/lib/qt6/plugins/mediaservice/ 2>/dev/null || echo "GStreamer plugins not found"
+        
+        # Copy audio plugins
+        mkdir -p release-package/lib/qt6/plugins/audio
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/audio/libqtaudio_*.so release-package/lib/qt6/plugins/audio/ 2>/dev/null || echo "Audio plugins not found"
+        
+        # Copy video plugins
+        mkdir -p release-package/lib/qt6/plugins/video
+        cp $HOME/Qt/6.9.1/gcc_64/plugins/video/libqtvideo_*.so release-package/lib/qt6/plugins/video/ 2>/dev/null || echo "Video plugins not found"
+        
+                 # Copy QML modules
+         mkdir -p release-package/lib/qt6/qml
+         cp -r $HOME/Qt/6.9.1/gcc_64/qml/QtQml release-package/lib/qt6/qml/ || echo "QtQml not found"
+         cp -r $HOME/Qt/6.9.1/gcc_64/qml/QtQuick release-package/lib/qt6/qml/ || echo "QtQuick not found"
+         cp -r $HOME/Qt/6.9.1/gcc_64/qml/QtQuick.2 release-package/lib/qt6/qml/ || echo "QtQuick.2 not found"
+         
+                 # Copy additional Qt libraries that might be missing
+        echo "Copying additional Qt libraries..."
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6DBus.so* release-package/lib/ || echo "libQt6DBus not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6Svg.so* release-package/lib/ || echo "libQt6Svg not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6SvgWidgets.so* release-package/lib/ || echo "libQt6SvgWidgets not found"
+        
+        # Copy more essential Qt libraries
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6OpenGL.so* release-package/lib/ || echo "libQt6OpenGL not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6OpenGLWidgets.so* release-package/lib/ || echo "libQt6OpenGLWidgets not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6Multimedia.so* release-package/lib/ || echo "libQt6Multimedia not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6MultimediaWidgets.so* release-package/lib/ || echo "libQt6MultimediaWidgets not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6MultimediaCore.so* release-package/lib/ || echo "libQt6MultimediaCore not found"
+        cp $HOME/Qt/6.9.1/gcc_64/lib/libQt6MultimediaQuick.so* release-package/lib/ || echo "libQt6MultimediaQuick not found"
+        
+                 # Copy FFmpeg libraries
+         cp /usr/lib/x86_64-linux-gnu/libav*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libsw*.so* release-package/lib/ || true
+         
+         # Copy X11/XCB libraries
+         echo "Copying X11/XCB libraries..."
+         cp /usr/lib/x86_64-linux-gnu/libxcb*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libX11*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXext*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXrender*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXrandr*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXfixes*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXcursor*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXinerama*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXi*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libXxf86vm*.so* release-package/lib/ || true
+         
+         # Copy OpenGL and graphics libraries
+         cp /usr/lib/x86_64-linux-gnu/libGL*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libEGL*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libGLESv2*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libGLU*.so* release-package/lib/ || true
+         cp /usr/lib/x86_64-linux-gnu/libdrm*.so* release-package/lib/ || true
+        
+        # Create README
+        cat > release-package/README.txt << 'EOF'
+        Qt6 VideoPlayer - Linux Release
+        
+        Installation Instructions:
+        1. Extract the zip file to any directory
+        2. Run: ./videoplayer.sh
+        3. Or make videoplayer executable and run directly: ./videoplayer
+        4. Supported video formats: MP4, AVI, MOV, MKV, etc.
+        
+        Troubleshooting:
+        - If you get "Qt platform plugin" errors, ensure you're running ./videoplayer.sh (not ./videoplayer directly)
+        - For missing library errors, install: sudo apt-get install libavcodec58 libavformat58 libavutil56 libswscale5
+        - For X11/display issues, ensure X11 is running or use Wayland
+        - For Wayland issues, try: export QT_QPA_PLATFORM=xcb
+        - For "libxcb-cursor.so.0" errors, install: sudo apt-get install libxcb-cursor0
+        - For other X11 library errors, install: sudo apt-get install libxcb1 libxcb-keysyms1 libxcb-randr0 libxcb-shape0 libxcb-xfixes0
+        
+        System Requirements: 
+        - Linux x86_64 (Ubuntu 20.04+ or equivalent)
+        - glibc 2.27+
+        - X11 or Wayland display server
+        - X11 libraries (libxcb-cursor0, libxcb1, etc.)
+        
+        Note: The videoplayer.sh script sets up the correct environment variables for Qt plugins.
+        EOF
+        
+        # Create zip package
+        zip -r ../videoplayer-linux.zip release-package/
+        
+    - name: Debug file existence
+      run: |
+        echo "=== Checking file existence ==="
+        ls -la videoplayer-linux.zip || echo "File not found in current dir"
+        find . -name "videoplayer-linux.zip" -type f || echo "File not found anywhere"
+        
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: videoplayer-linux
+        path: videoplayer-linux.zip
+
+  create-release:
+    needs: [build-windows, build-macos, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Get commit info
+      id: commit
+      run: |
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        echo "commit_date=$(git log -1 --format=%cd --date=format:'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+        
+        # Determine release tag name
+        if [[ "${{ github.ref_name }}" == v* ]]; then
+          # If triggered by a version tag, use it
+          echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        else
+          # If triggered by branch, create a timestamp-based tag
+          echo "release_tag=build-${{ steps.commit.outputs.commit_date }}-${{ steps.commit.outputs.sha_short }}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+        
+    - name: Debug artifacts structure
+      run: |
+        echo "=== Artifacts directory structure ==="
+        find artifacts -type f -name "*.zip" | head -20
+        echo "=== All files in artifacts ==="
+        find artifacts -type f | head -20
+        echo "=== Directory listing ==="
+        ls -la artifacts/
+        if [ -d "artifacts/videoplayer-windows" ]; then
+          echo "=== Windows artifacts ==="
+          ls -la artifacts/videoplayer-windows/
+        fi
+        if [ -d "artifacts/videoplayer-macos" ]; then
+          echo "=== macOS artifacts ==="
+          ls -la artifacts/videoplayer-macos/
+        fi
+        if [ -d "artifacts/videoplayer-linux" ]; then
+          echo "=== Linux artifacts ==="
+          ls -la artifacts/videoplayer-linux/
+        fi
+        
+    - name: Check files before release
+      run: |
+        echo "=== Checking if release files exist ==="
+        for file in artifacts/videoplayer-windows/videoplayer-windows.zip artifacts/videoplayer-macos/videoplayer-macos.zip artifacts/videoplayer-linux/videoplayer-linux.zip; do
+          if [ -f "$file" ]; then
+            echo "✅ $file exists ($(ls -lh "$file" | awk '{print $5}'))"
+          else
+            echo "❌ $file does not exist"
+          fi
+        done
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.commit.outputs.release_tag }}
+        name: Qt6 VideoPlayer ${{ steps.commit.outputs.release_tag }}
+        body: |
+          Automated build from commit ${{ github.sha }}
+          
+          **Download links:**
+          - Windows: videoplayer-windows.zip
+          - macOS: videoplayer-macos.zip
+          - Linux: videoplayer-linux.zip
+          
+          **Changes:**
+          ${{ github.event.head_commit.message }}
+        draft: false
+        prerelease: false
+        files: |
+          artifacts/videoplayer-windows/videoplayer-windows.zip
+          artifacts/videoplayer-macos/videoplayer-macos.zip
+          artifacts/videoplayer-linux/videoplayer-linux.zip
