@@ -1,0 +1,124 @@
+name: CI - Build
+
+on:
+  push:
+    branches: [ master, try-ci ]
+  pull_request:
+    branches: [ master, try-ci ]
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake ninja-build pkg-config
+        sudo apt-get install -y libavcodec-dev libavutil-dev libswscale-dev libavformat-dev libavfilter-dev
+        sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev libegl1-mesa-dev
+        sudo apt-get install -y libxkbcommon-dev libxkbcommon-x11-dev
+        sudo apt-get install -y libfontconfig1-dev libfreetype6-dev
+        
+    - name: Install Qt 6.9.1 (Pre-built)
+      run: |
+        # Install Qt using aqtinstall (much faster)
+        pip install aqtinstall
+        # Install Qt 6.9.1 with ShaderTools
+        python -m aqt install-qt linux desktop 6.9.1 linux_gcc_64 --modules qtshadertools --outputdir $HOME/Qt 
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        $HOME/Qt/6.9.1/gcc_64/bin/qt-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      run: |
+        cd build
+        ls -la videoplayer
+        file videoplayer
+        ldd videoplayer || true
+        # Check if binary is executable
+        ./videoplayer --help || echo "Binary exists but may not be runnable in CI environment"
+
+  windows:
+    runs-on: windows-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup MSYS2
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: true
+        install: >-
+          mingw-w64-x86_64-toolchain
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-ninja
+          mingw-w64-x86_64-qt6-base
+          mingw-w64-x86_64-qt6-declarative
+          mingw-w64-x86_64-qt6-shadertools
+          mingw-w64-x86_64-ffmpeg
+          mingw-w64-x86_64-pkgconf
+          
+    - name: Configure with CMake
+      shell: msys2 {0}
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      shell: msys2 {0}
+      run: |
+        cd build
+        ls -la videoplayer.exe
+        file videoplayer.exe
+        # Check if binary is executable
+        ./videoplayer.exe --help || echo "Binary exists but may not be runnable in CI environment"
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies (Homebrew)
+      run: |
+        brew install cmake ninja pkg-config
+        brew install qt@6 ffmpeg
+        
+    - name: Configure with CMake
+      run: |
+        mkdir build
+        cd build
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        
+    - name: Build
+      run: |
+        cd build
+        ninja
+        
+    - name: Verify binary
+      run: |
+        cd build
+        ls -la videoplayer.app/Contents/MacOS/videoplayer
+        file videoplayer.app/Contents/MacOS/videoplayer
+        otool -L videoplayer.app/Contents/MacOS/videoplayer || true
+        # Check if binary is executable
+        ./videoplayer.app/Contents/MacOS/videoplayer --help || echo "Binary exists but may not be runnable in CI environment" 

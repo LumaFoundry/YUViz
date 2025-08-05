@@ -1,5 +1,9 @@
 # A YUV Inspection Tool based on Qt6
 
+![Build](https://github.com/LokiW-03/qt6-videoplayer/workflows/CI%20-%20Build/badge.svg)
+![CD](https://github.com/LokiW-03/qt6-videoplayer/actions/workflows/cd.yml/badge.svg)
+[![Latest Artifacts](https://img.shields.io/badge/Download-Latest%20Build-blue?style=flat-square&logo=github)](https://github.com/LokiW-03/qt6-videoplayer/actions/workflows/cd.yml)
+
 ## Description
 A lightweight video inspection tool for YUV format files.
 
