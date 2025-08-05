@@ -248,6 +248,7 @@ void FrameController::onFrameRendered() {
     if (m_seeking != -1) {
         // qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
+        emit seekCompleted(m_index);
     }
 
     if (m_stepping != -1) {
@@ -308,7 +309,6 @@ void FrameController::onFrameSeeked(int64_t pts) {
 
     emit requestUpload(frameSeeked, m_index);
     emit endOfVideo(m_endOfVideo, m_index);
-    emit seekCompleted(m_index);
 }
 
 void FrameController::onRenderError() {
