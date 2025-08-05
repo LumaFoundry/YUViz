@@ -28,13 +28,17 @@ int main(int argc, char* argv[]) {
     qSetMessagePattern("");
 
     QCommandLineParser parser;
-    parser.setApplicationDescription(
-        "Visual Inspection Tool\n\n"
-        "Can import up to two videos from the command line.\n"
-        "For YUV files, use the format: path/to/file.yuv:widthxheight:framerate:pixelformat\n"
-        "    (Supported pixel formats: 420P, 422P, 444P)\n"
-        "Example: myvideo.yuv:1920x1080:25:420P\n"
-        "For other formats (e.g., mp4), just provide the path.");
+    parser.setApplicationDescription("Visual Inspection Tool\n\n"
+                                     "Imports up to two videos from the command line.\n"
+                                     "For YUV files, specify parameters separated by colons. Resolution is mandatory.\n"
+                                     "Format: path/to/file.yuv:resolution[:framerate][:pixelformat]\n"
+                                     "  - Resolution (mandatory): widthxheight (e.g., 1920x1080)\n"
+                                     "  - Framerate (optional): A number (e.g., 25). Default: 25.\n"
+                                     "  - Pixel Format (optional): 420P, 422P, or 444P. Default: 420P.\n"
+                                     "Parameters can be in any order.\n"
+                                     "Example: myvideo.yuv:1920x1080:25:444P\n"
+                                     "Example: myvideo.yuv:420P:1280x720\n"
+                                     "For other formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("files", "Video files to open. Up to 2 are supported.", "[file1] [file2]");
@@ -123,35 +127,100 @@ int main(int argc, char* argv[]) {
             int width = 0, height = 0;
             double framerate = 0.0;
             QString yuvFormat = "";
-            bool isYuv = false;
 
             if (filename.toLower().endsWith(".yuv")) {
-                isYuv = true;
-                if (parts.size() != 4) {
-                    QString errorMsg =
-                        QString(
-                            "Invalid format for .yuv file. Expected path:resolution:framerate:yuv_format, but got %1")
-                            .arg(arg);
+                // Set default values for optional parameters
+                framerate = 25.0;
+                yuvFormat = "420P";
+
+                bool resolutionSet = false;
+                bool framerateSet = false;
+                bool formatSet = false;
+
+                const int paramCount = parts.size() - 1;
+                if (paramCount < 1 || paramCount > 3) {
+                    QString errorMsg = QString("Invalid number of parameters for .yuv file '%1'. Expected 1 to 3 "
+                                               "(resolution is mandatory), but got %2.")
+                                           .arg(filename)
+                                           .arg(paramCount);
                     qWarning() << errorMsg;
                     ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                     return -1;
                 }
 
-                QStringList resParts = parts[1].split('x');
-                if (resParts.size() != 2) {
-                    return -1;
+                // Parse parameters in any order
+                for (int i = 1; i < parts.size(); ++i) {
+                    const QString& part = parts[i];
+                    if (part.contains('x', Qt::CaseInsensitive)) { // Resolution
+                        if (resolutionSet) {
+                            QString errorMsg = QString("Duplicate resolution specified for '%1'.").arg(filename);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        QStringList resParts = part.split('x');
+                        if (resParts.size() != 2) {
+                            QString errorMsg =
+                                QString("Invalid resolution format '%1'. Expected 'widthxheight'.").arg(part);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        bool okW, okH;
+                        width = resParts[0].toInt(&okW);
+                        height = resParts[1].toInt(&okH);
+                        if (!okW || !okH || width <= 0 || height <= 0) {
+                            QString errorMsg = QString("Invalid resolution value '%1'.").arg(part);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        resolutionSet = true;
+
+                    } else if (part.toUpper().endsWith('P')) { // Pixel Format
+                        if (formatSet) {
+                            QString errorMsg = QString("Duplicate pixel format specified for '%1'.").arg(filename);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        QString formatCandidate = part.toUpper();
+                        if (formatCandidate != "420P" && formatCandidate != "422P" && formatCandidate != "444P") {
+                            QString errorMsg =
+                                QString("Unsupported pixel format '%1'. Use 420P, 422P, or 444P.").arg(part);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        yuvFormat = formatCandidate;
+                        formatSet = true;
+
+                    } else { // Framerate
+                        if (framerateSet) {
+                            QString errorMsg = QString("Duplicate framerate specified for '%1'.").arg(filename);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        bool ok;
+                        double fps = part.toDouble(&ok);
+                        if (!ok || fps <= 0) {
+                            QString errorMsg = QString("Invalid framerate value '%1'.").arg(part);
+                            qWarning() << errorMsg;
+                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                            return -1;
+                        }
+                        framerate = fps;
+                        framerateSet = true;
+                    }
                 }
 
-                bool ok1, ok2, ok3;
-                width = resParts[0].toInt(&ok1);
-                height = resParts[1].toInt(&ok2);
-                framerate = parts[2].toDouble(&ok3);
-                yuvFormat = parts[3].toUpper();
-
-                if (!ok1 || !ok2 || !ok3 || width <= 0 || height <= 0 || framerate <= 0) {
-                    return -1;
-                }
-                if (yuvFormat != "420P" && yuvFormat != "422P" && yuvFormat != "444P") {
+                if (!resolutionSet) {
+                    QString errorMsg =
+                        QString("Mandatory resolution parameter (e.g., '1920x1080') is missing for .yuv file '%1'.")
+                            .arg(filename);
+                    qWarning() << errorMsg;
+                    ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                     return -1;
                 }
             }
