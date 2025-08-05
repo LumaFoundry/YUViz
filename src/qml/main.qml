@@ -79,11 +79,19 @@ ApplicationWindow {
         DiffWindow {}
     }
 
-
     ResolutionWarningPopup {
         id: resolutionWarningDialog
         newWidth: importedWidth
         newHeight: importedHeight
+    }
+
+    JumpToFramePopup {
+        id: jumpPopup
+        anchors.centerIn: parent
+        maxFrames: videoController ? videoController.totalFrames : 0
+        onJumpToFrame: function (frameNumber) {
+            videoController.jumpToFrame(frameNumber);
+        }
     }
 
     Timer {
@@ -201,6 +209,11 @@ ApplicationWindow {
             if (event.key === Qt.Key_O) {
                 console.log("O key pressed, toggling global OSD state");
                 mainWindow.toggleGlobalOsdState();
+                event.accepted = true;
+            }
+
+            if (event.key === Qt.Key_J) {
+                jumpPopup.open();
                 event.accepted = true;
             }
         }
@@ -479,17 +492,21 @@ ApplicationWindow {
                             }
 
                             const firstVideo = videos[0];
-                            if (!firstVideo || !firstVideo.metadataReady) return false;
+                            if (!firstVideo || !firstVideo.metadataReady)
+                                return false;
                             const firstMeta = firstVideo.getFrameMeta();
-                            if (!firstMeta) return false;
+                            if (!firstMeta)
+                                return false;
 
                             // Check all subsequent videos against the first one.
                             for (let i = 1; i < videos.length; i++) {
                                 const currentVideo = videos[i];
 
-                                if (!currentVideo || !currentVideo.metadataReady) return false;
+                                if (!currentVideo || !currentVideo.metadataReady)
+                                    return false;
                                 const currentMeta = currentVideo.getFrameMeta();
-                                if (!currentMeta) return false;
+                                if (!currentMeta)
+                                    return false;
 
                                 // If mismatch, disable the button.
                                 if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {

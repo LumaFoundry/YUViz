@@ -7,7 +7,7 @@ import Theme 1.0
 Popup {
     id: jumpPopup
     width: Math.min(300, parent.width - 40)
-    height: Math.min(150, parent.height - 40)
+    height: Math.min(180, parent.height - 40)
     modal: true
     focus: true
     clip: true
@@ -16,46 +16,19 @@ Popup {
 
     property int maxFrames: 0
     property alias frameNumber: frameInput.text
-    
+
     signal jumpToFrame(int frameNumber)
 
-    function show(maxFrameCount) {
-        maxFrames = maxFrameCount;
-        frameInput.text = "";
-        errorLabel.visible = false;
-        frameInput.forceActiveFocus();
-        open();
-    }
-
-    function showError(message) {
-        errorLabel.text = message;
-        errorLabel.visible = true;
-    }
-
     function validateAndJump() {
-        var frameNum = parseInt(frameInput.text);
-        console.log("Validating frame number:", frameInput.text, "parsed as:", frameNum);
-        
-        if (isNaN(frameNum) || frameInput.text.trim() === "") {
-            console.log("Invalid input - NaN or empty");
-            errorLabel.text = "Please enter a valid number";
+        if (frameInput.text === "" || isNaN(parseInt(frameInput.text)) || parseInt(frameInput.text) < 0 || parseInt(frameInput.text) >= maxFrames) {
             errorLabel.visible = true;
+            errorLabel.text = "Frame number must be between 0 and " + (maxFrames - 1);
             return;
         }
-        
-        // Additional check for negative numbers or non-integer values
-        if (frameNum < 0) {
-            console.log("Invalid input - negative number");
-            errorLabel.text = "Frame number cannot be negative";
-            errorLabel.visible = true;
-            return;
-        }
-        
-        console.log("Input validation passed, emitting jumpToFrame signal");
-        // Clear error and attempt jump - don't close immediately
-        errorLabel.visible = false;
-        jumpToFrame(frameNum);
-        // Don't close here - let the backend decide if it's valid
+        errorLabel.text = "";
+        jumpToFrame(parseInt(frameInput.text));
+        jumpPopup.close();
+        frameInput.text = "";
     }
 
     background: Rectangle {
@@ -93,17 +66,17 @@ Popup {
                 Layout.fillWidth: true
                 placeholderText: maxFrames > 0 ? "Enter frame number (0-" + (maxFrames - 1) + ")" : "Enter frame number"
                 selectByMouse: true
-                
+
                 background: Rectangle {
                     color: Theme.inputBackgroundColor
                     border.color: frameInput.activeFocus ? Theme.accentColor : Theme.borderColor
                     border.width: 1
                     radius: 4
                 }
-                
+
                 color: Theme.textColor
-                
-                Keys.onPressed: (event) => {
+
+                Keys.onPressed: event => {
                     if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                         validateAndJump();
                         event.accepted = true;
@@ -117,34 +90,30 @@ Popup {
 
         Label {
             id: errorLabel
-            text: "Invalid frame"
+            text: ""
             color: "red"
-            visible: false
+            visible: true
             Layout.fillWidth: true
-            Layout.preferredHeight: 16 // Reserve space to prevent layout shift
+            Layout.preferredHeight: 16
             horizontalAlignment: Text.AlignHCenter
             font.pixelSize: 12
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
-
-            Item {
-                Layout.fillWidth: true
-            }
+        Row {
+            spacing: 16
+            anchors.horizontalCenter: parent.horizontalCenter
 
             Button {
                 text: "Cancel"
                 onClicked: jumpPopup.close()
-                
+
                 background: Rectangle {
                     color: parent.pressed ? Theme.buttonPressedColor : Theme.buttonColor
                     border.color: Theme.borderColor
                     border.width: 1
                     radius: 4
                 }
-                
+
                 contentItem: Text {
                     text: parent.text
                     color: Theme.textColor
@@ -156,14 +125,14 @@ Popup {
             Button {
                 text: "OK"
                 onClicked: validateAndJump()
-                
+
                 background: Rectangle {
                     color: parent.pressed ? Theme.accentPressedColor : Theme.accentColor
                     border.color: Theme.accentColor
                     border.width: 1
                     radius: 4
                 }
-                
+
                 contentItem: Text {
                     text: parent.text
                     color: "white"
