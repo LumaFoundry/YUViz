@@ -24,11 +24,9 @@ VideoWindow {
     Rectangle {
         visible: videoWindow.assigned && videoWindow.metadataReady
         anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.topMargin: 5
-        anchors.leftMargin: 10
-        anchors.rightMargin: 60 // Leave space for menu button
+        width: videoNameText.contentWidth + 16
         height: videoNameText.height + 12
         color: "black"
         opacity: 0.8
@@ -43,9 +41,6 @@ VideoWindow {
             font.pixelSize: 14
             font.weight: Font.Bold
             text: videoWindow.videoName || ""
-            elide: Text.ElideMiddle
-            width: parent.width - 16
-            horizontalAlignment: Text.AlignHCenter
         }
     }
 
