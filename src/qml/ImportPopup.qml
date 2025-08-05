@@ -130,16 +130,25 @@ Popup {
 
         Label {
             visible: isYUV
-            text: "Format"
+            text: "Pixel Format"
             Layout.fillWidth: true
         }
 
         ComboBox {
             id: formatInput
             visible: isYUV
-            model: ["420P", "422P", "444P"]
+            model: [
+                "420P - YUV420P (Planar)",
+                "422P - YUV422P (Planar)", 
+                "444P - YUV444P (Planar)",
+                "YUYV - YUV422 (Packed)",
+                "UYVY - YUV422 (Packed)"
+            ]
             Layout.fillWidth: true
             currentIndex: 0
+            
+            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY"]
+            
             displayText: model[currentIndex]
         }
 
@@ -161,7 +170,7 @@ Popup {
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
-                    let format = isYUV ? formatInput.currentText : "AV_PIX_FMT_NONE";
+                    let format = isYUV ? formatInput.formatValues[formatInput.currentIndex] : "AV_PIX_FMT_NONE";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();

@@ -223,13 +223,14 @@ void VideoDecoder::openFile() {
     setFormat(codecContext->pix_fmt);
 
     if (isYUV(codecContext->codec_id)) {
-        int ySize = m_width * m_height;
-        int uvSize = uvWidth * uvHeight;
-        int frameSize = ySize + 2 * uvSize;
+        int frameSize = calculateFrameSize(codecContext->pix_fmt, m_width, m_height);
 
         QFileInfo info(QString::fromStdString(m_fileName));
         int64_t fileSize = info.size();
         yuvTotalFrames = fileSize / frameSize;
+
+        qDebug() << "YUV file detected - Format:" << av_get_pix_fmt_name(codecContext->pix_fmt)
+                 << "Frame size:" << frameSize << "Total frames:" << yuvTotalFrames;
     }
 
     currentFrameIndex = 0;
@@ -340,7 +341,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         }
 
         maxpts = std::max(maxpts, temp_pts);
-        minpts = std::min(minpts, std::max(temp_pts, int64_t{0}));
+        minpts = std::min(minpts, std::max(temp_pts, 0LL));
     }
 
     qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
@@ -387,6 +388,38 @@ bool VideoDecoder::isYUV(AVCodecID codecId) {
     default:
         return false;
     }
+}
+
+bool VideoDecoder::isPackedYUV(AVPixelFormat pixFmt) {
+    switch (pixFmt) {
+    case AV_PIX_FMT_YUYV422: // YUYV (YUY2)
+    case AV_PIX_FMT_UYVY422: // UYVY
+        return true;
+    default:
+        return false;
+    }
+}
+
+int VideoDecoder::calculateFrameSize(AVPixelFormat pixFmt, int width, int height) {
+    // For packed YUV formats
+    if (isPackedYUV(pixFmt)) {
+        // All packed YUV 4:2:2 formats use 2 bytes per pixel
+        return width * height * 2;
+    }
+
+    // For planar YUV formats, use FFmpeg's pixel format descriptor
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(pixFmt);
+    if (!pixDesc) {
+        // Default to YUV420P if format is unknown
+        return width * height + 2 * ((width + 1) / 2) * ((height + 1) / 2);
+    }
+
+    int ySize = width * height;
+    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+    int uvSize = uvWidth * uvHeight;
+
+    return ySize + 2 * uvSize;
 }
 
 bool VideoDecoder::initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt) {
@@ -632,17 +665,111 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
         return;
     }
 
-    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
-    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+    // Handle packed YUV formats differently
+    if (isPackedYUV(srcFmt)) {
+        qDebug() << "Processing packed YUV format:" << av_get_pix_fmt_name(srcFmt) << "Dimensions:" << width << "x"
+                 << height << "Packet size:" << tempPacket->size;
 
-    uint8_t* srcData[4] = {nullptr};
-    int srcLinesize[4] = {};
-    av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-    uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+        uint8_t* yPtr = frameData->yPtr();
+        uint8_t* uPtr = frameData->uPtr();
+        uint8_t* vPtr = frameData->vPtr();
 
-    memcpy(dstData[0], srcData[0], width * height);
-    memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
-    memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
+        // Verify pointers are valid
+        if (!yPtr || !uPtr || !vPtr) {
+            qDebug() << "Error: Invalid frame data pointers";
+            retFlag = 2;
+            return;
+        }
+
+        // Convert packed YUV to planar YUV422P for internal processing
+        if (srcFmt == AV_PIX_FMT_UYVY422) {
+            // UYVY: U0 Y0 V0 Y1 (4 bytes for 2 pixels)
+            qDebug() << "Converting UYVY422 to YUV422P...";
+
+            // Process line by line
+            for (int y = 0; y < height; y++) {
+                uint8_t* srcLine = packetData + y * width * 2; // Start of current line
+                uint8_t* yLine = yPtr + y * width;             // Y plane line
+
+                for (int x = 0; x < width; x += 2) {
+                    int srcPos = x * 2; // Byte position within current line
+
+                    // UYVY: U0 Y0 V0 Y1
+                    uint8_t u = srcLine[srcPos];      // U0
+                    uint8_t y0 = srcLine[srcPos + 1]; // Y0
+                    uint8_t v = srcLine[srcPos + 2];  // V0
+                    uint8_t y1 = srcLine[srcPos + 3]; // Y1
+
+                    // Set Y values
+                    yLine[x] = y0;
+                    if (x + 1 < width) {
+                        yLine[x + 1] = y1;
+                    }
+
+                    // UV components horizontal subsampling to 4:2:2 (maintain vertical resolution)
+                    int uvX = x / 2;
+                    int uvY = y;
+                    int uvIndex = uvY * (width / 2) + uvX;
+
+                    uPtr[uvIndex] = u;
+                    vPtr[uvIndex] = v;
+                }
+            }
+
+        } else if (srcFmt == AV_PIX_FMT_YUYV422) {
+            // YUYV: Y0 U0 Y1 V0 (4 bytes for 2 pixels)
+            qDebug() << "Converting YUYV422 to YUV422P...";
+
+            // Process line by line
+            for (int y = 0; y < height; y++) {
+                uint8_t* srcLine = packetData + y * width * 2; // Start of current line
+                uint8_t* yLine = yPtr + y * width;             // Y plane line
+
+                for (int x = 0; x < width; x += 2) {
+                    int srcPos = x * 2; // Byte position within current line
+
+                    // YUYV: Y0 U0 Y1 V0
+                    uint8_t y0 = srcLine[srcPos];     // Y0
+                    uint8_t u = srcLine[srcPos + 1];  // U0
+                    uint8_t y1 = srcLine[srcPos + 2]; // Y1
+                    uint8_t v = srcLine[srcPos + 3];  // V0
+
+                    // Set Y values
+                    yLine[x] = y0;
+                    if (x + 1 < width) {
+                        yLine[x + 1] = y1;
+                    }
+
+                    // UV components horizontal subsampling to 4:2:2 (maintain vertical resolution)
+                    int uvX = x / 2;
+                    int uvY = y;
+                    int uvIndex = uvY * (width / 2) + uvX;
+
+                    uPtr[uvIndex] = u;
+                    vPtr[uvIndex] = v;
+                }
+            }
+        }
+
+        // Update metadata to reflect the converted planar format
+        if (srcFmt == AV_PIX_FMT_UYVY422 || srcFmt == AV_PIX_FMT_YUYV422) {
+            metadata.setPixelFormat(AV_PIX_FMT_YUV422P);
+            setFormat(AV_PIX_FMT_YUV422P);
+        }
+    } else {
+        // Handle planar YUV formats
+        int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+        int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+
+        uint8_t* srcData[4] = {nullptr};
+        int srcLinesize[4] = {};
+        av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
+        uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+
+        memcpy(dstData[0], srcData[0], width * height);
+        memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
+        memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
+    }
 
     frameData->setPts(currentFrameIndex);
 

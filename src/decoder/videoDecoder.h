@@ -75,6 +75,8 @@ class VideoDecoder : public QObject {
     void closeFile();
 
     bool isYUV(AVCodecID codecId);
+    bool isPackedYUV(AVPixelFormat pixFmt);
+    int calculateFrameSize(AVPixelFormat pixFmt, int width, int height);
     bool initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt);
     int64_t loadYUVFrame();
     void copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& retFlag);
