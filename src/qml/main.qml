@@ -654,9 +654,9 @@ ApplicationWindow {
     }
 
     Text {
-        anchors.top: parent.top
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.margins: 10
+        anchors.bottomMargin: 80
         color: Theme.textColor
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: Theme.fontSizeNormal

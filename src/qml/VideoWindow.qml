@@ -20,6 +20,35 @@ VideoWindow {
 
     signal requestRemove(int videoId)
 
+    // Video Name Display
+    Rectangle {
+        visible: videoWindow.assigned && videoWindow.metadataReady
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.topMargin: 5
+        anchors.leftMargin: 10
+        anchors.rightMargin: 60 // Leave space for menu button
+        height: videoNameText.height + 12
+        color: "black"
+        opacity: 0.8
+        radius: 4
+        z: 101 // On top of everything including OSD
+
+        Text {
+            id: videoNameText
+            anchors.centerIn: parent
+            color: "white"
+            font.family: "sans-serif"
+            font.pixelSize: 14
+            font.weight: Font.Bold
+            text: videoWindow.videoName || ""
+            elide: Text.ElideMiddle
+            width: parent.width - 16
+            horizontalAlignment: Text.AlignHCenter
+        }
+    }
+
     QtObject {
         id: videoBridge
         objectName: "videoBridge"

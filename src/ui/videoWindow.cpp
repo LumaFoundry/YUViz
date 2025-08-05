@@ -1,4 +1,5 @@
 #include "videoWindow.h"
+#include <QFileInfo>
 #include <QMouseEvent>
 #include <QtMath>
 #include <libavutil/pixfmt.h>
@@ -344,6 +345,21 @@ QString VideoWindow::codecName() const {
 
     std::string codec = m_frameMeta->codecName();
     return codec.empty() ? QString("Unknown") : QString::fromStdString(codec);
+}
+
+QString VideoWindow::videoName() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    std::string filename = m_frameMeta->filename();
+    if (filename.empty()) {
+        return QString("Unknown");
+    }
+
+    // Extract just the filename from the full path
+    QFileInfo fileInfo(QString::fromStdString(filename));
+    return fileInfo.fileName();
 }
 
 int VideoWindow::componentDisplayMode() const {
