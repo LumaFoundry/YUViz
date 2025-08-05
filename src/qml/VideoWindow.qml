@@ -522,7 +522,7 @@ VideoWindow {
 
                     return "Time: " + currentStr + " / " + durationStr + "\n" + "Frame: " + videoWindow.currentFrame
                         + "\n" + "Resolution: " + videoWindow.videoResolution + "\n" + "Timebase: " + videoWindow.timeBase + "\n" + "Aspect: "
-                        + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Color Space: "
+                        + videoWindow.getAspectRatio.toFixed(2) + "\n" + "Codec: " + videoWindow.codecName + "\n" + "Color Space: "
                         + videoWindow.colorSpace + "\n" + "Color Range: " + videoWindow.colorRange;
                 }
                 return "";

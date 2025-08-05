@@ -337,6 +337,15 @@ QString VideoWindow::videoResolution() const {
     return QString("%1x%2").arg(width).arg(height);
 }
 
+QString VideoWindow::codecName() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    std::string codec = m_frameMeta->codecName();
+    return codec.empty() ? QString("Unknown") : QString::fromStdString(codec);
+}
+
 int VideoWindow::componentDisplayMode() const {
     return m_componentDisplayMode;
 }

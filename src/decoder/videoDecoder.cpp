@@ -217,6 +217,7 @@ void VideoDecoder::openFile() {
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
     metadata.setFilename(m_fileName);
+    metadata.setCodecName(codec->name ? std::string(codec->name) : "Unknown");
     metadata.setDuration(getDurationMs());
     metadata.setTotalFrames(getTotalFrames());
     setFormat(codecContext->pix_fmt);

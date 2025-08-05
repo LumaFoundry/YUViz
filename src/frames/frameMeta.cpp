@@ -54,6 +54,10 @@ std::string FrameMeta::filename() const {
     return m_filename;
 }
 
+std::string FrameMeta::codecName() const {
+    return m_codecName;
+}
+
 int FrameMeta::totalFrames() const {
     return m_totalFrames;
 }
@@ -100,6 +104,10 @@ void FrameMeta::setColorSpace(AVColorSpace space) {
 
 void FrameMeta::setFilename(const std::string& filename) {
     m_filename = filename;
+}
+
+void FrameMeta::setCodecName(const std::string& codecName) {
+    m_codecName = codecName;
 }
 
 void FrameMeta::setDuration(int64_t msDuration) {
