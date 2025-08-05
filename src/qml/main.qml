@@ -653,6 +653,29 @@ ApplicationWindow {
         keyHandler.forceActiveFocus();
     }
 
+    // Global Zoom Level Indicator
+    Rectangle {
+        visible: sharedViewProperties && sharedViewProperties.isZoomed && sharedViewProperties.zoom > 1.0
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.bottomMargin: 110 // 10 pixels above the Ctrl text (which is at bottomMargin: 80, plus text height ~20)
+        width: globalZoomText.width + 16
+        height: globalZoomText.height + 12
+        color: "black"
+        opacity: 0.8
+        radius: 4
+        z: 99
+
+        Text {
+            id: globalZoomText
+            anchors.centerIn: parent
+            color: "white"
+            font.family: "monospace"
+            font.pixelSize: 11
+            text: sharedViewProperties ? "Zoom: " + (sharedViewProperties.zoom * 100).toFixed(0) + "%" : ""
+        }
+    }
+
     Text {
         anchors.bottom: parent.bottom
         anchors.left: parent.left

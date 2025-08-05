@@ -485,30 +485,6 @@ VideoWindow {
         selectionCanvas.requestPaint();
     }
 
-    // Zoom Level Indicator
-    Rectangle {
-        visible: videoWindow.isZoomed && videoWindow.sharedView && videoWindow.sharedView.zoom > 1.0
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.topMargin: 30
-        anchors.leftMargin: 10
-        width: zoomText.width + 16
-        height: zoomText.height + 12
-        color: "black"
-        opacity: 0.8
-        radius: 4
-        z: 99 // Below OSD but above video content
-
-        Text {
-            id: zoomText
-            anchors.centerIn: parent
-            color: "white"
-            font.family: "monospace"
-            font.pixelSize: 11
-            text: videoWindow.sharedView ? "Zoom: " + (videoWindow.sharedView.zoom * 100).toFixed(0) + "%" : ""
-        }
-    }
-
     // OSD Overlay
     Rectangle {
         visible: videoWindow.osdState > 0
