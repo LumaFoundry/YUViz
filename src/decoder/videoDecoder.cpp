@@ -341,7 +341,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         }
 
         maxpts = std::max(maxpts, temp_pts);
-        minpts = std::min(minpts, std::max(temp_pts, 0LL));
+        minpts = std::min(minpts, std::max(temp_pts, (int64_t)0));
     }
 
     qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
