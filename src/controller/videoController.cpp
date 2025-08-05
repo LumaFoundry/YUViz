@@ -244,11 +244,6 @@ void VideoController::play() {
         return;
     }
 
-    // Don't start playback if seeking is in progress
-    if (m_isSeeking) {
-        return;
-    }
-
     m_currentTimeMs = 0;
     emit currentTimeMsChanged();
 
@@ -284,12 +279,6 @@ void VideoController::pause() {
 }
 
 void VideoController::stepForward() {
-
-    // Disable step forward if seeking is in progress
-    if (m_isSeeking) {
-        return;
-    }
-
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Step forward requested while playing, pausing first";
         pause();
@@ -308,12 +297,6 @@ void VideoController::stepForward() {
 }
 
 void VideoController::stepBackward() {
-
-    // Disable step backward if seeking is in progress
-    if (m_isSeeking) {
-        return;
-    }
-
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Step backward requested while playing, pausing first";
         pause();
@@ -342,12 +325,6 @@ void VideoController::togglePlayPause() {
 }
 
 void VideoController::seekTo(double timeMs) {
-
-    // Disable seek if seeking is in progress
-    if (m_isSeeking) {
-        return;
-    }
-
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Pausing playback";
