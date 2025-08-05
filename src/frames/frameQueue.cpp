@@ -8,8 +8,8 @@ FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta, int queueSize) :
     size_t frameSize = ySize + uvSize * 2;
     size_t bufferSize = frameSize * m_queueSize;
 
-    m_bufferPtr = std::make_shared<std::vector<uint8_t>>(bufferSize);
-    // m_bufferPtr->reserve(bufferSize);
+    m_bufferPtr = std::make_shared<std::vector<uint8_t>>();
+    m_bufferPtr->reserve(bufferSize);
 
     // Allocate frame data queue
     m_queue.reserve(m_queueSize);
