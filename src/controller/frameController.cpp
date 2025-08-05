@@ -103,11 +103,6 @@ void FrameController::start() {
 void FrameController::onTimerTick(int64_t pts, int direction) {
     // qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
-
     m_direction = direction;
 
     // Render target frame if inside frameQueue
@@ -165,11 +160,6 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
         emit endOfVideo(true, m_index);
         return;
     }
-
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
     m_stepping = pts;
 
@@ -275,11 +265,6 @@ void FrameController::onSeek(int64_t pts) {
 
     // Reset any pending decode
     m_decodeInProgress = false;
-
-    // Update VideoWindow with current frame info
-    AVRational timeBase = getTimeBase();
-    double currentTimeMs = pts * av_q2d(timeBase) * 1000.0;
-    m_window->updateFrameInfo(static_cast<int>(pts), currentTimeMs);
 
     if (frame && !m_frameQueue->isStale(pts)) {
         qDebug() << "Frame " << pts << " found in queue, requesting upload";
