@@ -83,6 +83,10 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     m_frameControllers[m_fcIndex]->start();
     m_fcIndex++;
     m_realCount++;
+
+    // Reset seeking flag
+    m_isSeeking = false;
+    m_seekedCount = 0;
 }
 
 void VideoController::setUpTimer() {
@@ -240,12 +244,7 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
 // Interface slots / signals
 void VideoController::play() {
 
-    if (!m_ready) {
-        return;
-    }
-
-    // Don't start playback if seeking is in progress
-    if (m_isSeeking) {
+    if (!m_ready || m_isSeeking) {
         return;
     }
 
@@ -285,7 +284,7 @@ void VideoController::pause() {
 
 void VideoController::stepForward() {
 
-    // Disable step forward if seeking is in progress
+    // Prevent stepping forward during seeking
     if (m_isSeeking) {
         return;
     }
@@ -309,7 +308,7 @@ void VideoController::stepForward() {
 
 void VideoController::stepBackward() {
 
-    // Disable step backward if seeking is in progress
+    // Prevent stepping backward during seeking
     if (m_isSeeking) {
         return;
     }
@@ -342,12 +341,6 @@ void VideoController::togglePlayPause() {
 }
 
 void VideoController::seekTo(double timeMs) {
-
-    // Disable seek if seeking is in progress
-    if (m_isSeeking) {
-        return;
-    }
-
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Pausing playback";
