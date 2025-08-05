@@ -13,6 +13,7 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     m_Decoder->setDimensions(videoFileInfo.width, videoFileInfo.height);
     m_Decoder->setFramerate(videoFileInfo.framerate);
     m_Decoder->setFormat(videoFileInfo.pixelFormat);
+    m_Decoder->setForceSoftwareDecoding(videoFileInfo.forceSoftwareDecoding);
     m_Decoder->openFile();
 
     m_frameMeta = std::make_shared<FrameMeta>(m_Decoder->getMetaData());

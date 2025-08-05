@@ -46,6 +46,13 @@ void VideoDecoder::setFrameQueue(std::shared_ptr<FrameQueue> frameQueue) {
     m_frameQueue = frameQueue;
 }
 
+void VideoDecoder::setForceSoftwareDecoding(bool force) {
+    m_forceSoftwareDecoding = force;
+    if (force) {
+        qDebug() << "Software decoding enforced - hardware acceleration disabled";
+    }
+}
+
 /**
  * @brief Opens a video file for decoding and initializes FrameMeta object.
  */
@@ -103,7 +110,9 @@ void VideoDecoder::openFile() {
     qDebug() << "Found decoder:" << codec->name << "for codec:" << avcodec_get_name(codecId);
 
     // Try to enable hardware acceleration (only for compressed formats)
-    if (isYUV(codecId)) {
+    if (m_forceSoftwareDecoding) {
+        qDebug() << "Software decoding forced - skipping hardware acceleration";
+    } else if (isYUV(codecId)) {
         qDebug() << "RAW/YUV format detected - hardware acceleration not applicable";
     } else {
         // Only try hardware acceleration for compressed formats

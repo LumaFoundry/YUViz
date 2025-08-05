@@ -14,8 +14,16 @@ VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
     m_sharedView(sharedView) {
 }
 
-void VideoLoader::loadVideo(
-    const QString& filePath, int width, int height, double fps, const QString& pixelFormat, bool add) {
+void VideoLoader::loadVideo(const QString& filePath,
+                            int width,
+                            int height,
+                            double fps,
+                            const QString& pixelFormat,
+                            bool add,
+                            bool forceSoftware) {
+    // Apply global software decoding setting if not explicitly overridden
+    bool effectiveForceSoftware = forceSoftware || m_globalForceSoftwareDecoding;
+
     QString path;
 
     if (filePath.startsWith("file://")) {
@@ -78,6 +86,7 @@ void VideoLoader::loadVideo(
     info.framerate = fps;
     info.pixelFormat = yuvFormat;
     info.windowPtr = windowPtr;
+    info.forceSoftwareDecoding = effectiveForceSoftware;
 
     if (add) {
         qDebug() << "adding video" << info.filename;
@@ -86,6 +95,13 @@ void VideoLoader::loadVideo(
         qDebug() << "resetting video" << info.filename;
         // m_vcPtr->resetVideo(info);
         m_vcPtr->addVideo(info);
+    }
+}
+
+void VideoLoader::setGlobalForceSoftwareDecoding(bool force) {
+    m_globalForceSoftwareDecoding = force;
+    if (force) {
+        qDebug() << "Global software decoding enabled - all videos will use software decoding";
     }
 }
 

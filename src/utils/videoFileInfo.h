@@ -15,4 +15,5 @@ struct VideoFileInfo {
     AVPixelFormat pixelFormat;
     QRhi::Implementation graphicsApi;
     VideoWindow* windowPtr;
+    bool forceSoftwareDecoding = false;
 };

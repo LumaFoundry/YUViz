@@ -31,6 +31,7 @@ class VideoDecoder : public QObject {
     void setFormat(AVPixelFormat format);
     void setFileName(const std::string& fileName);
     void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
+    void setForceSoftwareDecoding(bool force);
 
     void openFile();
     virtual FrameMeta getMetaData();
@@ -66,6 +67,7 @@ class VideoDecoder : public QObject {
     std::shared_ptr<FrameQueue> m_frameQueue;
 
     int yuvTotalFrames = -1;
+    bool m_forceSoftwareDecoding = false;
 
     AVBufferRef* hw_device_ctx = nullptr;
     AVPixelFormat hw_pix_fmt = AV_PIX_FMT_NONE;

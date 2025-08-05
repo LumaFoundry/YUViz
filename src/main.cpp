@@ -54,6 +54,10 @@ int main(int argc, char* argv[]) {
     QCommandLineOption queueSizeOption({"q", "queue-size"}, QLatin1String("Frame queue size"), QLatin1String("size"));
     parser.addOption(queueSizeOption);
 
+    QCommandLineOption softwareOption({"s", "software"},
+                                      QLatin1String("Force software decoding (disable hardware acceleration)"));
+    parser.addOption(softwareOption);
+
     parser.process(app);
     const QStringList args = parser.positionalArguments();
 
@@ -113,6 +117,11 @@ int main(int argc, char* argv[]) {
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr, compareController);
     VideoLoader videoLoader(&engine, nullptr, videoController, compareController, &sharedViewProperties);
 
+    // Apply global software decoding setting if -s flag is used
+    if (parser.isSet(softwareOption)) {
+        videoLoader.setGlobalForceSoftwareDecoding(true);
+    }
+
     std::vector<VideoFileInfo> videoFiles;
     engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
     engine.rootContext()->setContextProperty("compareController", compareController.get());
@@ -150,6 +159,7 @@ int main(int argc, char* argv[]) {
 
         // Delay property update until after QML is loaded
         QObject* root = engine.rootObjects().first();
+        bool forceSoftware = parser.isSet(softwareOption);
         QMetaObject::invokeMethod(root,
                                   "importVideoFromParams",
                                   Qt::QueuedConnection,
@@ -158,7 +168,8 @@ int main(int argc, char* argv[]) {
                                   Q_ARG(QVariant, height),
                                   Q_ARG(QVariant, framerate),
                                   Q_ARG(QVariant, yuvFormat),
-                                  Q_ARG(QVariant, true));
+                                  Q_ARG(QVariant, true),
+                                  Q_ARG(QVariant, forceSoftware));
     }
 
     qDebug() << "Number of video files to play:" << videoFiles.size();
