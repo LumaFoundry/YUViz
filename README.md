@@ -66,18 +66,37 @@ A lightweight video inspection tool for YUV format files.
     ```
 
 ## Running the application
+### General Usage
 ```bash
-./videoplayer <input_file> -r <width>x<height> -f <fps> -d
+./videoplayer [file1] [file2] [options]
 ```
-Flags:
-- `-r`: resolution, needed for YUV files
-- `-f`: framerate, default=25
-- `-y`: YUV format, 420P, 422P, 444P
-- `-d`: debug flag
-- `-q`: queueSize, default=50 frames
-- `-s`: force software decoding, default=false
+For standard files like `.mp4`, just provide the path. For `.yuv` files, see below.
 
-Note: `-d` flag could affect performance and behaviour
+### YUV File Usage
+For .yuv files, append parameters to the filename using colons. Resolution is mandatory. Framerate and pixel format are optional and can be in any order.
+- Format: `<path>:<resolution>[:<framerate>][:<pixel_format>]`
+- Resolution: `<width>x<height>` (e.g., 1920x1080)
+- Framerate: Defaults to 25 if omitted.
+- Pixel Format: Defaults to 420P if omitted.
+
+```bash
+# Mandatory resolution only (uses defaults for framerate and format)
+./videoplayer video.yuv:1920x1080
+
+# All parameters specified, with debug flag
+./videoplayer video.yuv:30:444P:1920x1080 -d
+```
+
+### Example with Mixed Files
+```bash
+./videoplayer video.mp4 video.yuv:1920x1080:30
+```
+
+Options:
+- `--help`: print application information and instructions
+- `-d`, `--debug`: Enable debug output (can affect performance).
+- `-q <size>`: Set frame queue size (default: 50).
+- `-s`, `--software`: Force software decoding (disables hardware acceleration).
 
 ## Module descriptions
 

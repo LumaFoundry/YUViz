@@ -61,7 +61,6 @@ ApplicationWindow {
     property int importedHeight: 0
     property double importedFps: 0
     property string importedFormat: ""
-    property bool importedAdd: false
 
     property var diffPopupInstance: null
 
@@ -69,8 +68,35 @@ ApplicationWindow {
         id: importDialog
         mainWindow: mainWindow
         anchors.centerIn: parent
-        onVideoImported: function (filePath, width, height, fps, format, add) {
-            importVideoFromParams(filePath, width, height, fps, format, add, false);
+        onVideoImported: function (filePath, width, height, fps, format) {
+            importVideoFromParams(filePath, width, height, fps, format, false);
+        }
+    }
+
+    Dialog {
+        id: errorDialog
+        title: "Error"
+        modal: true
+        standardButtons: Dialog.Ok
+        width: 400
+        anchors.centerIn: parent
+
+        Label {
+            id: errorDialogText
+            text: "An unknown error occurred."
+            anchors.fill: parent
+            wrapMode: Label.WordWrap
+            padding: 10
+        }
+    }
+
+    Connections {
+        target: videoLoader
+
+        function onVideoLoadFailed(title, message) {
+            errorDialog.title = title
+            errorDialogText.text = message
+            errorDialog.open()
         }
     }
 
@@ -79,8 +105,8 @@ ApplicationWindow {
         DiffWindow {}
     }
 
-    ResolutionWarningPopup {
-        id: resolutionWarningDialog
+    MismatchWarningPopup {
+        id: mismatchWarningDialog
         newWidth: importedWidth
         newHeight: importedHeight
     }
@@ -324,23 +350,53 @@ ApplicationWindow {
 
                     onMetadataInitialized: {
                         metadataReady = true;
-                        // Check if this window is the last one added and it was an 'add' operation
-                        if (mainWindow.importedAdd && this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
+                        // Check if this window is the last one added
+                        if (this === videoWindowContainer.children[videoWindowContainer.children.length - 1]) {
                             if (mainWindow.videoCount > 1) {
                                 const firstVideoWindow = videoWindowContainer.children[0];
                                 const firstMeta = firstVideoWindow.getFrameMeta();
                                 const thisMeta = this.getFrameMeta();
 
-                                if (firstMeta && thisMeta && (firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight)) {
-                                    resolutionWarningDialog.firstWidth = firstMeta.yWidth;
-                                    resolutionWarningDialog.firstHeight = firstMeta.yHeight;
-                                    resolutionWarningDialog.newWidth = thisMeta.yWidth;
-                                    resolutionWarningDialog.newHeight = thisMeta.yHeight;
-                                    resolutionWarningDialog.open();
+                                if (firstMeta && thisMeta) {
+                                    const resMismatch = firstMeta.yWidth !== thisMeta.yWidth || firstMeta.yHeight !== thisMeta.yHeight;
+                                    let fpsMismatch = false;
+                                    let firstFps = 0;
+                                    let thisFps = 0;
+
+                                    {
+                                        const firstTimeBaseString = firstVideoWindow.timeBase;
+                                        const thisTimeBaseString = this.timeBase;
+                                        const thisParts = thisTimeBaseString.split('/');
+                                        const firstParts = firstTimeBaseString.split('/');
+                                        const firstNum = parseInt(firstParts[0], 10);
+                                        const firstDen = parseInt(firstParts[1], 10);
+                                        const thisNum = parseInt(thisParts[0], 10);
+                                        const thisDen = parseInt(thisParts[1], 10);
+
+                                        if (firstNum > 0) {
+                                            firstFps = (firstDen / firstNum).toFixed(2);
+                                        }
+                                        if (thisNum > 0) {
+                                            thisFps = (thisDen / thisNum).toFixed(2);
+                                        }
+                                    }
+
+                                    if (firstFps !== thisFps) {
+                                        fpsMismatch = true;
+                                    }
+
+                                    // Trigger popup if either resolution or FPS don't match
+                                    if (resMismatch || fpsMismatch) {
+                                        mismatchWarningDialog.firstWidth = firstMeta.yWidth;
+                                        mismatchWarningDialog.firstHeight = firstMeta.yHeight;
+                                        mismatchWarningDialog.newWidth = thisMeta.yWidth;
+                                        mismatchWarningDialog.newHeight = thisMeta.yHeight;
+                                        mismatchWarningDialog.firstFps = firstFps;
+                                        mismatchWarningDialog.newFps = thisFps;
+                                        mismatchWarningDialog.open();
+                                    }
                                 }
                             }
-                            // Reset the flag after checking, to prevent re-triggering for this add operation.
-                            mainWindow.importedAdd = false;
                         }
                     }
                 }
@@ -656,16 +712,15 @@ ApplicationWindow {
         }
     }
 
-    function importVideoFromParams(filePath, width, height, fps, format, add, forceSoftware) {
+    function importVideoFromParams(filePath, width, height, fps, format, forceSoftware) {
         importedFilePath = filePath;
         importedWidth = width;
         importedHeight = height;
         importedFps = fps;
         importedFormat = format;
-        importedAdd = add;
 
         console.log("[importVideoFromParams] calling videoLoader");
-        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, add, forceSoftware);
+        videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, forceSoftware);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
     }

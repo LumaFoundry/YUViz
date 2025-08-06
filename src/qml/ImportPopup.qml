@@ -18,7 +18,7 @@ Popup {
     property string selectedFile: ""
     property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
     property var mainWindow
-    signal videoImported(string filePath, int width, int height, double fps, string pixelFormat, bool add)
+    signal videoImported(string filePath, int width, int height, double fps, string pixelFormat)
     signal accepted
 
     function openFileDialog() {
@@ -163,8 +163,7 @@ Popup {
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
                     let format = isYUV ? formatInput.currentText : "AV_PIX_FMT_NONE";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
-                    let add = mode === "add";
-                    importPopup.videoImported(filePath, width, height, fps, format, add);
+                    importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();
                 }
             }

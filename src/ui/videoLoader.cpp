@@ -14,13 +14,8 @@ VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
     m_sharedView(sharedView) {
 }
 
-void VideoLoader::loadVideo(const QString& filePath,
-                            int width,
-                            int height,
-                            double fps,
-                            const QString& pixelFormat,
-                            bool add,
-                            bool forceSoftware) {
+void VideoLoader::loadVideo(
+    const QString& filePath, int width, int height, double fps, const QString& pixelFormat, bool forceSoftware) {
     // Apply global software decoding setting if not explicitly overridden
     bool effectiveForceSoftware = forceSoftware || m_globalForceSoftwareDecoding;
 
@@ -45,6 +40,16 @@ void VideoLoader::loadVideo(const QString& filePath,
         yuvFormat = AV_PIX_FMT_YUV422P;
     } else if (pixelFormat == "444P") {
         yuvFormat = AV_PIX_FMT_YUV444P;
+    } else if (pixelFormat == "AV_PIX_FMT_NONE") {
+        // this is mp4, do nothing
+    } else {
+        QString userMessage =
+            QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);
+        qWarning() << "Failed to load video:" << userMessage.replace("\n\n", " ");
+
+        emit videoLoadFailed("Unsupported Video", userMessage);
+
+        return;
     }
 
     QObject* root = m_engine->rootObjects().first();
@@ -88,14 +93,8 @@ void VideoLoader::loadVideo(const QString& filePath,
     info.windowPtr = windowPtr;
     info.forceSoftwareDecoding = effectiveForceSoftware;
 
-    if (add) {
-        qDebug() << "adding video" << info.filename;
-        m_vcPtr->addVideo(info);
-    } else {
-        qDebug() << "resetting video" << info.filename;
-        // m_vcPtr->resetVideo(info);
-        m_vcPtr->addVideo(info);
-    }
+    qDebug() << "adding video" << info.filename;
+    m_vcPtr->addVideo(info);
 }
 
 void VideoLoader::setGlobalForceSoftwareDecoding(bool force) {

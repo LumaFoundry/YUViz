@@ -24,12 +24,14 @@ class VideoLoader : public QObject {
                                int height,
                                double fps,
                                const QString& pixelFormat,
-                               bool add,
                                bool forceSoftware = false);
 
     Q_INVOKABLE void setupDiffWindow(int leftId, int rightId);
 
     void setGlobalForceSoftwareDecoding(bool force);
+
+  signals:
+    void videoLoadFailed(const QString& title, const QString& message);
 
   private:
     QQmlApplicationEngine* m_engine;
