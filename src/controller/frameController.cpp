@@ -110,7 +110,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
         m_lastPTS = pts;
-        // qDebug() << "Requested render for frame with PTS" << pts;
+        qDebug() << "Requested render for frame with PTS" << pts;
         if (target->isEndFrame()) {
             // qDebug() << "End frame = True set by" << target->pts();
             m_endOfVideo = true;
@@ -118,33 +118,17 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
             // qDebug() << "End frame = False set by" << target->pts();
             m_endOfVideo = false;
         }
+        m_ticking = pts;
         emit requestRender(m_index);
         emit endOfVideo(m_endOfVideo, m_index);
     } else {
         qWarning() << "Cannot render frame" << pts;
     }
 
-    // Upload future frame if inside frameQueue
-    int64_t futurePts = pts + 1 * direction;
-    if (futurePts < 0) {
-        qWarning() << "Future PTS is negative, cannot upload frame";
-        emit startOfVideo(m_index);
-        m_endOfVideo = false;
-        return;
-    }
-    FrameData* future = m_frameQueue->getHeadFrame(futurePts);
-    if (future) {
-        qDebug() << "Request upload for frame with PTS" << (pts + 1 * direction);
-        emit requestUpload(future, m_index);
-
-    } else {
-        qWarning() << "Cannot upload frame" << (pts + 1 * direction);
-    }
-
     if (!m_endOfVideo && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
-        qDebug() << "FC::Request decode for" << framesToFill;
+        // qDebug() << "FC::Request decode for" << framesToFill;
         m_decodeInProgress = true;
         emit requestDecode(framesToFill, direction);
     }
@@ -245,6 +229,26 @@ void FrameController::onFrameUploaded() {
 
 void FrameController::onFrameRendered() {
     // qDebug() << "onFrameRendered";
+
+    if (m_ticking != -1) {
+        // Upload future frame if inside frameQueue
+        int64_t futurePts = m_ticking + 1 * m_direction;
+        if (futurePts < 0) {
+            qWarning() << "Future PTS is negative, cannot upload frame";
+            emit startOfVideo(m_index);
+            m_endOfVideo = false;
+            return;
+        }
+        FrameData* future = m_frameQueue->getHeadFrame(futurePts);
+        if (future) {
+            qDebug() << "Request upload for frame with PTS" << (futurePts);
+            m_ticking = -1;
+            emit requestUpload(future, m_index);
+        } else {
+            qWarning() << "Cannot upload frame" << (futurePts);
+        }
+    }
+
     if (m_seeking != -1) {
         // qDebug() << "FrameController::Seeked frame is rendered";
         m_seeking = -1; // Reset seeking after rendering
