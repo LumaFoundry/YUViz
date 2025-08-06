@@ -41,6 +41,8 @@ void VideoLoader::loadVideo(
         yuvFormat = AV_PIX_FMT_YUV422P;
     } else if (pixelFormat == "444P") {
         yuvFormat = AV_PIX_FMT_YUV444P;
+    } else if (pixelFormat == "AV_PIX_FMT_NONE") {
+        // this is mp4, do nothing
     } else {
         QString userMessage =
             QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);

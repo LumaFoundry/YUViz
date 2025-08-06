@@ -126,7 +126,7 @@ int main(int argc, char* argv[]) {
             // Default values
             int width = 0, height = 0;
             double framerate = 0.0;
-            QString yuvFormat = "";
+            QString yuvFormat = "AV_PIX_FMT_NONE";
 
             if (filename.toLower().endsWith(".yuv")) {
                 // Set default values for optional parameters
