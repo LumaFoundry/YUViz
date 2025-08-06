@@ -359,7 +359,17 @@ AVFrame* CompareHelper::frameDataToAVFrame(FrameData* frameData, FrameMeta* meta
         return nullptr;
     }
 
-    frame->format = metadata->format();
+    // Check if this is a packed format that was converted to planar
+    AVPixelFormat originalFormat = metadata->format();
+    AVPixelFormat targetFormat = originalFormat;
+
+    if (originalFormat == AV_PIX_FMT_YUYV422 || originalFormat == AV_PIX_FMT_UYVY422) {
+        qDebug() << "CompareHelper::frameDataToAVFrame - Detected packed format" << originalFormat
+                 << "converting to YUV422P for AVFrame";
+        targetFormat = AV_PIX_FMT_YUV422P;
+    }
+
+    frame->format = targetFormat;
     frame->width = metadata->yWidth();
     frame->height = metadata->yHeight();
     frame->pts = frameData->pts();
