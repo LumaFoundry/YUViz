@@ -71,9 +71,11 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
     m_timeBases.push_back(frameController->getTimeBase());
 
-    // Get the max duration from all FC (in theory they should all be the same)
+    // Get the max duration & totalFrames from all FC (in theory they should all be the same)
     m_duration = std::max(m_duration, frameController->getDuration());
     emit durationChanged();
+    m_totalFrames = std::max(m_totalFrames, frameController->totalFrames());
+    emit totalFramesChanged();
 
     m_frameControllers.push_back(std::move(frameController));
     // qDebug() << "FrameController count now:" << m_frameControllers.size();
@@ -373,6 +375,20 @@ void VideoController::seekTo(double timeMs) {
 
     // send signal to timer to seek
     emit seekTimer(seekPts);
+}
+
+void VideoController::jumpToFrame(int pts) {
+    // Convert pts to milliseconds to first active FC
+    for (const auto& fc : m_frameControllers) {
+        if (fc) {
+            // Convert PTS to milliseconds using the FC's timebase
+            AVRational timebase = fc->getTimeBase();
+            double timeMs = pts * av_q2d(timebase) * 1000.0;
+            m_currentTimeMs = timeMs;
+            break;
+        }
+    }
+    seekTo(m_currentTimeMs);
 }
 
 qint64 VideoController::duration() const {

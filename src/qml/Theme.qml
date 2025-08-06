@@ -11,6 +11,13 @@ QtObject {
     property color textSecondary: "#B0B0B0"        // Disabled or secondary text
     property color borderColor: "#333333"          // Border lines
     property color iconColor: "#FFFFFF"            // Icons and interactive elements
+    
+    // Additional colors for input fields and buttons
+    property color inputBackgroundColor: "#2D2D2D" // Input field background
+    property color buttonColor: "#404040"          // Button background
+    property color buttonPressedColor: "#505050"   // Button pressed state
+    property color accentColor: "#4e9fdd"          // Accent color (same as primaryColor)
+    property color accentPressedColor: "#3e8fcd"   // Pressed accent color
 
     // Device-scale factor (defaults to 1.0, scales on high DPI)
     // readonly property real scaleFactor: Screen.logicalPixelDensity / 96

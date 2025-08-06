@@ -1,4 +1,5 @@
 #include "videoWindow.h"
+#include <QFileInfo>
 #include <QMouseEvent>
 #include <QtMath>
 #include <libavutil/pixfmt.h>
@@ -335,6 +336,30 @@ QString VideoWindow::videoResolution() const {
     int height = m_frameMeta->yHeight();
 
     return QString("%1x%2").arg(width).arg(height);
+}
+
+QString VideoWindow::codecName() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    std::string codec = m_frameMeta->codecName();
+    return codec.empty() ? QString("Unknown") : QString::fromStdString(codec);
+}
+
+QString VideoWindow::videoName() const {
+    if (!m_frameMeta) {
+        return QString("N/A");
+    }
+
+    std::string filename = m_frameMeta->filename();
+    if (filename.empty()) {
+        return QString("Unknown");
+    }
+
+    // Extract just the filename from the full path
+    QFileInfo fileInfo(QString::fromStdString(filename));
+    return fileInfo.fileName();
 }
 
 int VideoWindow::componentDisplayMode() const {

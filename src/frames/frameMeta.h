@@ -29,6 +29,7 @@ class FrameMeta {
     AVColorRange colorRange() const;
     AVColorSpace colorSpace() const;
     std::string filename() const;
+    std::string codecName() const;
 
     void setYWidth(int width);
     void setYHeight(int height);
@@ -40,6 +41,7 @@ class FrameMeta {
     void setColorRange(AVColorRange range);
     void setColorSpace(AVColorSpace space);
     void setFilename(const std::string& filename);
+    void setCodecName(const std::string& codecName);
     void setDuration(int64_t msDuration);
     void setTotalFrames(int totalFrames);
 
@@ -54,6 +56,7 @@ class FrameMeta {
     AVColorRange m_colorRange;
     AVColorSpace m_colorSpace;
     std::string m_filename;
+    std::string m_codecName;
     int64_t m_durationMs;
     int m_totalFrames;
 };

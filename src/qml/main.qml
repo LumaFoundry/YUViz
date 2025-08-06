@@ -79,11 +79,19 @@ ApplicationWindow {
         DiffWindow {}
     }
 
-
     ResolutionWarningPopup {
         id: resolutionWarningDialog
         newWidth: importedWidth
         newHeight: importedHeight
+    }
+
+    JumpToFramePopup {
+        id: jumpPopup
+        anchors.centerIn: parent
+        maxFrames: videoController ? videoController.totalFrames : 0
+        onJumpToFrame: function (frameNumber) {
+            videoController.jumpToFrame(frameNumber);
+        }
     }
 
     Timer {
@@ -201,6 +209,11 @@ ApplicationWindow {
             if (event.key === Qt.Key_O) {
                 console.log("O key pressed, toggling global OSD state");
                 mainWindow.toggleGlobalOsdState();
+                event.accepted = true;
+            }
+
+            if (event.key === Qt.Key_J) {
+                jumpPopup.open();
                 event.accepted = true;
             }
         }
@@ -479,17 +492,21 @@ ApplicationWindow {
                             }
 
                             const firstVideo = videos[0];
-                            if (!firstVideo || !firstVideo.metadataReady) return false;
+                            if (!firstVideo || !firstVideo.metadataReady)
+                                return false;
                             const firstMeta = firstVideo.getFrameMeta();
-                            if (!firstMeta) return false;
+                            if (!firstMeta)
+                                return false;
 
                             // Check all subsequent videos against the first one.
                             for (let i = 1; i < videos.length; i++) {
                                 const currentVideo = videos[i];
 
-                                if (!currentVideo || !currentVideo.metadataReady) return false;
+                                if (!currentVideo || !currentVideo.metadataReady)
+                                    return false;
                                 const currentMeta = currentVideo.getFrameMeta();
-                                if (!currentMeta) return false;
+                                if (!currentMeta)
+                                    return false;
 
                                 // If mismatch, disable the button.
                                 if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {
@@ -653,10 +670,33 @@ ApplicationWindow {
         keyHandler.forceActiveFocus();
     }
 
-    Text {
-        anchors.top: parent.top
+    // Global Zoom Level Indicator
+    Rectangle {
+        visible: sharedViewProperties && sharedViewProperties.isZoomed && sharedViewProperties.zoom > 1.0
+        anchors.bottom: parent.bottom
         anchors.left: parent.left
-        anchors.margins: 10
+        anchors.bottomMargin: 110 // 10 pixels above the Ctrl text (which is at bottomMargin: 80, plus text height ~20)
+        width: globalZoomText.width + 16
+        height: globalZoomText.height + 12
+        color: "black"
+        opacity: 0.8
+        radius: 4
+        z: 99
+
+        Text {
+            id: globalZoomText
+            anchors.centerIn: parent
+            color: "white"
+            font.family: "monospace"
+            font.pixelSize: 11
+            text: sharedViewProperties ? "Zoom: " + (sharedViewProperties.zoom * 100).toFixed(0) + "%" : ""
+        }
+    }
+
+    Text {
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.bottomMargin: 80
         color: Theme.textColor
         text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
         font.pixelSize: Theme.fontSizeNormal

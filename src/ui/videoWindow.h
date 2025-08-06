@@ -24,6 +24,8 @@ class VideoWindow : public QQuickItem {
     Q_PROPERTY(QString colorSpace READ colorSpace NOTIFY metadataInitialized)
     Q_PROPERTY(QString colorRange READ colorRange NOTIFY metadataInitialized)
     Q_PROPERTY(QString videoResolution READ videoResolution NOTIFY metadataInitialized)
+    Q_PROPERTY(QString codecName READ codecName NOTIFY metadataInitialized)
+    Q_PROPERTY(QString videoName READ videoName NOTIFY metadataInitialized)
     Q_PROPERTY(int componentDisplayMode READ componentDisplayMode WRITE setComponentDisplayMode NOTIFY
                    componentDisplayModeChanged)
 
@@ -51,6 +53,8 @@ class VideoWindow : public QQuickItem {
     QString colorSpace() const;
     QString colorRange() const;
     QString videoResolution() const;
+    QString codecName() const;
+    QString videoName() const;
     int componentDisplayMode() const;
     void setComponentDisplayMode(int mode);
 
