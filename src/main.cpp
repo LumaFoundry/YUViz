@@ -177,41 +177,30 @@ int main(int argc, char* argv[]) {
                         }
                         resolutionSet = true;
 
-                    } else if (part.toUpper().endsWith('P')) { // Pixel Format
-                        if (formatSet) {
-                            QString errorMsg = QString("Duplicate pixel format specified for '%1'.").arg(filename);
-                            qWarning() << errorMsg;
-                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
-                            return -1;
-                        }
-                        QString formatCandidate = part.toUpper();
-                        if (formatCandidate != "420P" && formatCandidate != "422P" && formatCandidate != "444P") {
-                            QString errorMsg =
-                                QString("Unsupported pixel format '%1'. Use 420P, 422P, or 444P.").arg(part);
-                            qWarning() << errorMsg;
-                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
-                            return -1;
-                        }
-                        yuvFormat = formatCandidate;
-                        formatSet = true;
+                    } else { // Check if it's numeric (fps) or pixel format
+                        bool isNumeric;
+                        double fps_candidate = part.toDouble(&isNumeric);
 
-                    } else { // Framerate
-                        if (framerateSet) {
-                            QString errorMsg = QString("Duplicate framerate specified for '%1'.").arg(filename);
-                            qWarning() << errorMsg;
-                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
-                            return -1;
+                        if (isNumeric && fps_candidate > 0) { // Framerate
+                            if (framerateSet) {
+                                QString errorMsg = QString("Duplicate framerate specified for '%1'.").arg(filename);
+                                qWarning() << errorMsg;
+                                ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                                return -1;
+                            }
+                            framerate = fps_candidate;
+                            framerateSet = true;
+
+                        } else { // Pixel Format
+                            if (formatSet) {
+                                QString errorMsg = QString("Duplicate pixel format specified for '%1'.").arg(filename);
+                                qWarning() << errorMsg;
+                                ErrorReporter::instance().report(errorMsg, LogLevel::Error);
+                                return -1;
+                            }
+                            yuvFormat = part.toUpper();
+                            formatSet = true;
                         }
-                        bool ok;
-                        double fps = part.toDouble(&ok);
-                        if (!ok || fps <= 0) {
-                            QString errorMsg = QString("Invalid framerate value '%1'.").arg(part);
-                            qWarning() << errorMsg;
-                            ErrorReporter::instance().report(errorMsg, LogLevel::Error);
-                            return -1;
-                        }
-                        framerate = fps;
-                        framerateSet = true;
                     }
                 }
 
