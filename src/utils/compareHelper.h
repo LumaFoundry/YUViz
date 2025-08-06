@@ -22,8 +22,6 @@ class CompareHelper {
 
     PSNRResult getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
 
-    PSNRResult getPSNRManual(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
-
     double getVMAF(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);
 
     double getSSIM(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2);

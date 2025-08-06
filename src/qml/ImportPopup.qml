@@ -84,6 +84,9 @@ Popup {
                         }
                         fpsInput.text = "";
                     }
+                    
+                    // Auto-select format based on filename
+                    autoSelectFormat(file);
                 }
             }
 
@@ -180,5 +183,33 @@ Popup {
             }
         }
     }
+    }
+    
+    function autoSelectFormat(filename) {
+        if (!isYUV) return;
+        
+        const lowerFilename = filename.toLowerCase();
+        
+        // Check for specific format indicators in filename
+        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")) {
+            formatInput.currentIndex = 0; // 420P
+        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p")) {
+            formatInput.currentIndex = 1; // 422P
+        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p")) {
+            formatInput.currentIndex = 2; // 444P
+        } else if (lowerFilename.includes("yuyv")) {
+            formatInput.currentIndex = 3; // YUYV
+        } else if (lowerFilename.includes("uyvy")) {
+            formatInput.currentIndex = 4; // UYVY
+        } else if (lowerFilename.includes("nv12")) {
+            formatInput.currentIndex = 5; // NV12
+        } else if (lowerFilename.includes("nv21")) {
+            formatInput.currentIndex = 6; // NV21
+        } else {
+            // Default to 420P for most common YUV files
+            formatInput.currentIndex = 0;
+        }
+        
+        console.log("Auto-selected format:", formatInput.displayText, "for file:", filename);
     }
 }
