@@ -6,6 +6,6 @@
     <file>DiffWindow.qml</file>
     <file>Theme.qml</file>
     <file>JumpToFramePopup.qml</file>
-    <file>ResolutionWarningPopup.qml</file>
+    <file>MismatchWarningPopup.qml</file>
 </qresource>
 </RCC>

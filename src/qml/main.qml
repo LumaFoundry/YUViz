@@ -105,8 +105,8 @@ ApplicationWindow {
         DiffWindow {}
     }
 
-    ResolutionWarningPopup {
-        id: resolutionWarningDialog
+    MismatchWarningPopup {
+        id: mismatchWarningDialog
         newWidth: importedWidth
         newHeight: importedHeight
     }
@@ -387,13 +387,13 @@ ApplicationWindow {
 
                                     // Trigger popup if either resolution or FPS don't match
                                     if (resMismatch || fpsMismatch) {
-                                        resolutionWarningDialog.firstWidth = firstMeta.yWidth;
-                                        resolutionWarningDialog.firstHeight = firstMeta.yHeight;
-                                        resolutionWarningDialog.newWidth = thisMeta.yWidth;
-                                        resolutionWarningDialog.newHeight = thisMeta.yHeight;
-                                        resolutionWarningDialog.firstFps = firstFps;
-                                        resolutionWarningDialog.newFps = thisFps;
-                                        resolutionWarningDialog.open();
+                                        mismatchWarningDialog.firstWidth = firstMeta.yWidth;
+                                        mismatchWarningDialog.firstHeight = firstMeta.yHeight;
+                                        mismatchWarningDialog.newWidth = thisMeta.yWidth;
+                                        mismatchWarningDialog.newHeight = thisMeta.yHeight;
+                                        mismatchWarningDialog.firstFps = firstFps;
+                                        mismatchWarningDialog.newFps = thisFps;
+                                        mismatchWarningDialog.open();
                                     }
                                 }
                             }

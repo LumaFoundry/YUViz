@@ -4,7 +4,7 @@ import QtQuick.Layouts 1.15
 import Theme 1.0
 
 Popup {
-    id: resolutionWarningPopup
+    id: mismatchWarningPopup
 
     property int newWidth: 0
     property int newHeight: 0
@@ -62,7 +62,7 @@ Popup {
 
             Button {
                 text: "OK"
-                onClicked: resolutionWarningPopup.close()
+                onClicked: mismatchWarningPopup.close()
             }
         }
     }
