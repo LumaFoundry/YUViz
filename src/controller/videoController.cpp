@@ -286,8 +286,8 @@ void VideoController::pause() {
 
 void VideoController::stepForward() {
 
-    // Prevent stepping forward during seeking
-    if (m_isSeeking) {
+    // Prevent stepping forward during seeking or if not ready
+    if (!m_ready || m_isSeeking) {
         return;
     }
 
@@ -310,8 +310,8 @@ void VideoController::stepForward() {
 
 void VideoController::stepBackward() {
 
-    // Prevent stepping backward during seeking
-    if (m_isSeeking) {
+    // Prevent stepping backward during seeking or if not ready
+    if (!m_ready || m_isSeeking) {
         return;
     }
 
@@ -343,6 +343,12 @@ void VideoController::togglePlayPause() {
 }
 
 void VideoController::seekTo(double timeMs) {
+
+    // disable seeking if not ready
+    if (!m_ready) {
+        return;
+    }
+
     // Pause the timer
     if (m_timer->getStatus() == Status::Playing) {
         // qDebug() << "VideoController: Pausing playback";
