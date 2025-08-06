@@ -206,6 +206,12 @@ void FrameController::onFrameUploaded() {
         // qDebug() << "FrameController::requesting render after seeked frame uploaded";
         FrameData* target = m_frameQueue->getHeadFrame(m_seeking);
         m_lastPTS = m_seeking;
+        if (!target) {
+            qWarning() << "FrameController::onFrameUploaded - No frame found for PTS" << m_seeking << "at index"
+                       << m_index;
+            emit endOfVideo(m_endOfVideo, m_index);
+            return;
+        }
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after seeking, setting endOfVideo to true";
             m_endOfVideo = true;
@@ -222,6 +228,12 @@ void FrameController::onFrameUploaded() {
         // qDebug() << "FrameController::Stepping frame is rendered";
         FrameData* target = m_frameQueue->getHeadFrame(m_stepping);
         m_lastPTS = m_stepping;
+        if (!target) {
+            qWarning() << "FrameController::onFrameUploaded - No frame found for PTS" << m_stepping << "at index"
+                       << m_index;
+            emit endOfVideo(m_endOfVideo, m_index);
+            return;
+        }
         if (target->isEndFrame()) {
             // qDebug() << "End frame reached after stepping, setting endOfVideo to true";
             m_endOfVideo = true;
