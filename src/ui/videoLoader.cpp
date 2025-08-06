@@ -1,6 +1,5 @@
 #include "videoLoader.h"
 #include <QDebug>
-#include <QMessageBox>
 #include <QQmlContext>
 
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
