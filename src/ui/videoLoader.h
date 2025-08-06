@@ -30,6 +30,9 @@ class VideoLoader : public QObject {
 
     void setGlobalForceSoftwareDecoding(bool force);
 
+  signals:
+    void videoLoadFailed(const QString& title, const QString& message);
+
   private:
     QQmlApplicationEngine* m_engine;
     std::shared_ptr<VideoController> m_vcPtr;

@@ -73,6 +73,33 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: errorDialog
+        title: "Error"
+        modal: true
+        standardButtons: Dialog.Ok
+        width: 400
+        anchors.centerIn: parent
+
+        Label {
+            id: errorDialogText
+            text: "An unknown error occurred."
+            anchors.fill: parent
+            wrapMode: Label.WordWrap
+            padding: 10
+        }
+    }
+
+    Connections {
+        target: videoLoader
+
+        function onVideoLoadFailed(title, message) {
+            errorDialog.title = title
+            errorDialogText.text = message
+            errorDialog.open()
+        }
+    }
+
     Component {
         id: diffPopupComponent
         DiffWindow {}

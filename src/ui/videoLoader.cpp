@@ -1,5 +1,6 @@
 #include "videoLoader.h"
 #include <QDebug>
+#include <QMessageBox>
 #include <QQmlContext>
 
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
@@ -40,6 +41,14 @@ void VideoLoader::loadVideo(
         yuvFormat = AV_PIX_FMT_YUV422P;
     } else if (pixelFormat == "444P") {
         yuvFormat = AV_PIX_FMT_YUV444P;
+    } else {
+        QString userMessage =
+            QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);
+        qWarning() << "Failed to load video:" << userMessage.replace("\n\n", " ");
+
+        emit videoLoadFailed("Unsupported Video", userMessage);
+
+        return;
     }
 
     QObject* root = m_engine->rootObjects().first();
