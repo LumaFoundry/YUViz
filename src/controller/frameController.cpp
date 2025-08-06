@@ -110,7 +110,6 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
         m_lastPTS = pts;
-        qDebug() << "Requested render for frame with PTS" << pts;
         if (target->isEndFrame()) {
             // qDebug() << "End frame = True set by" << target->pts();
             m_endOfVideo = true;
@@ -119,6 +118,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
             m_endOfVideo = false;
         }
         m_ticking = pts;
+        qDebug() << "Requested render for frame with PTS" << pts;
         emit requestRender(m_index);
         emit endOfVideo(m_endOfVideo, m_index);
     } else {
@@ -192,9 +192,12 @@ void FrameController::onFrameDecoded(bool success) {
 }
 
 void FrameController::onFrameUploaded() {
+    // qDebug() << "onFrameUploaded: m_seeking:" << m_seeking << "m_prefill:" << m_prefill << "m_stepping:" <<
+    // m_stepping;
     if (m_prefill) {
         m_prefill = false;
         m_window->syncColorSpaceMenu();
+        // qDebug() << "Requested render for prefill";
         emit requestRender(m_index);
         emit ready(m_index);
     }
@@ -209,6 +212,9 @@ void FrameController::onFrameUploaded() {
         } else if (m_endOfVideo) {
             m_endOfVideo = false;
         }
+        // qDebug() << "Requested render for frame with PTS" << m_seeking;
+        m_seeking = -1; // Reset seeking after upload
+        emit seekCompleted(m_index);
         emit requestRender(m_index);
     }
 
@@ -222,13 +228,15 @@ void FrameController::onFrameUploaded() {
         } else if (m_endOfVideo) {
             m_endOfVideo = false;
         }
-
+        // qDebug() << "Requested render for frame with PTS" << m_stepping;
+        m_stepping = -1; // Reset stepping after upload
         emit requestRender(m_index);
     }
 }
 
 void FrameController::onFrameRendered() {
-    // qDebug() << "onFrameRendered";
+    // qDebug() << "onFrameRendered: m_ticking:" << m_ticking << "m_seeking:" << m_seeking << "m_stepping:" <<
+    // m_stepping;
 
     if (m_ticking != -1) {
         // Upload future frame if inside frameQueue
@@ -247,17 +255,6 @@ void FrameController::onFrameRendered() {
         } else {
             qWarning() << "Cannot upload frame" << (futurePts);
         }
-    }
-
-    if (m_seeking != -1) {
-        // qDebug() << "FrameController::Seeked frame is rendered";
-        m_seeking = -1; // Reset seeking after rendering
-        emit seekCompleted(m_index);
-    }
-
-    if (m_stepping != -1) {
-        // qDebug() << "FrameController::Stepping frame is rendered";
-        m_stepping = -1; // Reset stepping after rendering
     }
 }
 
