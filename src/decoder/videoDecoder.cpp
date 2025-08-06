@@ -697,72 +697,196 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
             return;
         }
 
-        // Convert packed YUV to planar YUV422P for internal processing
+        // Convert packed YUV to planar YUV422P for internal processing (optimized)
         if (srcFmt == AV_PIX_FMT_UYVY422) {
             // UYVY: U0 Y0 V0 Y1 (4 bytes for 2 pixels)
-            qDebug() << "Converting UYVY422 to YUV422P...";
+            qDebug() << "Converting UYVY422 to YUV422P (optimized)...";
 
-            // Process line by line
+            const int uvWidth = width / 2;
+
+            // Optimized conversion with better memory access patterns
             for (int y = 0; y < height; y++) {
-                uint8_t* srcLine = packetData + y * width * 2; // Start of current line
-                uint8_t* yLine = yPtr + y * width;             // Y plane line
+                const uint8_t* srcLine = packetData + y * width * 2;
+                uint8_t* yLine = yPtr + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
 
-                for (int x = 0; x < width; x += 2) {
-                    int srcPos = x * 2; // Byte position within current line
+                // Process 16 pixels at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= width - 16; x += 16) {
+                    const uint8_t* src = srcLine + x * 2;
 
-                    // UYVY: U0 Y0 V0 Y1
-                    uint8_t u = srcLine[srcPos];      // U0
-                    uint8_t y0 = srcLine[srcPos + 1]; // Y0
-                    uint8_t v = srcLine[srcPos + 2];  // V0
-                    uint8_t y1 = srcLine[srcPos + 3]; // Y1
+                    // Extract Y values (16 pixels) - unrolled for better performance
+                    yLine[x] = src[1];       // Y0
+                    yLine[x + 1] = src[3];   // Y1
+                    yLine[x + 2] = src[5];   // Y2
+                    yLine[x + 3] = src[7];   // Y3
+                    yLine[x + 4] = src[9];   // Y4
+                    yLine[x + 5] = src[11];  // Y5
+                    yLine[x + 6] = src[13];  // Y6
+                    yLine[x + 7] = src[15];  // Y7
+                    yLine[x + 8] = src[17];  // Y8
+                    yLine[x + 9] = src[19];  // Y9
+                    yLine[x + 10] = src[21]; // Y10
+                    yLine[x + 11] = src[23]; // Y11
+                    yLine[x + 12] = src[25]; // Y12
+                    yLine[x + 13] = src[27]; // Y13
+                    yLine[x + 14] = src[29]; // Y14
+                    yLine[x + 15] = src[31]; // Y15
 
-                    // Set Y values
-                    yLine[x] = y0;
+                    // Extract U values (8 UV pairs)
+                    uLine[x / 2] = src[0];      // U0
+                    uLine[x / 2 + 1] = src[4];  // U1
+                    uLine[x / 2 + 2] = src[8];  // U2
+                    uLine[x / 2 + 3] = src[12]; // U3
+                    uLine[x / 2 + 4] = src[16]; // U4
+                    uLine[x / 2 + 5] = src[20]; // U5
+                    uLine[x / 2 + 6] = src[24]; // U6
+                    uLine[x / 2 + 7] = src[28]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x / 2] = src[2];      // V0
+                    vLine[x / 2 + 1] = src[6];  // V1
+                    vLine[x / 2 + 2] = src[10]; // V2
+                    vLine[x / 2 + 3] = src[14]; // V3
+                    vLine[x / 2 + 4] = src[18]; // V4
+                    vLine[x / 2 + 5] = src[22]; // V5
+                    vLine[x / 2 + 6] = src[26]; // V6
+                    vLine[x / 2 + 7] = src[30]; // V7
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= width - 8; x += 8) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (8 pixels)
+                    yLine[x] = src[1];      // Y0
+                    yLine[x + 1] = src[3];  // Y1
+                    yLine[x + 2] = src[5];  // Y2
+                    yLine[x + 3] = src[7];  // Y3
+                    yLine[x + 4] = src[9];  // Y4
+                    yLine[x + 5] = src[11]; // Y5
+                    yLine[x + 6] = src[13]; // Y6
+                    yLine[x + 7] = src[15]; // Y7
+
+                    // Extract U values (4 UV pairs)
+                    uLine[x / 2] = src[0];      // U0
+                    uLine[x / 2 + 1] = src[4];  // U1
+                    uLine[x / 2 + 2] = src[8];  // U2
+                    uLine[x / 2 + 3] = src[12]; // U3
+
+                    // Extract V values (4 UV pairs)
+                    vLine[x / 2] = src[2];      // V0
+                    vLine[x / 2 + 1] = src[6];  // V1
+                    vLine[x / 2 + 2] = src[10]; // V2
+                    vLine[x / 2 + 3] = src[14]; // V3
+                }
+
+                // Handle remaining pixels
+                for (; x < width; x += 2) {
+                    const uint8_t* src = srcLine + x * 2;
+                    yLine[x] = src[1]; // Y0
                     if (x + 1 < width) {
-                        yLine[x + 1] = y1;
+                        yLine[x + 1] = src[3]; // Y1
                     }
-
-                    // UV components horizontal subsampling to 4:2:2 (maintain vertical resolution)
-                    int uvX = x / 2;
-                    int uvY = y;
-                    int uvIndex = uvY * (width / 2) + uvX;
-
-                    uPtr[uvIndex] = u;
-                    vPtr[uvIndex] = v;
+                    uLine[x / 2] = src[0]; // U0
+                    vLine[x / 2] = src[2]; // V0
                 }
             }
 
         } else if (srcFmt == AV_PIX_FMT_YUYV422) {
             // YUYV: Y0 U0 Y1 V0 (4 bytes for 2 pixels)
-            qDebug() << "Converting YUYV422 to YUV422P...";
+            qDebug() << "Converting YUYV422 to YUV422P (optimized)...";
 
-            // Process line by line
+            const int uvWidth = width / 2;
+
+            // Optimized conversion with better memory access patterns
             for (int y = 0; y < height; y++) {
-                uint8_t* srcLine = packetData + y * width * 2; // Start of current line
-                uint8_t* yLine = yPtr + y * width;             // Y plane line
+                const uint8_t* srcLine = packetData + y * width * 2;
+                uint8_t* yLine = yPtr + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
 
-                for (int x = 0; x < width; x += 2) {
-                    int srcPos = x * 2; // Byte position within current line
+                // Process 16 pixels at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= width - 16; x += 16) {
+                    const uint8_t* src = srcLine + x * 2;
 
-                    // YUYV: Y0 U0 Y1 V0
-                    uint8_t y0 = srcLine[srcPos];     // Y0
-                    uint8_t u = srcLine[srcPos + 1];  // U0
-                    uint8_t y1 = srcLine[srcPos + 2]; // Y1
-                    uint8_t v = srcLine[srcPos + 3];  // V0
+                    // Extract Y values (16 pixels) - unrolled for better performance
+                    yLine[x] = src[0];       // Y0
+                    yLine[x + 1] = src[2];   // Y1
+                    yLine[x + 2] = src[4];   // Y2
+                    yLine[x + 3] = src[6];   // Y3
+                    yLine[x + 4] = src[8];   // Y4
+                    yLine[x + 5] = src[10];  // Y5
+                    yLine[x + 6] = src[12];  // Y6
+                    yLine[x + 7] = src[14];  // Y7
+                    yLine[x + 8] = src[16];  // Y8
+                    yLine[x + 9] = src[18];  // Y9
+                    yLine[x + 10] = src[20]; // Y10
+                    yLine[x + 11] = src[22]; // Y11
+                    yLine[x + 12] = src[24]; // Y12
+                    yLine[x + 13] = src[26]; // Y13
+                    yLine[x + 14] = src[28]; // Y14
+                    yLine[x + 15] = src[30]; // Y15
 
-                    // Set Y values
-                    yLine[x] = y0;
+                    // Extract U values (8 UV pairs)
+                    uLine[x / 2] = src[1];      // U0
+                    uLine[x / 2 + 1] = src[5];  // U1
+                    uLine[x / 2 + 2] = src[9];  // U2
+                    uLine[x / 2 + 3] = src[13]; // U3
+                    uLine[x / 2 + 4] = src[17]; // U4
+                    uLine[x / 2 + 5] = src[21]; // U5
+                    uLine[x / 2 + 6] = src[25]; // U6
+                    uLine[x / 2 + 7] = src[29]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x / 2] = src[3];      // V0
+                    vLine[x / 2 + 1] = src[7];  // V1
+                    vLine[x / 2 + 2] = src[11]; // V2
+                    vLine[x / 2 + 3] = src[15]; // V3
+                    vLine[x / 2 + 4] = src[19]; // V4
+                    vLine[x / 2 + 5] = src[23]; // V5
+                    vLine[x / 2 + 6] = src[27]; // V6
+                    vLine[x / 2 + 7] = src[31]; // V7
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= width - 8; x += 8) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (8 pixels)
+                    yLine[x] = src[0];      // Y0
+                    yLine[x + 1] = src[2];  // Y1
+                    yLine[x + 2] = src[4];  // Y2
+                    yLine[x + 3] = src[6];  // Y3
+                    yLine[x + 4] = src[8];  // Y4
+                    yLine[x + 5] = src[10]; // Y5
+                    yLine[x + 6] = src[12]; // Y6
+                    yLine[x + 7] = src[14]; // Y7
+
+                    // Extract U values (4 UV pairs)
+                    uLine[x / 2] = src[1];      // U0
+                    uLine[x / 2 + 1] = src[5];  // U1
+                    uLine[x / 2 + 2] = src[9];  // U2
+                    uLine[x / 2 + 3] = src[13]; // U3
+
+                    // Extract V values (4 UV pairs)
+                    vLine[x / 2] = src[3];      // V0
+                    vLine[x / 2 + 1] = src[7];  // V1
+                    vLine[x / 2 + 2] = src[11]; // V2
+                    vLine[x / 2 + 3] = src[15]; // V3
+                }
+
+                // Handle remaining pixels
+                for (; x < width; x += 2) {
+                    const uint8_t* src = srcLine + x * 2;
+                    yLine[x] = src[0]; // Y0
                     if (x + 1 < width) {
-                        yLine[x + 1] = y1;
+                        yLine[x + 1] = src[2]; // Y1
                     }
-
-                    // UV components horizontal subsampling to 4:2:2 (maintain vertical resolution)
-                    int uvX = x / 2;
-                    int uvY = y;
-                    int uvIndex = uvY * (width / 2) + uvX;
-
-                    uPtr[uvIndex] = u;
-                    vPtr[uvIndex] = v;
+                    uLine[x / 2] = src[1]; // U0
+                    vLine[x / 2] = src[3]; // V0
                 }
             }
         }
@@ -798,30 +922,170 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
 
         if (srcFmt == AV_PIX_FMT_NV12) {
             // NV12: Y plane + UV interleaved plane
-            qDebug() << "Converting NV12 to YUV420P...";
+            qDebug() << "Converting NV12 to YUV420P (optimized)...";
 
+            // Optimized conversion with better memory access patterns
             for (int y = 0; y < uvHeight; y++) {
-                for (int x = 0; x < uvWidth; x++) {
-                    int uvIndex = y * width + x * 2; // UV interleaved
-                    int uIndex = y * uvWidth + x;
-                    int vIndex = y * uvWidth + x;
+                const uint8_t* uvLine = uvData + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
 
-                    uPtr[uIndex] = uvData[uvIndex];     // U component
-                    vPtr[vIndex] = uvData[uvIndex + 1]; // V component
+                // Process 16 UV pairs at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= uvWidth - 16; x += 16) {
+                    const uint8_t* src = uvLine + x * 2;
+
+                    // Extract U values (16 UV pairs) - unrolled for better performance
+                    uLine[x] = src[0];       // U0
+                    uLine[x + 1] = src[2];   // U1
+                    uLine[x + 2] = src[4];   // U2
+                    uLine[x + 3] = src[6];   // U3
+                    uLine[x + 4] = src[8];   // U4
+                    uLine[x + 5] = src[10];  // U5
+                    uLine[x + 6] = src[12];  // U6
+                    uLine[x + 7] = src[14];  // U7
+                    uLine[x + 8] = src[16];  // U8
+                    uLine[x + 9] = src[18];  // U9
+                    uLine[x + 10] = src[20]; // U10
+                    uLine[x + 11] = src[22]; // U11
+                    uLine[x + 12] = src[24]; // U12
+                    uLine[x + 13] = src[26]; // U13
+                    uLine[x + 14] = src[28]; // U14
+                    uLine[x + 15] = src[30]; // U15
+
+                    // Extract V values (16 UV pairs)
+                    vLine[x] = src[1];       // V0
+                    vLine[x + 1] = src[3];   // V1
+                    vLine[x + 2] = src[5];   // V2
+                    vLine[x + 3] = src[7];   // V3
+                    vLine[x + 4] = src[9];   // V4
+                    vLine[x + 5] = src[11];  // V5
+                    vLine[x + 6] = src[13];  // V6
+                    vLine[x + 7] = src[15];  // V7
+                    vLine[x + 8] = src[17];  // V8
+                    vLine[x + 9] = src[19];  // V9
+                    vLine[x + 10] = src[21]; // V10
+                    vLine[x + 11] = src[23]; // V11
+                    vLine[x + 12] = src[25]; // V12
+                    vLine[x + 13] = src[27]; // V13
+                    vLine[x + 14] = src[29]; // V14
+                    vLine[x + 15] = src[31]; // V15
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= uvWidth - 8; x += 8) {
+                    const uint8_t* src = uvLine + x * 2;
+
+                    // Extract U values (8 UV pairs)
+                    uLine[x] = src[0];      // U0
+                    uLine[x + 1] = src[2];  // U1
+                    uLine[x + 2] = src[4];  // U2
+                    uLine[x + 3] = src[6];  // U3
+                    uLine[x + 4] = src[8];  // U4
+                    uLine[x + 5] = src[10]; // U5
+                    uLine[x + 6] = src[12]; // U6
+                    uLine[x + 7] = src[14]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x] = src[1];      // V0
+                    vLine[x + 1] = src[3];  // V1
+                    vLine[x + 2] = src[5];  // V2
+                    vLine[x + 3] = src[7];  // V3
+                    vLine[x + 4] = src[9];  // V4
+                    vLine[x + 5] = src[11]; // V5
+                    vLine[x + 6] = src[13]; // V6
+                    vLine[x + 7] = src[15]; // V7
+                }
+
+                // Handle remaining UV pairs
+                for (; x < uvWidth; x++) {
+                    const uint8_t* src = uvLine + x * 2;
+                    uLine[x] = src[0]; // U component
+                    vLine[x] = src[1]; // V component
                 }
             }
         } else if (srcFmt == AV_PIX_FMT_NV21) {
             // NV21: Y plane + VU interleaved plane
-            qDebug() << "Converting NV21 to YUV420P...";
+            qDebug() << "Converting NV21 to YUV420P (optimized)...";
 
+            // Optimized conversion with better memory access patterns
             for (int y = 0; y < uvHeight; y++) {
-                for (int x = 0; x < uvWidth; x++) {
-                    int vuIndex = y * width + x * 2; // VU interleaved
-                    int uIndex = y * uvWidth + x;
-                    int vIndex = y * uvWidth + x;
+                const uint8_t* vuLine = uvData + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
 
-                    vPtr[vIndex] = uvData[vuIndex];     // V component
-                    uPtr[uIndex] = uvData[vuIndex + 1]; // U component
+                // Process 16 VU pairs at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= uvWidth - 16; x += 16) {
+                    const uint8_t* src = vuLine + x * 2;
+
+                    // Extract V values (16 VU pairs) - unrolled for better performance
+                    vLine[x] = src[0];       // V0
+                    vLine[x + 1] = src[2];   // V1
+                    vLine[x + 2] = src[4];   // V2
+                    vLine[x + 3] = src[6];   // V3
+                    vLine[x + 4] = src[8];   // V4
+                    vLine[x + 5] = src[10];  // V5
+                    vLine[x + 6] = src[12];  // V6
+                    vLine[x + 7] = src[14];  // V7
+                    vLine[x + 8] = src[16];  // V8
+                    vLine[x + 9] = src[18];  // V9
+                    vLine[x + 10] = src[20]; // V10
+                    vLine[x + 11] = src[22]; // V11
+                    vLine[x + 12] = src[24]; // V12
+                    vLine[x + 13] = src[26]; // V13
+                    vLine[x + 14] = src[28]; // V14
+                    vLine[x + 15] = src[30]; // V15
+
+                    // Extract U values (16 VU pairs)
+                    uLine[x] = src[1];       // U0
+                    uLine[x + 1] = src[3];   // U1
+                    uLine[x + 2] = src[5];   // U2
+                    uLine[x + 3] = src[7];   // U3
+                    uLine[x + 4] = src[9];   // U4
+                    uLine[x + 5] = src[11];  // U5
+                    uLine[x + 6] = src[13];  // U6
+                    uLine[x + 7] = src[15];  // U7
+                    uLine[x + 8] = src[17];  // U8
+                    uLine[x + 9] = src[19];  // U9
+                    uLine[x + 10] = src[21]; // U10
+                    uLine[x + 11] = src[23]; // U11
+                    uLine[x + 12] = src[25]; // U12
+                    uLine[x + 13] = src[27]; // U13
+                    uLine[x + 14] = src[29]; // U14
+                    uLine[x + 15] = src[31]; // U15
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= uvWidth - 8; x += 8) {
+                    const uint8_t* src = vuLine + x * 2;
+
+                    // Extract V values (8 VU pairs)
+                    vLine[x] = src[0];      // V0
+                    vLine[x + 1] = src[2];  // V1
+                    vLine[x + 2] = src[4];  // V2
+                    vLine[x + 3] = src[6];  // V3
+                    vLine[x + 4] = src[8];  // V4
+                    vLine[x + 5] = src[10]; // V5
+                    vLine[x + 6] = src[12]; // V6
+                    vLine[x + 7] = src[14]; // V7
+
+                    // Extract U values (8 VU pairs)
+                    uLine[x] = src[1];      // U0
+                    uLine[x + 1] = src[3];  // U1
+                    uLine[x + 2] = src[5];  // U2
+                    uLine[x + 3] = src[7];  // U3
+                    uLine[x + 4] = src[9];  // U4
+                    uLine[x + 5] = src[11]; // U5
+                    uLine[x + 6] = src[13]; // U6
+                    uLine[x + 7] = src[15]; // U7
+                }
+
+                // Handle remaining VU pairs
+                for (; x < uvWidth; x++) {
+                    const uint8_t* src = vuLine + x * 2;
+                    vLine[x] = src[0]; // V component
+                    uLine[x] = src[1]; // U component
                 }
             }
         }
