@@ -367,6 +367,10 @@ AVFrame* CompareHelper::frameDataToAVFrame(FrameData* frameData, FrameMeta* meta
         qDebug() << "CompareHelper::frameDataToAVFrame - Detected packed format" << originalFormat
                  << "converting to YUV422P for AVFrame";
         targetFormat = AV_PIX_FMT_YUV422P;
+    } else if (originalFormat == AV_PIX_FMT_NV12 || originalFormat == AV_PIX_FMT_NV21) {
+        qDebug() << "CompareHelper::frameDataToAVFrame - Detected semi-planar format" << originalFormat
+                 << "converting to YUV420P for AVFrame";
+        targetFormat = AV_PIX_FMT_YUV420P;
     }
 
     frame->format = targetFormat;
