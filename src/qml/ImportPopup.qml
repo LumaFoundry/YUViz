@@ -142,12 +142,14 @@ Popup {
                 "422P - YUV422P (Planar)", 
                 "444P - YUV444P (Planar)",
                 "YUYV - YUV422 (Packed)",
-                "UYVY - YUV422 (Packed)"
+                "UYVY - YUV422 (Packed)",
+                "NV12 - YUV420 (Semi-planar)",
+                "NV21 - YUV420 (Semi-planar)"
             ]
             Layout.fillWidth: true
             currentIndex: 0
             
-            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY"]
+            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY", "NV12", "NV21"]
             
             displayText: model[currentIndex]
         }

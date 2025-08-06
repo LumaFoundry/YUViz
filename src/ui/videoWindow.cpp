@@ -412,6 +412,22 @@ QVariant VideoWindow::getYUV(int x, int y) const {
         vVal = data[offset + 2];               // V
         break;
     }
+    case AV_PIX_FMT_NV12: {
+        // NV12: Y plane + UV interleaved plane (converted to YUV420P)
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+    case AV_PIX_FMT_NV21: {
+        // NV21: Y plane + VU interleaved plane (converted to YUV420P)
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
 
     // Handle planar YUV formats
     case AV_PIX_FMT_YUV420P: {

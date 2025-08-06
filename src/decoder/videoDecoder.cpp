@@ -407,11 +407,27 @@ bool VideoDecoder::isPackedYUV(AVPixelFormat pixFmt) {
     }
 }
 
+bool VideoDecoder::isSemiPlanarYUV(AVPixelFormat pixFmt) {
+    switch (pixFmt) {
+    case AV_PIX_FMT_NV12: // NV12: Y plane + UV interleaved plane
+    case AV_PIX_FMT_NV21: // NV21: Y plane + VU interleaved plane
+        return true;
+    default:
+        return false;
+    }
+}
+
 int VideoDecoder::calculateFrameSize(AVPixelFormat pixFmt, int width, int height) {
     // For packed YUV formats
     if (isPackedYUV(pixFmt)) {
         // All packed YUV 4:2:2 formats use 2 bytes per pixel
         return width * height * 2;
+    }
+
+    // For semi-planar YUV formats (NV12/NV21)
+    if (isSemiPlanarYUV(pixFmt)) {
+        // Y plane + UV interleaved plane (4:2:0 subsampling)
+        return width * height + width * height / 2;
     }
 
     // For planar YUV formats, use FFmpeg's pixel format descriptor
@@ -762,6 +778,65 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
         if (srcFmt == AV_PIX_FMT_UYVY422 || srcFmt == AV_PIX_FMT_YUYV422) {
             metadata.setPixelFormat(AV_PIX_FMT_YUV422P);
             setFormat(AV_PIX_FMT_YUV422P);
+        }
+    } else if (isSemiPlanarYUV(srcFmt)) {
+        qDebug() << "Processing semi-planar YUV format:" << av_get_pix_fmt_name(srcFmt) << "Dimensions:" << width << "x"
+                 << height << "Packet size:" << tempPacket->size;
+
+        uint8_t* yPtr = frameData->yPtr();
+        uint8_t* uPtr = frameData->uPtr();
+        uint8_t* vPtr = frameData->vPtr();
+
+        // Verify pointers are valid
+        if (!yPtr || !uPtr || !vPtr) {
+            qDebug() << "Error: Invalid frame data pointers";
+            retFlag = 2;
+            return;
+        }
+
+        // Copy Y plane (first plane)
+        int ySize = width * height;
+        memcpy(yPtr, packetData, ySize);
+
+        // Process UV interleaved plane (second plane)
+        uint8_t* uvData = packetData + ySize;
+        int uvWidth = width / 2;
+        int uvHeight = height / 2;
+
+        if (srcFmt == AV_PIX_FMT_NV12) {
+            // NV12: Y plane + UV interleaved plane
+            qDebug() << "Converting NV12 to YUV420P...";
+
+            for (int y = 0; y < uvHeight; y++) {
+                for (int x = 0; x < uvWidth; x++) {
+                    int uvIndex = y * width + x * 2; // UV interleaved
+                    int uIndex = y * uvWidth + x;
+                    int vIndex = y * uvWidth + x;
+
+                    uPtr[uIndex] = uvData[uvIndex];     // U component
+                    vPtr[vIndex] = uvData[uvIndex + 1]; // V component
+                }
+            }
+        } else if (srcFmt == AV_PIX_FMT_NV21) {
+            // NV21: Y plane + VU interleaved plane
+            qDebug() << "Converting NV21 to YUV420P...";
+
+            for (int y = 0; y < uvHeight; y++) {
+                for (int x = 0; x < uvWidth; x++) {
+                    int vuIndex = y * width + x * 2; // VU interleaved
+                    int uIndex = y * uvWidth + x;
+                    int vIndex = y * uvWidth + x;
+
+                    vPtr[vIndex] = uvData[vuIndex];     // V component
+                    uPtr[uIndex] = uvData[vuIndex + 1]; // U component
+                }
+            }
+        }
+
+        // Update metadata to reflect the converted planar format
+        if (srcFmt == AV_PIX_FMT_NV12 || srcFmt == AV_PIX_FMT_NV21) {
+            metadata.setPixelFormat(AV_PIX_FMT_YUV420P);
+            setFormat(AV_PIX_FMT_YUV420P);
         }
     } else {
         // Handle planar YUV formats
