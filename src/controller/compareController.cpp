@@ -45,35 +45,20 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     // Make a copy of the frame data
     if (index == m_index1 && frame) {
         m_frame1 = std::make_unique<FrameData>(*frame);
-        m_pts1 = frame->pts();
-        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts1;
+        // qDebug() << "Received frame from index:" << index;
     } else if (index == m_index2 && frame) {
         m_frame2 = std::make_unique<FrameData>(*frame);
-        m_pts2 = frame->pts();
-        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts2;
+        // qDebug() << "Received frame from index:" << index;
     } else {
         qWarning() << "Received frame for unknown index:" << index;
         return;
     }
 
-    // Only proceed if we have both frames and they have the same PTS
-    if (m_frame1 && m_frame2 && m_pts1 == m_pts2) {
-        qDebug() << "Received both frames with matching PTS:" << m_pts1 << ", diffing";
+    if (m_frame1 && m_frame2) {
+        qDebug() << "Received both frames, diffing";
         m_psnrResult = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
         m_psnr = m_psnrResult.average; // Keep backward compatibility
         emit requestUpload(m_frame1.get(), m_frame2.get());
-    } else if (m_frame1 && m_frame2 && m_pts1 != m_pts2) {
-        // Log when frames have different PTS values
-        qDebug() << "Received frames with different PTS - frame1 PTS:" << m_pts1 << "frame2 PTS:" << m_pts2;
-
-        // Clear the older frame to wait for the matching one
-        if (m_pts1 < m_pts2) {
-            m_frame1.reset();
-            m_pts1 = -1;
-        } else {
-            m_frame2.reset();
-            m_pts2 = -1;
-        }
     }
 }
 
@@ -122,8 +107,4 @@ void CompareController::onCompareRendered() {
     if (m_frame2) {
         m_frame2.reset();
     }
-
-    // Reset PTS values for next frame synchronization
-    m_pts1 = -1;
-    m_pts2 = -1;
 }

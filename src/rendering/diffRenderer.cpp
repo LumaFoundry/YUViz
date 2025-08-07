@@ -120,18 +120,8 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         return;
     }
 
-    // Verify that both frames have the same PTS before processing
-    if (frame1->pts() != frame2->pts()) {
-        qWarning() << "DiffRenderer: Skipping upload - frames have different PTS values";
-        qWarning() << "Frame1 PTS:" << frame1->pts() << "Frame2 PTS:" << frame2->pts();
-        emit rendererError();
-        return;
-    }
-
     m_currentPts1 = frame1->pts();
     m_currentPts2 = frame2->pts();
-
-    qDebug() << "DiffRenderer: Uploading frames with PTS:" << m_currentPts1;
 
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
