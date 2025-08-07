@@ -82,6 +82,7 @@ Dialog {
 
                     Text {
                         text: "Space"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -98,6 +99,7 @@ Dialog {
 
                     Text {
                         text: "← →"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -134,6 +136,7 @@ Dialog {
 
                     Text {
                         text: "O"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -150,6 +153,7 @@ Dialog {
 
                     Text {
                         text: "J"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -166,6 +170,7 @@ Dialog {
 
                     Text {
                         text: "Escape"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -202,6 +207,7 @@ Dialog {
 
                     Text {
                         text: "Ctrl + Wheel"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
@@ -218,6 +224,7 @@ Dialog {
 
                     Text {
                         text: "Ctrl + Drag"
+                        font.family: "sans-serif"
                         font.pixelSize: Theme.fontSizeSmall
                         color: Theme.accentColor
                         width: 120
