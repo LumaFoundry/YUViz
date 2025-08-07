@@ -1,6 +1,11 @@
 #include "compareController.h"
 #include <QDebug>
 
+extern "C" {
+#include <libavutil/mathematics.h>
+#include <libavutil/rational.h>
+}
+
 CompareController::CompareController(QObject* parent) :
     QObject(parent) {
 }
@@ -55,10 +60,15 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     }
 
     if (m_frame1 && m_frame2) {
-        qDebug() << "Received both frames, diffing";
-        m_psnrResult = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
-        m_psnr = m_psnrResult.average; // Keep backward compatibility
-        emit requestUpload(m_frame1.get(), m_frame2.get());
+        AVRational time1 = av_mul_q(AVRational{static_cast<int>(m_frame1->pts()), 1}, m_metadata1->timeBase());
+        AVRational time2 = av_mul_q(AVRational{static_cast<int>(m_frame2->pts()), 1}, m_metadata2->timeBase());
+
+        if (av_cmp_q(time1, time2) == 0) {
+            m_psnrResult =
+                m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
+            m_psnr = m_psnrResult.average; // Keep backward compatibility
+            emit requestUpload(m_frame1.get(), m_frame2.get());
+        }
     }
 }
 
