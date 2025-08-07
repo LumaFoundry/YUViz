@@ -73,6 +73,12 @@ ApplicationWindow {
         }
     }
 
+    CommandsPopup {
+        id: commandsDialog
+        anchors.centerIn: parent
+        onAccepted: keyHandler.forceActiveFocus()
+    }
+
     Dialog {
         id: errorDialog
         title: "Error"
@@ -94,9 +100,9 @@ ApplicationWindow {
         target: videoLoader
 
         function onVideoLoadFailed(title, message) {
-            errorDialog.title = title
-            errorDialogText.text = message
-            errorDialog.open()
+            errorDialog.title = title;
+            errorDialogText.text = message;
+            errorDialog.open();
         }
     }
 
@@ -288,6 +294,10 @@ ApplicationWindow {
         }
         Menu {
             title: "Help"
+            Action {
+                text: "Show all Commands"
+                onTriggered: commandsDialog.open()
+            }
             Action {
                 text: "About"
             }
@@ -740,8 +750,6 @@ ApplicationWindow {
                         horizontalAlignment: Text.AlignLeft
                     }
                 }
-
-
             }
         }
     }
