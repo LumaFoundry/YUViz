@@ -191,11 +191,11 @@ Popup {
         const lowerFilename = filename.toLowerCase();
         
         // Check for specific format indicators in filename
-        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")) {
+        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")  || lowerFilename.includes("420")) {
             formatInput.currentIndex = 0; // 420P
-        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p")) {
+        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p") || lowerFilename.includes("422")) {
             formatInput.currentIndex = 1; // 422P
-        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p")) {
+        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p") || lowerFilename.includes("444")) {
             formatInput.currentIndex = 2; // 444P
         } else if (lowerFilename.includes("yuyv")) {
             formatInput.currentIndex = 3; // YUYV
