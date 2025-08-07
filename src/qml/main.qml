@@ -578,9 +578,9 @@ ApplicationWindow {
                         }
 
                         onClicked: {
-                            // Only one diff at a time
+                            // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
-                                diffPopupInstance.raise();
+                                diffPopupInstance.visible = false;
                                 return;
                             }
 
