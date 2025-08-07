@@ -99,9 +99,9 @@ Popup {
             font.pixelSize: 12
         }
 
-        Row {
+        RowLayout {
             spacing: 16
-            anchors.horizontalCenter: parent.horizontalCenter
+            Layout.fillWidth: true
 
             Button {
                 text: "Cancel"
