@@ -202,9 +202,6 @@ void VideoController::onReady(int index) {
         qDebug() << "Ready = true";
         m_ready = true;
         emit readyChanged();
-    } else {
-        qWarning() << "onReady: frame upload failed";
-        ErrorReporter::instance().report("Frame upload failed");
     }
 }
 
