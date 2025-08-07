@@ -640,11 +640,30 @@ ApplicationWindow {
                     }
                 }
 
+                // Time display with slider
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 10
                     Layout.rightMargin: 10
                     Layout.preferredHeight: Theme.sliderHeight + Theme.sliderHandleSize / 2
+
+                    // Current time display
+                    Text {
+                        id: currentTimeText
+                        Layout.preferredWidth: 60
+                        text: {
+                            if (videoController) {
+                                var currentSeconds = Math.floor(videoController.currentTimeMs / 1000);
+                                var currentMin = Math.floor(currentSeconds / 60);
+                                var currentSec = currentSeconds % 60;
+                                return currentMin + ":" + (currentSec < 10 ? "0" : "") + currentSec;
+                            }
+                            return "0:00";
+                        }
+                        color: Theme.textColor
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignRight
+                    }
 
                     // Time Slider
                     Slider {
@@ -702,7 +721,27 @@ ApplicationWindow {
                             border.width: 1
                         }
                     }
+
+                    // Total time display
+                    Text {
+                        id: totalTimeText
+                        Layout.preferredWidth: 60
+                        text: {
+                            if (videoController) {
+                                var totalSeconds = Math.floor(videoController.duration / 1000);
+                                var totalMin = Math.floor(totalSeconds / 60);
+                                var totalSec = totalSeconds % 60;
+                                return totalMin + ":" + (totalSec < 10 ? "0" : "") + totalSec;
+                            }
+                            return "0:00";
+                        }
+                        color: Theme.textColor
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignLeft
+                    }
                 }
+
+
             }
         }
     }
