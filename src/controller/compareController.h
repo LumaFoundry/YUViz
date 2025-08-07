@@ -51,6 +51,10 @@ class CompareController : public QObject {
     bool m_ready1 = false;
     bool m_ready2 = false;
 
+    // PTS tracking for synchronization
+    int64_t m_pts1 = -1;
+    int64_t m_pts2 = -1;
+
     double m_psnr = 0.0;
     PSNRResult m_psnrResult;
 

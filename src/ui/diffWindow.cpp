@@ -60,9 +60,19 @@ qreal DiffWindow::getAspectRatio() const {
 
 void DiffWindow::uploadFrame(FrameData* frame1, FrameData* frame2) {
     // qDebug() << "DiffWindow::uploadFrame called in thread";
-    m_renderer->releaseBatch();
-    m_renderer->uploadFrame(frame1, frame2);
-    emit frameReady();
+
+    // Verify that both frames have the same PTS before uploading
+    if (frame1 && frame2 && frame1->pts() == frame2->pts()) {
+        qDebug() << "DiffWindow: Uploading frames with matching PTS:" << frame1->pts();
+        m_renderer->releaseBatch();
+        m_renderer->uploadFrame(frame1, frame2);
+        emit frameReady();
+    } else {
+        qWarning() << "DiffWindow: Skipping upload - frames have different PTS values";
+        if (frame1 && frame2) {
+            qWarning() << "Frame1 PTS:" << frame1->pts() << "Frame2 PTS:" << frame2->pts();
+        }
+    }
 }
 
 void DiffWindow::renderFrame() {
