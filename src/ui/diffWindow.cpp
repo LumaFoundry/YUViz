@@ -36,10 +36,15 @@ void DiffWindow::initialize(std::shared_ptr<FrameMeta> metaPtr,
     if (window()) {
         update();
     } else {
-        connect(this, &QQuickItem::windowChanged, this, [=](QQuickWindow* win) {
-            qDebug() << "[DiffWindow] window became available, calling update()";
-            update();
-        });
+        connect(
+            this,
+            &QQuickItem::windowChanged,
+            this,
+            [=](QQuickWindow* win) {
+                qDebug() << "[DiffWindow] window became available, calling update()";
+                update();
+            },
+            Qt::DirectConnection);
     }
 }
 
@@ -86,7 +91,7 @@ void DiffWindow::setSharedView(SharedViewProperties* view) {
         return;
     m_sharedView = view;
     if (m_sharedView) {
-        connect(m_sharedView, &SharedViewProperties::viewChanged, this, [=]() { update(); });
+        connect(m_sharedView, &SharedViewProperties::viewChanged, this, [=]() { update(); }, Qt::DirectConnection);
     }
     emit sharedViewChanged();
 }

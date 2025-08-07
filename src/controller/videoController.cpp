@@ -46,28 +46,28 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     qDebug() << "Created FrameController for index" << m_fcIndex;
 
     // Connect each FC's upload signal to VC's slot
-    connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::AutoConnection);
+    connect(frameController.get(), &FrameController::ready, this, &VideoController::onReady, Qt::DirectConnection);
     // qDebug() << "Connected FrameController::ready to VideoController::onReady";
 
     connect(frameController.get(),
             &FrameController::startOfVideo,
             this,
             &VideoController::onFCStartOfVideo,
-            Qt::AutoConnection);
+            Qt::DirectConnection);
     // qDebug() << "Connected FrameController::startOfVideo to VideoController::onFCStartOfVideo";
 
     connect(frameController.get(),
             &FrameController::endOfVideo,
             this,
             &VideoController::onFCEndOfVideo,
-            Qt::AutoConnection);
+            Qt::DirectConnection);
     // qDebug() << "Connected FrameController::endOfVideo to VideoController::onFCEndOfVideo";
 
     connect(frameController.get(),
             &FrameController::seekCompleted,
             this,
             &VideoController::onSeekCompleted,
-            Qt::AutoConnection);
+            Qt::DirectConnection);
 
     m_timeBases.push_back(frameController->getTimeBase());
 
@@ -95,35 +95,35 @@ void VideoController::setUpTimer() {
     m_timer->moveToThread(&m_timerThread);
     // qDebug() << "Move timer to thread" << &m_timerThread;
 
-    // Connect with timer
-    connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::AutoConnection);
+    // Connect with timer (cross-thread communication)
+    connect(m_timer.get(), &Timer::tick, this, &VideoController::onTick, Qt::QueuedConnection);
     // qDebug() << "Connected Timer::tick to VideoController::onTick";
 
-    connect(m_timer.get(), &Timer::step, this, &VideoController::onStep, Qt::AutoConnection);
+    connect(m_timer.get(), &Timer::step, this, &VideoController::onStep, Qt::QueuedConnection);
     // qDebug() << "Connected Timer::step to VideoController::onStep";
 
-    connect(this, &VideoController::playTimer, m_timer.get(), &Timer::play, Qt::AutoConnection);
+    connect(this, &VideoController::playTimer, m_timer.get(), &Timer::play, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::playTimer to Timer::play";
 
-    connect(this, &VideoController::pauseTimer, m_timer.get(), &Timer::pause, Qt::AutoConnection);
+    connect(this, &VideoController::pauseTimer, m_timer.get(), &Timer::pause, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::pauseTimer to Timer::pause";
 
-    connect(this, &VideoController::stepForwardTimer, m_timer.get(), &Timer::stepForward, Qt::AutoConnection);
+    connect(this, &VideoController::stepForwardTimer, m_timer.get(), &Timer::stepForward, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::stepForwardTimer to Timer::stepForward";
 
-    connect(this, &VideoController::stepBackwardTimer, m_timer.get(), &Timer::stepBackward, Qt::AutoConnection);
+    connect(this, &VideoController::stepBackwardTimer, m_timer.get(), &Timer::stepBackward, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::stepBackwardTimer to Timer::stepBackward";
 
-    connect(this, &VideoController::seekTimer, m_timer.get(), &Timer::seek, Qt::AutoConnection);
+    connect(this, &VideoController::seekTimer, m_timer.get(), &Timer::seek, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::seekTimer to Timer::seek";
 
-    connect(this, &VideoController::setSpeedTimer, m_timer.get(), &Timer::setSpeed, Qt::AutoConnection);
+    connect(this, &VideoController::setSpeedTimer, m_timer.get(), &Timer::setSpeed, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::setSpeedTimer to Timer::setSpeed";
 
-    connect(this, &VideoController::playForwardTimer, m_timer.get(), &Timer::playForward, Qt::AutoConnection);
+    connect(this, &VideoController::playForwardTimer, m_timer.get(), &Timer::playForward, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::playForwardTimer to Timer::playForward";
 
-    connect(this, &VideoController::playBackwardTimer, m_timer.get(), &Timer::playBackward, Qt::AutoConnection);
+    connect(this, &VideoController::playBackwardTimer, m_timer.get(), &Timer::playBackward, Qt::QueuedConnection);
     // qDebug() << "Connected VideoController::playBackwardTimer to Timer::playBackward";
 
     // Start timer thread
@@ -461,26 +461,30 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                                          m_frameControllers[id1]->getFrameQueue(),
                                          m_frameControllers[id2]->getFrameQueue());
 
-        // Connect compare controller to FCs
+        // Connect compare controller to FCs (same-thread communication)
         connect(m_frameControllers[id1].get(),
                 &FrameController::requestUpload,
                 m_compareController.get(),
-                &CompareController::onReceiveFrame);
+                &CompareController::onReceiveFrame,
+                Qt::DirectConnection);
 
         connect(m_frameControllers[id1].get(),
                 &FrameController::requestRender,
                 m_compareController.get(),
-                &CompareController::onRequestRender);
+                &CompareController::onRequestRender,
+                Qt::DirectConnection);
 
         connect(m_frameControllers[id2].get(),
                 &FrameController::requestUpload,
                 m_compareController.get(),
-                &CompareController::onReceiveFrame);
+                &CompareController::onReceiveFrame,
+                Qt::DirectConnection);
 
         connect(m_frameControllers[id2].get(),
                 &FrameController::requestRender,
                 m_compareController.get(),
-                &CompareController::onRequestRender);
+                &CompareController::onRequestRender,
+                Qt::DirectConnection);
 
         // Defer the seek operation using QTimer
         QTimer::singleShot(150, this, [this]() { seekTo(m_currentTimeMs); });

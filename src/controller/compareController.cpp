@@ -24,9 +24,15 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
 
         if (m_diffWindow) {
             m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
-            connect(this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame);
-            connect(this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame);
-            connect(m_diffWindow->m_renderer, &DiffRenderer::batchIsEmpty, this, &CompareController::onCompareRendered);
+            connect(
+                this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame, Qt::DirectConnection);
+            connect(
+                this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame, Qt::DirectConnection);
+            connect(m_diffWindow->m_renderer,
+                    &DiffRenderer::batchIsEmpty,
+                    this,
+                    &CompareController::onCompareRendered,
+                    Qt::DirectConnection);
         } else {
             qWarning() << "CompareController::setMetadata - m_diffWindow is not initialized";
         }
