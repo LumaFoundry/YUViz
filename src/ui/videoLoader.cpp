@@ -34,6 +34,7 @@ void VideoLoader::loadVideo(
 
     AVPixelFormat yuvFormat = AV_PIX_FMT_NONE;
 
+    // Planar YUV formats
     if (pixelFormat == "420P") {
         yuvFormat = AV_PIX_FMT_YUV420P;
     } else if (pixelFormat == "422P") {
@@ -42,6 +43,14 @@ void VideoLoader::loadVideo(
         yuvFormat = AV_PIX_FMT_YUV444P;
     } else if (pixelFormat == "AV_PIX_FMT_NONE") {
         // this is mp4, do nothing
+    } else if (pixelFormat == "YUYV" || pixelFormat == "YUY2") {
+        yuvFormat = AV_PIX_FMT_YUYV422;
+    } else if (pixelFormat == "UYVY") {
+        yuvFormat = AV_PIX_FMT_UYVY422;
+    } else if (pixelFormat == "NV12") {
+        yuvFormat = AV_PIX_FMT_NV12;
+    } else if (pixelFormat == "NV21") {
+        yuvFormat = AV_PIX_FMT_NV21;
     } else {
         QString userMessage =
             QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);

@@ -84,6 +84,9 @@ Popup {
                         }
                         fpsInput.text = "";
                     }
+                    
+                    // Auto-select format based on filename
+                    autoSelectFormat(file);
                 }
             }
 
@@ -130,16 +133,27 @@ Popup {
 
         Label {
             visible: isYUV
-            text: "Format"
+            text: "Pixel Format"
             Layout.fillWidth: true
         }
 
         ComboBox {
             id: formatInput
             visible: isYUV
-            model: ["420P", "422P", "444P"]
+            model: [
+                "420P - YUV420P (Planar)",
+                "422P - YUV422P (Planar)", 
+                "444P - YUV444P (Planar)",
+                "YUYV - YUV422 (Packed)",
+                "UYVY - YUV422 (Packed)",
+                "NV12 - YUV420 (Semi-planar)",
+                "NV21 - YUV420 (Semi-planar)"
+            ]
             Layout.fillWidth: true
             currentIndex: 0
+            
+            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY", "NV12", "NV21"]
+            
             displayText: model[currentIndex]
         }
 
@@ -161,7 +175,7 @@ Popup {
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
-                    let format = isYUV ? formatInput.currentText : "AV_PIX_FMT_NONE";
+                    let format = isYUV ? formatInput.formatValues[formatInput.currentIndex] : "AV_PIX_FMT_NONE";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();
@@ -169,5 +183,33 @@ Popup {
             }
         }
     }
+    }
+    
+    function autoSelectFormat(filename) {
+        if (!isYUV) return;
+        
+        const lowerFilename = filename.toLowerCase();
+        
+        // Check for specific format indicators in filename
+        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")  || lowerFilename.includes("420")) {
+            formatInput.currentIndex = 0; // 420P
+        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p") || lowerFilename.includes("422")) {
+            formatInput.currentIndex = 1; // 422P
+        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p") || lowerFilename.includes("444")) {
+            formatInput.currentIndex = 2; // 444P
+        } else if (lowerFilename.includes("yuyv")) {
+            formatInput.currentIndex = 3; // YUYV
+        } else if (lowerFilename.includes("uyvy")) {
+            formatInput.currentIndex = 4; // UYVY
+        } else if (lowerFilename.includes("nv12")) {
+            formatInput.currentIndex = 5; // NV12
+        } else if (lowerFilename.includes("nv21")) {
+            formatInput.currentIndex = 6; // NV21
+        } else {
+            // Default to 420P for most common YUV files
+            formatInput.currentIndex = 0;
+        }
+        
+        console.log("Auto-selected format:", formatInput.displayText, "for file:", filename);
     }
 }

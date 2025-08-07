@@ -387,31 +387,78 @@ QVariant VideoWindow::getYUV(int x, int y) const {
     int uvW = meta->uvWidth(), uvH = meta->uvHeight();
     if (x < 0 || y < 0 || x >= yW || y >= yH)
         return QVariant();
-    int yVal = frame->yPtr()[y * yW + x];
-    int uVal = 0, vVal = 0;
-    int ux = 0, uy = 0;
     AVPixelFormat fmt = meta->format();
+    int yVal = 0, uVal = 0, vVal = 0;
+
+    // Handle packed YUV formats
     switch (fmt) {
-    case AV_PIX_FMT_YUV420P:
-        ux = x / 2;
-        uy = y / 2;
-        break;
-    case AV_PIX_FMT_YUV422P:
-        ux = x / 2;
-        uy = y;
-        break;
-    case AV_PIX_FMT_YUV444P:
-        ux = x;
-        uy = y;
-        break;
-    default:
-        ux = x / 2;
-        uy = y / 2;
+    case AV_PIX_FMT_YUYV422: {
+        // YUYV: Y0 U0 Y1 V0 Y2 U1 Y3 V1...
+        uint8_t* data = frame->yPtr();
+        int pixelPair = x / 2;
+        int offset = (y * yW + pixelPair) * 4;
+        yVal = data[offset + (x % 2) * 2]; // Y0 or Y1
+        uVal = data[offset + 1];           // U
+        vVal = data[offset + 3];           // V
         break;
     }
-    if (ux >= 0 && uy >= 0 && ux < uvW && uy < uvH) {
-        uVal = frame->uPtr()[uy * uvW + ux];
-        vVal = frame->vPtr()[uy * uvW + ux];
+    case AV_PIX_FMT_UYVY422: {
+        // UYVY: U0 Y0 V0 Y1 U1 Y2 V1 Y3...
+        uint8_t* data = frame->yPtr();
+        int pixelPair = x / 2;
+        int offset = (y * yW + pixelPair) * 4;
+        uVal = data[offset];                   // U
+        yVal = data[offset + 1 + (x % 2) * 2]; // Y0 or Y1
+        vVal = data[offset + 2];               // V
+        break;
+    }
+    case AV_PIX_FMT_NV12: {
+        // NV12: Y plane + UV interleaved plane (converted to YUV420P)
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+    case AV_PIX_FMT_NV21: {
+        // NV21: Y plane + VU interleaved plane (converted to YUV420P)
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+
+    // Handle planar YUV formats
+    case AV_PIX_FMT_YUV420P: {
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+    case AV_PIX_FMT_YUV422P: {
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+    case AV_PIX_FMT_YUV444P: {
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x, uy = y;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
+    default: {
+        // Default to YUV420P behavior for unknown formats
+        yVal = frame->yPtr()[y * yW + x];
+        int ux = x / 2, uy = y / 2;
+        uVal = frame->uPtr()[uy * meta->uvWidth() + ux];
+        vVal = frame->vPtr()[uy * meta->uvWidth() + ux];
+        break;
+    }
     }
     QVariantList result;
     result << yVal << uVal << vVal;

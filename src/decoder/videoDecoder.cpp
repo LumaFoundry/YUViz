@@ -211,9 +211,7 @@ void VideoDecoder::openFile() {
     setFormat(codecContext->pix_fmt);
 
     if (isYUV(codecContext->codec_id)) {
-        int ySize = m_width * m_height;
-        int uvSize = uvWidth * uvHeight;
-        int frameSize = ySize + 2 * uvSize;
+        int frameSize = calculateFrameSize(codecContext->pix_fmt, m_width, m_height);
 
         QFileInfo info(QString::fromStdString(m_fileName));
         int64_t fileSize = info.size();
@@ -350,7 +348,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         }
 
         maxpts = std::max(maxpts, temp_pts);
-        minpts = std::min(minpts, std::max(temp_pts, int64_t{0}));
+        minpts = std::min(minpts, std::max(temp_pts, (int64_t)0));
     }
 
     qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
@@ -397,6 +395,54 @@ bool VideoDecoder::isYUV(AVCodecID codecId) {
     default:
         return false;
     }
+}
+
+bool VideoDecoder::isPackedYUV(AVPixelFormat pixFmt) {
+    switch (pixFmt) {
+    case AV_PIX_FMT_YUYV422: // YUYV (YUY2)
+    case AV_PIX_FMT_UYVY422: // UYVY
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool VideoDecoder::isSemiPlanarYUV(AVPixelFormat pixFmt) {
+    switch (pixFmt) {
+    case AV_PIX_FMT_NV12: // NV12: Y plane + UV interleaved plane
+    case AV_PIX_FMT_NV21: // NV21: Y plane + VU interleaved plane
+        return true;
+    default:
+        return false;
+    }
+}
+
+int VideoDecoder::calculateFrameSize(AVPixelFormat pixFmt, int width, int height) {
+    // For packed YUV formats
+    if (isPackedYUV(pixFmt)) {
+        // All packed YUV 4:2:2 formats use 2 bytes per pixel
+        return width * height * 2;
+    }
+
+    // For semi-planar YUV formats (NV12/NV21)
+    if (isSemiPlanarYUV(pixFmt)) {
+        // Y plane + UV interleaved plane (4:2:0 subsampling)
+        return width * height + width * height / 2;
+    }
+
+    // For planar YUV formats, use FFmpeg's pixel format descriptor
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(pixFmt);
+    if (!pixDesc) {
+        // Default to YUV420P if format is unknown
+        return width * height + 2 * ((width + 1) / 2) * ((height + 1) / 2);
+    }
+
+    int ySize = width * height;
+    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+    int uvSize = uvWidth * uvHeight;
+
+    return ySize + 2 * uvSize;
 }
 
 bool VideoDecoder::initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt) {
@@ -642,17 +688,434 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
         return;
     }
 
-    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
-    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+    // Handle packed YUV formats differently
+    if (isPackedYUV(srcFmt)) {
+        qDebug() << "Processing packed YUV format:" << av_get_pix_fmt_name(srcFmt) << "Dimensions:" << width << "x"
+                 << height << "Packet size:" << tempPacket->size;
 
-    uint8_t* srcData[4] = {nullptr};
-    int srcLinesize[4] = {};
-    av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
-    uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+        uint8_t* yPtr = frameData->yPtr();
+        uint8_t* uPtr = frameData->uPtr();
+        uint8_t* vPtr = frameData->vPtr();
 
-    memcpy(dstData[0], srcData[0], width * height);
-    memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
-    memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
+        // Verify pointers are valid
+        if (!yPtr || !uPtr || !vPtr) {
+            qDebug() << "Error: Invalid frame data pointers";
+            retFlag = 2;
+            return;
+        }
+
+        // Convert packed YUV to planar YUV422P for internal processing (optimized)
+        if (srcFmt == AV_PIX_FMT_UYVY422) {
+            // UYVY: U0 Y0 V0 Y1 (4 bytes for 2 pixels)
+            qDebug() << "Converting UYVY422 to YUV422P (optimized)...";
+
+            const int uvWidth = width / 2;
+
+            // Optimized conversion with better memory access patterns
+            for (int y = 0; y < height; y++) {
+                const uint8_t* srcLine = packetData + y * width * 2;
+                uint8_t* yLine = yPtr + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
+
+                // Process 16 pixels at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= width - 16; x += 16) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (16 pixels) - unrolled for better performance
+                    yLine[x] = src[1];       // Y0
+                    yLine[x + 1] = src[3];   // Y1
+                    yLine[x + 2] = src[5];   // Y2
+                    yLine[x + 3] = src[7];   // Y3
+                    yLine[x + 4] = src[9];   // Y4
+                    yLine[x + 5] = src[11];  // Y5
+                    yLine[x + 6] = src[13];  // Y6
+                    yLine[x + 7] = src[15];  // Y7
+                    yLine[x + 8] = src[17];  // Y8
+                    yLine[x + 9] = src[19];  // Y9
+                    yLine[x + 10] = src[21]; // Y10
+                    yLine[x + 11] = src[23]; // Y11
+                    yLine[x + 12] = src[25]; // Y12
+                    yLine[x + 13] = src[27]; // Y13
+                    yLine[x + 14] = src[29]; // Y14
+                    yLine[x + 15] = src[31]; // Y15
+
+                    // Extract U values (8 UV pairs)
+                    uLine[x / 2] = src[0];      // U0
+                    uLine[x / 2 + 1] = src[4];  // U1
+                    uLine[x / 2 + 2] = src[8];  // U2
+                    uLine[x / 2 + 3] = src[12]; // U3
+                    uLine[x / 2 + 4] = src[16]; // U4
+                    uLine[x / 2 + 5] = src[20]; // U5
+                    uLine[x / 2 + 6] = src[24]; // U6
+                    uLine[x / 2 + 7] = src[28]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x / 2] = src[2];      // V0
+                    vLine[x / 2 + 1] = src[6];  // V1
+                    vLine[x / 2 + 2] = src[10]; // V2
+                    vLine[x / 2 + 3] = src[14]; // V3
+                    vLine[x / 2 + 4] = src[18]; // V4
+                    vLine[x / 2 + 5] = src[22]; // V5
+                    vLine[x / 2 + 6] = src[26]; // V6
+                    vLine[x / 2 + 7] = src[30]; // V7
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= width - 8; x += 8) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (8 pixels)
+                    yLine[x] = src[1];      // Y0
+                    yLine[x + 1] = src[3];  // Y1
+                    yLine[x + 2] = src[5];  // Y2
+                    yLine[x + 3] = src[7];  // Y3
+                    yLine[x + 4] = src[9];  // Y4
+                    yLine[x + 5] = src[11]; // Y5
+                    yLine[x + 6] = src[13]; // Y6
+                    yLine[x + 7] = src[15]; // Y7
+
+                    // Extract U values (4 UV pairs)
+                    uLine[x / 2] = src[0];      // U0
+                    uLine[x / 2 + 1] = src[4];  // U1
+                    uLine[x / 2 + 2] = src[8];  // U2
+                    uLine[x / 2 + 3] = src[12]; // U3
+
+                    // Extract V values (4 UV pairs)
+                    vLine[x / 2] = src[2];      // V0
+                    vLine[x / 2 + 1] = src[6];  // V1
+                    vLine[x / 2 + 2] = src[10]; // V2
+                    vLine[x / 2 + 3] = src[14]; // V3
+                }
+
+                // Handle remaining pixels
+                for (; x < width; x += 2) {
+                    const uint8_t* src = srcLine + x * 2;
+                    yLine[x] = src[1]; // Y0
+                    if (x + 1 < width) {
+                        yLine[x + 1] = src[3]; // Y1
+                    }
+                    uLine[x / 2] = src[0]; // U0
+                    vLine[x / 2] = src[2]; // V0
+                }
+            }
+
+        } else if (srcFmt == AV_PIX_FMT_YUYV422) {
+            // YUYV: Y0 U0 Y1 V0 (4 bytes for 2 pixels)
+            qDebug() << "Converting YUYV422 to YUV422P (optimized)...";
+
+            const int uvWidth = width / 2;
+
+            // Optimized conversion with better memory access patterns
+            for (int y = 0; y < height; y++) {
+                const uint8_t* srcLine = packetData + y * width * 2;
+                uint8_t* yLine = yPtr + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
+
+                // Process 16 pixels at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= width - 16; x += 16) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (16 pixels) - unrolled for better performance
+                    yLine[x] = src[0];       // Y0
+                    yLine[x + 1] = src[2];   // Y1
+                    yLine[x + 2] = src[4];   // Y2
+                    yLine[x + 3] = src[6];   // Y3
+                    yLine[x + 4] = src[8];   // Y4
+                    yLine[x + 5] = src[10];  // Y5
+                    yLine[x + 6] = src[12];  // Y6
+                    yLine[x + 7] = src[14];  // Y7
+                    yLine[x + 8] = src[16];  // Y8
+                    yLine[x + 9] = src[18];  // Y9
+                    yLine[x + 10] = src[20]; // Y10
+                    yLine[x + 11] = src[22]; // Y11
+                    yLine[x + 12] = src[24]; // Y12
+                    yLine[x + 13] = src[26]; // Y13
+                    yLine[x + 14] = src[28]; // Y14
+                    yLine[x + 15] = src[30]; // Y15
+
+                    // Extract U values (8 UV pairs)
+                    uLine[x / 2] = src[1];      // U0
+                    uLine[x / 2 + 1] = src[5];  // U1
+                    uLine[x / 2 + 2] = src[9];  // U2
+                    uLine[x / 2 + 3] = src[13]; // U3
+                    uLine[x / 2 + 4] = src[17]; // U4
+                    uLine[x / 2 + 5] = src[21]; // U5
+                    uLine[x / 2 + 6] = src[25]; // U6
+                    uLine[x / 2 + 7] = src[29]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x / 2] = src[3];      // V0
+                    vLine[x / 2 + 1] = src[7];  // V1
+                    vLine[x / 2 + 2] = src[11]; // V2
+                    vLine[x / 2 + 3] = src[15]; // V3
+                    vLine[x / 2 + 4] = src[19]; // V4
+                    vLine[x / 2 + 5] = src[23]; // V5
+                    vLine[x / 2 + 6] = src[27]; // V6
+                    vLine[x / 2 + 7] = src[31]; // V7
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= width - 8; x += 8) {
+                    const uint8_t* src = srcLine + x * 2;
+
+                    // Extract Y values (8 pixels)
+                    yLine[x] = src[0];      // Y0
+                    yLine[x + 1] = src[2];  // Y1
+                    yLine[x + 2] = src[4];  // Y2
+                    yLine[x + 3] = src[6];  // Y3
+                    yLine[x + 4] = src[8];  // Y4
+                    yLine[x + 5] = src[10]; // Y5
+                    yLine[x + 6] = src[12]; // Y6
+                    yLine[x + 7] = src[14]; // Y7
+
+                    // Extract U values (4 UV pairs)
+                    uLine[x / 2] = src[1];      // U0
+                    uLine[x / 2 + 1] = src[5];  // U1
+                    uLine[x / 2 + 2] = src[9];  // U2
+                    uLine[x / 2 + 3] = src[13]; // U3
+
+                    // Extract V values (4 UV pairs)
+                    vLine[x / 2] = src[3];      // V0
+                    vLine[x / 2 + 1] = src[7];  // V1
+                    vLine[x / 2 + 2] = src[11]; // V2
+                    vLine[x / 2 + 3] = src[15]; // V3
+                }
+
+                // Handle remaining pixels
+                for (; x < width; x += 2) {
+                    const uint8_t* src = srcLine + x * 2;
+                    yLine[x] = src[0]; // Y0
+                    if (x + 1 < width) {
+                        yLine[x + 1] = src[2]; // Y1
+                    }
+                    uLine[x / 2] = src[1]; // U0
+                    vLine[x / 2] = src[3]; // V0
+                }
+            }
+        }
+
+        // Update metadata to reflect the converted planar format
+        if (srcFmt == AV_PIX_FMT_UYVY422 || srcFmt == AV_PIX_FMT_YUYV422) {
+            metadata.setPixelFormat(AV_PIX_FMT_YUV422P);
+            setFormat(AV_PIX_FMT_YUV422P);
+        }
+    } else if (isSemiPlanarYUV(srcFmt)) {
+        qDebug() << "Processing semi-planar YUV format:" << av_get_pix_fmt_name(srcFmt) << "Dimensions:" << width << "x"
+                 << height << "Packet size:" << tempPacket->size;
+
+        uint8_t* yPtr = frameData->yPtr();
+        uint8_t* uPtr = frameData->uPtr();
+        uint8_t* vPtr = frameData->vPtr();
+
+        // Verify pointers are valid
+        if (!yPtr || !uPtr || !vPtr) {
+            qDebug() << "Error: Invalid frame data pointers";
+            retFlag = 2;
+            return;
+        }
+
+        // Copy Y plane (first plane)
+        int ySize = width * height;
+        memcpy(yPtr, packetData, ySize);
+
+        // Process UV interleaved plane (second plane)
+        uint8_t* uvData = packetData + ySize;
+        int uvWidth = width / 2;
+        int uvHeight = height / 2;
+
+        if (srcFmt == AV_PIX_FMT_NV12) {
+            // NV12: Y plane + UV interleaved plane
+            qDebug() << "Converting NV12 to YUV420P (optimized)...";
+
+            // Optimized conversion with better memory access patterns
+            for (int y = 0; y < uvHeight; y++) {
+                const uint8_t* uvLine = uvData + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
+
+                // Process 16 UV pairs at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= uvWidth - 16; x += 16) {
+                    const uint8_t* src = uvLine + x * 2;
+
+                    // Extract U values (16 UV pairs) - unrolled for better performance
+                    uLine[x] = src[0];       // U0
+                    uLine[x + 1] = src[2];   // U1
+                    uLine[x + 2] = src[4];   // U2
+                    uLine[x + 3] = src[6];   // U3
+                    uLine[x + 4] = src[8];   // U4
+                    uLine[x + 5] = src[10];  // U5
+                    uLine[x + 6] = src[12];  // U6
+                    uLine[x + 7] = src[14];  // U7
+                    uLine[x + 8] = src[16];  // U8
+                    uLine[x + 9] = src[18];  // U9
+                    uLine[x + 10] = src[20]; // U10
+                    uLine[x + 11] = src[22]; // U11
+                    uLine[x + 12] = src[24]; // U12
+                    uLine[x + 13] = src[26]; // U13
+                    uLine[x + 14] = src[28]; // U14
+                    uLine[x + 15] = src[30]; // U15
+
+                    // Extract V values (16 UV pairs)
+                    vLine[x] = src[1];       // V0
+                    vLine[x + 1] = src[3];   // V1
+                    vLine[x + 2] = src[5];   // V2
+                    vLine[x + 3] = src[7];   // V3
+                    vLine[x + 4] = src[9];   // V4
+                    vLine[x + 5] = src[11];  // V5
+                    vLine[x + 6] = src[13];  // V6
+                    vLine[x + 7] = src[15];  // V7
+                    vLine[x + 8] = src[17];  // V8
+                    vLine[x + 9] = src[19];  // V9
+                    vLine[x + 10] = src[21]; // V10
+                    vLine[x + 11] = src[23]; // V11
+                    vLine[x + 12] = src[25]; // V12
+                    vLine[x + 13] = src[27]; // V13
+                    vLine[x + 14] = src[29]; // V14
+                    vLine[x + 15] = src[31]; // V15
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= uvWidth - 8; x += 8) {
+                    const uint8_t* src = uvLine + x * 2;
+
+                    // Extract U values (8 UV pairs)
+                    uLine[x] = src[0];      // U0
+                    uLine[x + 1] = src[2];  // U1
+                    uLine[x + 2] = src[4];  // U2
+                    uLine[x + 3] = src[6];  // U3
+                    uLine[x + 4] = src[8];  // U4
+                    uLine[x + 5] = src[10]; // U5
+                    uLine[x + 6] = src[12]; // U6
+                    uLine[x + 7] = src[14]; // U7
+
+                    // Extract V values (8 UV pairs)
+                    vLine[x] = src[1];      // V0
+                    vLine[x + 1] = src[3];  // V1
+                    vLine[x + 2] = src[5];  // V2
+                    vLine[x + 3] = src[7];  // V3
+                    vLine[x + 4] = src[9];  // V4
+                    vLine[x + 5] = src[11]; // V5
+                    vLine[x + 6] = src[13]; // V6
+                    vLine[x + 7] = src[15]; // V7
+                }
+
+                // Handle remaining UV pairs
+                for (; x < uvWidth; x++) {
+                    const uint8_t* src = uvLine + x * 2;
+                    uLine[x] = src[0]; // U component
+                    vLine[x] = src[1]; // V component
+                }
+            }
+        } else if (srcFmt == AV_PIX_FMT_NV21) {
+            // NV21: Y plane + VU interleaved plane
+            qDebug() << "Converting NV21 to YUV420P (optimized)...";
+
+            // Optimized conversion with better memory access patterns
+            for (int y = 0; y < uvHeight; y++) {
+                const uint8_t* vuLine = uvData + y * width;
+                uint8_t* uLine = uPtr + y * uvWidth;
+                uint8_t* vLine = vPtr + y * uvWidth;
+
+                // Process 16 VU pairs at a time for better cache locality and reduced loop overhead
+                int x = 0;
+                for (; x <= uvWidth - 16; x += 16) {
+                    const uint8_t* src = vuLine + x * 2;
+
+                    // Extract V values (16 VU pairs) - unrolled for better performance
+                    vLine[x] = src[0];       // V0
+                    vLine[x + 1] = src[2];   // V1
+                    vLine[x + 2] = src[4];   // V2
+                    vLine[x + 3] = src[6];   // V3
+                    vLine[x + 4] = src[8];   // V4
+                    vLine[x + 5] = src[10];  // V5
+                    vLine[x + 6] = src[12];  // V6
+                    vLine[x + 7] = src[14];  // V7
+                    vLine[x + 8] = src[16];  // V8
+                    vLine[x + 9] = src[18];  // V9
+                    vLine[x + 10] = src[20]; // V10
+                    vLine[x + 11] = src[22]; // V11
+                    vLine[x + 12] = src[24]; // V12
+                    vLine[x + 13] = src[26]; // V13
+                    vLine[x + 14] = src[28]; // V14
+                    vLine[x + 15] = src[30]; // V15
+
+                    // Extract U values (16 VU pairs)
+                    uLine[x] = src[1];       // U0
+                    uLine[x + 1] = src[3];   // U1
+                    uLine[x + 2] = src[5];   // U2
+                    uLine[x + 3] = src[7];   // U3
+                    uLine[x + 4] = src[9];   // U4
+                    uLine[x + 5] = src[11];  // U5
+                    uLine[x + 6] = src[13];  // U6
+                    uLine[x + 7] = src[15];  // U7
+                    uLine[x + 8] = src[17];  // U8
+                    uLine[x + 9] = src[19];  // U9
+                    uLine[x + 10] = src[21]; // U10
+                    uLine[x + 11] = src[23]; // U11
+                    uLine[x + 12] = src[25]; // U12
+                    uLine[x + 13] = src[27]; // U13
+                    uLine[x + 14] = src[29]; // U14
+                    uLine[x + 15] = src[31]; // U15
+                }
+
+                // Handle remaining pixels in 8-pixel chunks
+                for (; x <= uvWidth - 8; x += 8) {
+                    const uint8_t* src = vuLine + x * 2;
+
+                    // Extract V values (8 VU pairs)
+                    vLine[x] = src[0];      // V0
+                    vLine[x + 1] = src[2];  // V1
+                    vLine[x + 2] = src[4];  // V2
+                    vLine[x + 3] = src[6];  // V3
+                    vLine[x + 4] = src[8];  // V4
+                    vLine[x + 5] = src[10]; // V5
+                    vLine[x + 6] = src[12]; // V6
+                    vLine[x + 7] = src[14]; // V7
+
+                    // Extract U values (8 VU pairs)
+                    uLine[x] = src[1];      // U0
+                    uLine[x + 1] = src[3];  // U1
+                    uLine[x + 2] = src[5];  // U2
+                    uLine[x + 3] = src[7];  // U3
+                    uLine[x + 4] = src[9];  // U4
+                    uLine[x + 5] = src[11]; // U5
+                    uLine[x + 6] = src[13]; // U6
+                    uLine[x + 7] = src[15]; // U7
+                }
+
+                // Handle remaining VU pairs
+                for (; x < uvWidth; x++) {
+                    const uint8_t* src = vuLine + x * 2;
+                    vLine[x] = src[0]; // V component
+                    uLine[x] = src[1]; // U component
+                }
+            }
+        }
+
+        // Update metadata to reflect the converted planar format
+        if (srcFmt == AV_PIX_FMT_NV12 || srcFmt == AV_PIX_FMT_NV21) {
+            metadata.setPixelFormat(AV_PIX_FMT_YUV420P);
+            setFormat(AV_PIX_FMT_YUV420P);
+        }
+    } else {
+        // Handle planar YUV formats
+        int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+        int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+
+        uint8_t* srcData[4] = {nullptr};
+        int srcLinesize[4] = {};
+        av_image_fill_arrays(srcData, srcLinesize, packetData, srcFmt, width, height, 1);
+        uint8_t* dstData[4] = {frameData->yPtr(), frameData->uPtr(), frameData->vPtr(), nullptr};
+
+        memcpy(dstData[0], srcData[0], width * height);
+        memcpy(dstData[1], srcData[1], uvWidth * uvHeight);
+        memcpy(dstData[2], srcData[2], uvWidth * uvHeight);
+    }
 
     frameData->setPts(currentFrameIndex);
 
