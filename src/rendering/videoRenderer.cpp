@@ -1,5 +1,6 @@
 #include "videoRenderer.h"
 #include <QFile>
+#include "utils/errorReporter.h"
 
 VideoRenderer::VideoRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) :
     QObject(parent),
@@ -127,11 +128,25 @@ void VideoRenderer::setComponentDisplayMode(int mode) {
 void VideoRenderer::uploadFrame(FrameData* frame) {
     if (!frame || !frame->yPtr() || !frame->uPtr() || !frame->vPtr()) {
         qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
+        ErrorReporter::instance().report("Invalid frame data provided to VideoRenderer::uploadFrame");
         emit rendererError();
         return;
     }
+
+    if (!m_rhi || !m_yTex || !m_uTex || !m_vTex) {
+        ErrorReporter::instance().report("VideoRenderer::uploadFrame called before initialization");
+        emit rendererError();
+        return;
+    }
+
     m_currentFrame = frame;
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
+
+    if (!m_frameBatch) {
+        ErrorReporter::instance().report("Failed to create resource update batch");
+        emit rendererError();
+        return;
+    }
 
     QRhiTextureUploadDescription yDesc;
     {
@@ -139,6 +154,25 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc.setEntries({{0, 0, sd}});
     }
+
+    if (!m_yTex.get() || !frame->yPtr()) {
+        ErrorReporter::instance().report("Invalid parameters for uploading Y texture");
+        emit rendererError();
+        return;
+    }
+
+    if (!m_frameBatch) {
+        ErrorReporter::instance().report("Failed to create frame batch for uploading Y texture");
+        emit rendererError();
+        return;
+    }
+
+    if (!m_metaPtr->yWidth() || !m_metaPtr->yHeight()) {
+        ErrorReporter::instance().report("Invalid Y texture dimensions");
+        emit rendererError();
+        return;
+    }
+
     m_frameBatch->uploadTexture(m_yTex.get(), yDesc);
 
     QRhiTextureUploadDescription uDesc;
@@ -174,8 +208,8 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
         m_frameBatch = nullptr;
-        emit batchIsEmpty();
     }
+    emit batchIsEmpty();
 
     // qDebug() << "VideoRenderer::init ready";
 

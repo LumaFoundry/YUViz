@@ -860,7 +860,7 @@ void VideoDecoder::seekToCompressed(int64_t targetPts) {
     currentFrameIndex = targetPts;
 }
 
-void VideoDecoder::seek(int64_t targetPts) {
+void VideoDecoder::seek(int64_t targetPts, int loadCount) {
     qDebug() << "Decoder::seek called with targetPts:" << targetPts;
 
     // For YUV files, check against total frames
@@ -872,11 +872,18 @@ void VideoDecoder::seek(int64_t targetPts) {
         }
     }
 
-    // Load past & future frames around the target PTS
-    int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 4, int64_t{0});
-    seekTo(startPts);
-    qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
-    loadFrames(m_frameQueue->getSize() / 2);
-    qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
+    if (loadCount != -1) {
+        // Load frames for stepping
+        seekTo(targetPts);
+        loadFrames(loadCount);
+    } else {
+        // Load past & future frames around the target PTS for seeking
+        int64_t startPts = std::max(targetPts - m_frameQueue->getSize() / 4, int64_t{0});
+        seekTo(startPts);
+        qDebug() << "Decoder::Seeking to currentFrameIndex: " << currentFrameIndex;
+        loadFrames(m_frameQueue->getSize() / 2);
+        qDebug() << "Decoder::Loaded until currentFrameIndex: " << currentFrameIndex;
+    }
+
     emit frameSeeked(targetPts);
 }

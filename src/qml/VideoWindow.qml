@@ -82,7 +82,10 @@ VideoWindow {
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
             }
-            onClicked: menu.open()
+            onClicked: {
+                menu.open();
+                keyHandler.forceActiveFocus();
+            }
 
             Menu {
                 id: menu

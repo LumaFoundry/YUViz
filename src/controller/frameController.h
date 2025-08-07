@@ -81,6 +81,8 @@ class FrameController : public QObject {
     // Prefill flag for preloading frames
     bool m_prefill = false;
 
+    int64_t m_ticking = -1; // For timer ticks
+
     int64_t m_stepping = -1;
     int m_direction = 1; // 1 for forward, -1 for backward
 

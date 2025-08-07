@@ -209,6 +209,9 @@ ApplicationWindow {
         focus: true
         enabled: videoWindowContainer.children.length > 0
         Keys.onPressed: event => {
+            if (event.isAutoRepeat)
+                return;
+
             if (event.key === Qt.Key_Space) {
                 // console.log("Space key pressed");
                 videoController.togglePlayPause();
