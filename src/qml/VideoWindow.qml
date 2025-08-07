@@ -520,4 +520,60 @@ VideoWindow {
             }
         }
     }
+
+    // Loading Indicator
+    Rectangle {
+        visible: videoController && (!videoController.ready || videoController.isSeeking)
+        anchors.centerIn: parent
+        width: 100
+        height: 100
+        color: "black"
+        opacity: 0.8
+        radius: 8
+        z: 102 // On top of everything
+
+        SequentialAnimation {
+            running: parent.visible
+            loops: Animation.Infinite
+            
+            RotationAnimation {
+                target: loadingSpinner
+                from: 0
+                to: 360
+                duration: 1000
+                easing.type: Easing.Linear
+            }
+        }
+
+        Rectangle {
+            id: loadingSpinner
+            anchors.centerIn: parent
+            width: 40
+            height: 40
+            color: "transparent"
+            border.color: "#f2f5f5"
+            border.width: 4
+            radius: 20
+
+            Rectangle {
+                anchors.top: parent.top
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 8
+                height: 8
+                color: "#f2f5f5"
+                radius: 4
+            }
+        }
+
+        Text {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: loadingSpinner.bottom
+            anchors.topMargin: 10
+            color: "white"
+            font.family: "sans-serif"
+            font.pixelSize: 12
+            text: videoController && videoController.isSeeking ? "Seeking..." : "Loading..."
+            horizontalAlignment: Text.AlignHCenter
+        }
+    }
 }

@@ -88,6 +88,7 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
 
     // Reset seeking flag
     m_isSeeking = false;
+    emit seekingChanged();
     m_seekedCount = 0;
 }
 
@@ -200,6 +201,7 @@ void VideoController::onReady(int index) {
         // All frame controllers are ready, start playback
         qDebug() << "Ready = true";
         m_ready = true;
+        emit readyChanged();
     } else {
         qWarning() << "onReady: frame upload failed";
         ErrorReporter::instance().report("Frame upload failed");
@@ -356,6 +358,7 @@ void VideoController::seekTo(double timeMs) {
     }
 
     m_isSeeking = true;
+    emit seekingChanged();
     m_seekedCount = 0;
 
     m_reachedEnd = false;
@@ -525,6 +528,7 @@ void VideoController::onSeekCompleted(int index) {
     if (m_seekedCount >= m_realCount) {
         // All FrameControllers have completed seeking
         m_isSeeking = false;
+        emit seekingChanged();
         qDebug() << "All seeks completed, playback can resume";
 
         // Play if pending due to end of video

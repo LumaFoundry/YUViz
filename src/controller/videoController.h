@@ -26,6 +26,8 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isPlaying READ isPlaying NOTIFY isPlayingChanged)
     Q_PROPERTY(double currentTimeMs READ currentTimeMs NOTIFY currentTimeMsChanged)
     Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
+    Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
+    Q_PROPERTY(bool isSeeking READ isSeeking NOTIFY seekingChanged)
 
   public:
     VideoController(QObject* parent,
@@ -39,6 +41,8 @@ class VideoController : public QObject {
     bool isPlaying() const;
     double currentTimeMs() const { return m_currentTimeMs; }
     bool isForward() const { return m_uiDirection == 1; }
+    bool ready() const { return m_ready; }
+    bool isSeeking() const { return m_isSeeking; }
 
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
@@ -80,6 +84,8 @@ class VideoController : public QObject {
     void directionChanged();
     void durationChanged();
     void totalFramesChanged();
+    void readyChanged();
+    void seekingChanged();
 
   private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
