@@ -61,24 +61,17 @@ qreal DiffWindow::getAspectRatio() const {
 void DiffWindow::uploadFrame(FrameData* frame1, FrameData* frame2) {
     // qDebug() << "DiffWindow::uploadFrame called in thread";
 
-    // Verify that both frames have the same time before uploading
-    if (frame1 && frame2) {
-        // Calculate actual time using PTS * timebase
-        AVRational time1 = av_mul_q(AVRational{static_cast<int>(frame1->pts()), 1}, m_frameMeta->timeBase());
-        AVRational time2 = av_mul_q(AVRational{static_cast<int>(frame2->pts()), 1}, m_frameMeta->timeBase());
-
-        if (av_cmp_q(time1, time2) == 0) {
-            qDebug() << "DiffWindow: Uploading frames with matching time:" << time1.num << "/" << time1.den;
-            m_renderer->releaseBatch();
-            m_renderer->uploadFrame(frame1, frame2);
-            emit frameReady();
-        } else {
-            qWarning() << "DiffWindow: Skipping upload - frames have different time values";
-            qWarning() << "Frame1 time:" << time1.num << "/" << time1.den << "Frame2 time:" << time2.num << "/"
-                       << time2.den;
-        }
+    // Verify that both frames have the same PTS before uploading
+    if (frame1 && frame2 && frame1->pts() == frame2->pts()) {
+        qDebug() << "DiffWindow: Uploading frames with matching PTS:" << frame1->pts();
+        m_renderer->releaseBatch();
+        m_renderer->uploadFrame(frame1, frame2);
+        emit frameReady();
     } else {
-        qWarning() << "DiffWindow: Skipping upload - invalid frame pointers";
+        qWarning() << "DiffWindow: Skipping upload - frames have different PTS values";
+        if (frame1 && frame2) {
+            qWarning() << "Frame1 PTS:" << frame1->pts() << "Frame2 PTS:" << frame2->pts();
+        }
     }
 }
 

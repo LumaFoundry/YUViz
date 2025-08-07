@@ -6,10 +6,6 @@
 #include "frames/frameMeta.h"
 #include "rhi/qrhi.h"
 
-extern "C" {
-#include <libavutil/rational.h>
-}
-
 class DiffRenderer : public QObject {
     Q_OBJECT
   public:

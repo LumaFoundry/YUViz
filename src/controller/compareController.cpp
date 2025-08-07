@@ -22,12 +22,6 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
 
         qDebug() << "CompareController::Meta is set";
 
-        // Set timebase for proper time synchronization
-        m_timebase1 = m_metadata1->timeBase();
-        m_timebase2 = m_metadata2->timeBase();
-        qDebug() << "CompareController::Timebase1:" << m_timebase1.num << "/" << m_timebase1.den;
-        qDebug() << "CompareController::Timebase2:" << m_timebase2.num << "/" << m_timebase2.den;
-
         if (m_diffWindow) {
             m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
             connect(
@@ -52,42 +46,33 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     if (index == m_index1 && frame) {
         m_frame1 = std::make_unique<FrameData>(*frame);
         m_pts1 = frame->pts();
-        // Calculate actual time using PTS * timebase
-        m_time1 = av_mul_q(AVRational{static_cast<int>(m_pts1), 1}, m_timebase1);
-        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts1 << "time:" << m_time1.num << "/"
-        // << m_time1.den;
+        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts1;
     } else if (index == m_index2 && frame) {
         m_frame2 = std::make_unique<FrameData>(*frame);
         m_pts2 = frame->pts();
-        // Calculate actual time using PTS * timebase
-        m_time2 = av_mul_q(AVRational{static_cast<int>(m_pts2), 1}, m_timebase2);
-        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts2 << "time:" << m_time2.num << "/"
-        // << m_time2.den;
+        // qDebug() << "Received frame from index:" << index << "with PTS:" << m_pts2;
     } else {
         qWarning() << "Received frame for unknown index:" << index;
         return;
     }
 
-    // Only proceed if we have both frames and they have the same time (not PTS)
-    if (m_frame1 && m_frame2 && av_cmp_q(m_time1, m_time2) == 0) {
-        qDebug() << "Received both frames with matching time:" << m_time1.num << "/" << m_time1.den << ", diffing";
+    // Only proceed if we have both frames and they have the same PTS
+    if (m_frame1 && m_frame2 && m_pts1 == m_pts2) {
+        qDebug() << "Received both frames with matching PTS:" << m_pts1 << ", diffing";
         m_psnrResult = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
         m_psnr = m_psnrResult.average; // Keep backward compatibility
         emit requestUpload(m_frame1.get(), m_frame2.get());
-    } else if (m_frame1 && m_frame2 && av_cmp_q(m_time1, m_time2) != 0) {
-        // Log when frames have different time values
-        qDebug() << "Received frames with different time - frame1 time:" << m_time1.num << "/" << m_time1.den
-                 << "frame2 time:" << m_time2.num << "/" << m_time2.den;
+    } else if (m_frame1 && m_frame2 && m_pts1 != m_pts2) {
+        // Log when frames have different PTS values
+        qDebug() << "Received frames with different PTS - frame1 PTS:" << m_pts1 << "frame2 PTS:" << m_pts2;
 
         // Clear the older frame to wait for the matching one
-        if (av_cmp_q(m_time1, m_time2) < 0) {
+        if (m_pts1 < m_pts2) {
             m_frame1.reset();
             m_pts1 = -1;
-            m_time1 = AVRational{0, 1};
         } else {
             m_frame2.reset();
             m_pts2 = -1;
-            m_time2 = AVRational{0, 1};
         }
     }
 }
@@ -141,8 +126,4 @@ void CompareController::onCompareRendered() {
     // Reset PTS values for next frame synchronization
     m_pts1 = -1;
     m_pts2 = -1;
-
-    // Reset time values for next frame synchronization
-    m_time1 = AVRational{0, 1};
-    m_time2 = AVRational{0, 1};
 }

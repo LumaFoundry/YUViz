@@ -6,10 +6,6 @@
 #include "ui/videoWindow.h"
 #include "utils/compareHelper.h"
 
-extern "C" {
-#include <libavutil/rational.h>
-}
-
 class CompareController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString psnrInfo READ psnrInfo NOTIFY psnrChanged)
@@ -58,14 +54,6 @@ class CompareController : public QObject {
     // PTS tracking for synchronization
     int64_t m_pts1 = -1;
     int64_t m_pts2 = -1;
-
-    // Timebase for proper time synchronization
-    AVRational m_timebase1 = {0, 1};
-    AVRational m_timebase2 = {0, 1};
-
-    // Actual time values for comparison
-    AVRational m_time1 = {0, 1};
-    AVRational m_time2 = {0, 1};
 
     double m_psnr = 0.0;
     PSNRResult m_psnrResult;

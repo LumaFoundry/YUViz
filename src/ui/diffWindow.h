@@ -10,10 +10,6 @@
 #include "rendering/diffRenderer.h"
 #include "utils/sharedViewProperties.h"
 
-extern "C" {
-#include <libavutil/rational.h>
-}
-
 class DiffWindow : public QQuickItem {
     Q_OBJECT
     QML_ELEMENT

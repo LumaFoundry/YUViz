@@ -120,14 +120,10 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
         return;
     }
 
-    // Verify that both frames have the same time before processing
-    AVRational time1 = av_mul_q(AVRational{static_cast<int>(frame1->pts()), 1}, m_metaPtr->timeBase());
-    AVRational time2 = av_mul_q(AVRational{static_cast<int>(frame2->pts()), 1}, m_metaPtr->timeBase());
-
-    if (av_cmp_q(time1, time2) != 0) {
-        qWarning() << "DiffRenderer: Skipping upload - frames have different time values";
-        qWarning() << "Frame1 time:" << time1.num << "/" << time1.den << "Frame2 time:" << time2.num << "/"
-                   << time2.den;
+    // Verify that both frames have the same PTS before processing
+    if (frame1->pts() != frame2->pts()) {
+        qWarning() << "DiffRenderer: Skipping upload - frames have different PTS values";
+        qWarning() << "Frame1 PTS:" << frame1->pts() << "Frame2 PTS:" << frame2->pts();
         emit rendererError();
         return;
     }
@@ -135,7 +131,7 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
     m_currentPts1 = frame1->pts();
     m_currentPts2 = frame2->pts();
 
-    qDebug() << "DiffRenderer: Uploading frames with time:" << time1.num << "/" << time1.den;
+    qDebug() << "DiffRenderer: Uploading frames with PTS:" << m_currentPts1;
 
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
