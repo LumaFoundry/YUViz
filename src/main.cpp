@@ -216,7 +216,7 @@ int main(int argc, char* argv[]) {
 
             QMetaObject::invokeMethod(root,
                                       "importVideoFromParams",
-                                      Qt::QueuedConnection,
+                                      Qt::DirectConnection,
                                       Q_ARG(QVariant, filename),
                                       Q_ARG(QVariant, width),
                                       Q_ARG(QVariant, height),

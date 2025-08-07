@@ -76,7 +76,7 @@ void FrameControllerTest::testFCStart() {
 
     // connect(decoder, &MockDecoder::frameLoaded, controller, &FrameController::onFrameDecoded);
     // connect(renderer, &MockRenderer::frameUploaded, controller, &FrameController::onFrameUploaded);
-    connect(controller, &FrameController::currentDelta, pbw.get(), &PlaybackWorker::scheduleNext);
+    connect(controller, &FrameController::currentDelta, pbw.get(), &PlaybackWorker::scheduleNext, Qt::QueuedConnection);
 
     std::cout << "Setting up QSignalSpy..." << std::endl;
     QSignalSpy fcSpyRequestDecode(controller, SIGNAL(requestDecode(FrameData*)));
