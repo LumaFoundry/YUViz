@@ -160,9 +160,7 @@ void VideoDecoder::openFile() {
     }
 
     if (!isYUV(codecContext->codec_id)) {
-        m_width = codecContext->width;
-        m_height = codecContext->height;
-        setFramerate(videoStream->avg_frame_rate.num / (double)videoStream->avg_frame_rate.den);
+        setDimensions(codecContext->width, codecContext->height);
     }
 
     // Open codec
@@ -189,16 +187,6 @@ void VideoDecoder::openFile() {
         qDebug() << "FINAL STATUS: Software decoding active -" << codec->name;
     }
 
-    AVRational timeBase;
-    AVRational targetTimebase = av_d2q(1.0 / m_framerate, 1000000);
-    qDebug() << "TIMEBASE: " << videoStream->time_base.num << "/" << videoStream->time_base.den;
-    qDebug() << "TARGET TIMEBASE: " << targetTimebase.num << "/" << targetTimebase.den;
-    // For raw YUV, or if videoStream->time_base doesn't exist, calculate timebase from framerate (fps)
-    if (timeBase.den != targetTimebase.den) {
-        // timeBase = targetTimebase;
-        m_needsTimebaseConversion = true;
-    }
-
     // Calculate Y and UV dimensions using FFmpeg pixel format descriptor
     const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(codecContext->pix_fmt);
     // int yWidth = codecContext->width;
@@ -212,7 +200,7 @@ void VideoDecoder::openFile() {
     metadata.setUVWidth(uvWidth);
     metadata.setUVHeight(uvHeight);
     metadata.setPixelFormat(codecContext->pix_fmt);
-    metadata.setTimeBase(targetTimebase);
+    metadata.setTimeBase(videoStream->time_base);
     metadata.setSampleAspectRatio(videoStream->sample_aspect_ratio);
     metadata.setColorRange(codecContext->color_range);
     metadata.setColorSpace(codecContext->colorspace);
@@ -230,10 +218,32 @@ void VideoDecoder::openFile() {
         QFileInfo info(QString::fromStdString(m_fileName));
         int64_t fileSize = info.size();
         yuvTotalFrames = fileSize / frameSize;
+        metadata.setTotalFrames(yuvTotalFrames);
+    } else {
+        AVRational timeBase = videoStream->time_base;
+        AVRational frameRate = videoStream->avg_frame_rate;
+        metadata.setTotalFrames(getTotalFrames());
+        setFramerate(frameRate.num);
+
+        if (frameRate.num == 0 && timeBase.den == 0) {
+            metadata.setTimeBase({1, 25});
+            setFramerate(25);
+        } else if (frameRate.num == 0) {
+            setFramerate(timeBase.den);
+        } else if (videoStream->time_base.den == 0) {
+            metadata.setTimeBase({frameRate.den, frameRate.num});
+        }
+
+        if (timeBase.den >= 1000) {
+            m_needsTimebaseConversion = true;
+            metadata.setTimeBase(av_d2q(1.0 / m_framerate, 1000000));
+        }
     }
 
+    qDebug() << "TIMEBASE: " << metadata.timeBase().num << "/" << metadata.timeBase().den;
+    qDebug() << "FRAMERATE: " << m_framerate;
+
     currentFrameIndex = 0;
-    return;
 }
 
 /**
