@@ -597,6 +597,7 @@ ApplicationWindow {
                             // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
                                 diffPopupInstance.visible = false;
+                                keyHandler.forceActiveFocus();
                                 return;
                             }
 
