@@ -24,9 +24,15 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
 
         if (m_diffWindow) {
             m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
-            connect(this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame);
-            connect(this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame);
-            connect(m_diffWindow->m_renderer, &DiffRenderer::batchIsEmpty, this, &CompareController::onCompareRendered);
+            connect(
+                this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame, Qt::DirectConnection);
+            connect(
+                this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame, Qt::DirectConnection);
+            connect(m_diffWindow->m_renderer,
+                    &DiffRenderer::batchIsEmpty,
+                    this,
+                    &CompareController::onCompareRendered,
+                    Qt::DirectConnection);
         } else {
             qWarning() << "CompareController::setMetadata - m_diffWindow is not initialized";
         }
@@ -49,10 +55,16 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     }
 
     if (m_frame1 && m_frame2) {
-        qDebug() << "Received both frames, diffing";
-        m_psnrResult = m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
-        m_psnr = m_psnrResult.average; // Keep backward compatibility
-        emit requestUpload(m_frame1.get(), m_frame2.get());
+        AVRational time1 = av_mul_q(AVRational{static_cast<int>(m_frame1->pts()), 1}, m_metadata1->timeBase());
+        AVRational time2 = av_mul_q(AVRational{static_cast<int>(m_frame2->pts()), 1}, m_metadata2->timeBase());
+
+        if (av_cmp_q(time1, time2) == 0) {
+            qDebug() << "Received both frames, diffing";
+            m_psnrResult =
+                m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
+            m_psnr = m_psnrResult.average; // Keep backward compatibility
+            emit requestUpload(m_frame1.get(), m_frame2.get());
+        }
     }
 }
 

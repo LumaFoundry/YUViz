@@ -73,6 +73,17 @@ ApplicationWindow {
         }
     }
 
+    CommandsPopup {
+        id: commandsDialog
+        anchors.centerIn: parent
+        onAccepted: keyHandler.forceActiveFocus()
+    }
+
+    AboutPage {
+        id: aboutDialog
+        anchors.centerIn: parent
+    }
+
     Dialog {
         id: errorDialog
         title: "Error"
@@ -94,9 +105,9 @@ ApplicationWindow {
         target: videoLoader
 
         function onVideoLoadFailed(title, message) {
-            errorDialog.title = title
-            errorDialogText.text = message
-            errorDialog.open()
+            errorDialog.title = title;
+            errorDialogText.text = message;
+            errorDialog.open();
         }
     }
 
@@ -289,7 +300,12 @@ ApplicationWindow {
         Menu {
             title: "Help"
             Action {
+                text: "Show all Commands"
+                onTriggered: commandsDialog.open()
+            }
+            Action {
                 text: "About"
+                onTriggered: aboutDialog.open()
             }
         }
 
@@ -578,9 +594,10 @@ ApplicationWindow {
                         }
 
                         onClicked: {
-                            // Only one diff at a time
+                            // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
-                                diffPopupInstance.raise();
+                                diffPopupInstance.visible = false;
+                                keyHandler.forceActiveFocus();
                                 return;
                             }
 
@@ -640,11 +657,30 @@ ApplicationWindow {
                     }
                 }
 
+                // Time display with slider
                 RowLayout {
                     Layout.fillWidth: true
                     Layout.leftMargin: 10
                     Layout.rightMargin: 10
                     Layout.preferredHeight: Theme.sliderHeight + Theme.sliderHandleSize / 2
+
+                    // Current time display
+                    Text {
+                        id: currentTimeText
+                        Layout.preferredWidth: 60
+                        text: {
+                            if (videoController) {
+                                var currentSeconds = Math.floor(videoController.currentTimeMs / 1000);
+                                var currentMin = Math.floor(currentSeconds / 60);
+                                var currentSec = currentSeconds % 60;
+                                return currentMin + ":" + (currentSec < 10 ? "0" : "") + currentSec;
+                            }
+                            return "0:00";
+                        }
+                        color: Theme.textColor
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignRight
+                    }
 
                     // Time Slider
                     Slider {
@@ -701,6 +737,24 @@ ApplicationWindow {
                             border.color: Theme.borderColor
                             border.width: 1
                         }
+                    }
+
+                    // Total time display
+                    Text {
+                        id: totalTimeText
+                        Layout.preferredWidth: 60
+                        text: {
+                            if (videoController) {
+                                var totalSeconds = Math.floor(videoController.duration / 1000);
+                                var totalMin = Math.floor(totalSeconds / 60);
+                                var totalSec = totalSeconds % 60;
+                                return totalMin + ":" + (totalSec < 10 ? "0" : "") + totalSec;
+                            }
+                            return "0:00";
+                        }
+                        color: Theme.textColor
+                        font.pixelSize: Theme.fontSizeSmall
+                        horizontalAlignment: Text.AlignLeft
                     }
                 }
             }

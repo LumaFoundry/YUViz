@@ -5,6 +5,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QRegularExpression>
+#include <QRegularExpressionMatch>
 #include <QSurface>
 #include <QTimer>
 #include <QWindow>
@@ -19,6 +21,16 @@
 #include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
+
+// These macros are here to prevent editors from complaining
+// To change version and name please go to CMakeLists.txt
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
+#ifndef APP_NAME
+#define APP_NAME "Visual Inspection Tool"
+#endif
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
@@ -102,6 +114,11 @@ int main(int argc, char* argv[]) {
     engine.rootContext()->setContextProperty("compareController", compareController.get());
     engine.rootContext()->setContextProperty("videoController", videoController.get());
 
+    // Expose version info to QML
+    engine.rootContext()->setContextProperty("APP_NAME", APP_NAME);
+    engine.rootContext()->setContextProperty("APP_VERSION", APP_VERSION);
+    engine.rootContext()->setContextProperty("BUILD_DATE", __DATE__);
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     engine.load(url);
     if (engine.rootObjects().isEmpty()) {
@@ -137,10 +154,36 @@ int main(int argc, char* argv[]) {
                 bool framerateSet = false;
                 bool formatSet = false;
 
+                // Try to extract resolution and FPS from filename
+                QRegularExpression resAndFpsRegex(R"((\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?))");
+                QRegularExpression resOnlyRegex(R"((\d{3,5})x(\d{3,5}))");
+
+                // Extract default values from filename - these can be overridden by command line args
+                QRegularExpressionMatch match = resAndFpsRegex.match(filename);
+                if (match.hasMatch()) {
+                    width = match.captured(1).toInt();
+                    height = match.captured(2).toInt();
+                    framerate = match.captured(3).toDouble();
+                    qDebug() << "Extracted from filename - Resolution:" << width << "x" << height
+                             << "FPS:" << framerate;
+                } else {
+                    match = resOnlyRegex.match(filename);
+                    if (match.hasMatch()) {
+                        width = match.captured(1).toInt();
+                        height = match.captured(2).toInt();
+                        qDebug() << "Extracted from filename - Resolution:" << width << "x" << height;
+                    }
+                }
+
+                // Allow all values to be overridden by command line args
+                resolutionSet = false;
+                framerateSet = false;
+                formatSet = false;
+
+                // Check for command line parameters
                 const int paramCount = parts.size() - 1;
-                if (paramCount < 1 || paramCount > 3) {
-                    QString errorMsg = QString("Invalid number of parameters for .yuv file '%1'. Expected 1 to 3 "
-                                               "(resolution is mandatory), but got %2.")
+                if (paramCount > 3) {
+                    QString errorMsg = QString("Too many parameters for .yuv file '%1'. Maximum is 3, but got %2.")
                                            .arg(filename)
                                            .arg(paramCount);
                     qWarning() << errorMsg;
@@ -149,6 +192,7 @@ int main(int argc, char* argv[]) {
                 }
 
                 // Parse parameters in any order
+                // Parse override parameters in any order
                 for (int i = 1; i < parts.size(); ++i) {
                     const QString& part = parts[i];
                     if (part.contains('x', Qt::CaseInsensitive)) { // Resolution
@@ -204,19 +248,26 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
-                if (!resolutionSet) {
+                // After parsing parameters, check if we have a valid resolution from either source
+                if (width <= 0 || height <= 0) {
                     QString errorMsg =
-                        QString("Mandatory resolution parameter (e.g., '1920x1080') is missing for .yuv file '%1'.")
+                        QString(
+                            "Resolution is required but could not be extracted from filename or parameters for '%1'.\n"
+                            "Either include it in the filename (e.g., video_1920x1080.yuv) or specify it as a "
+                            "parameter (:1920x1080).")
                             .arg(filename);
                     qWarning() << errorMsg;
                     ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                     return -1;
                 }
+
+                qDebug() << "Final parameters for" << filename << "- Resolution:" << width << "x" << height
+                         << "FPS:" << framerate << "Format:" << yuvFormat;
             }
 
             QMetaObject::invokeMethod(root,
                                       "importVideoFromParams",
-                                      Qt::QueuedConnection,
+                                      Qt::DirectConnection,
                                       Q_ARG(QVariant, filename),
                                       Q_ARG(QVariant, width),
                                       Q_ARG(QVariant, height),
