@@ -22,6 +22,16 @@
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
 
+// These macros are here to prevent editors from complaining
+// To change version and name please go to CMakeLists.txt
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
+#ifndef APP_NAME
+#define APP_NAME "Visual Inspection Tool"
+#endif
+
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
@@ -103,6 +113,11 @@ int main(int argc, char* argv[]) {
     engine.rootContext()->setContextProperty("videoLoader", &videoLoader);
     engine.rootContext()->setContextProperty("compareController", compareController.get());
     engine.rootContext()->setContextProperty("videoController", videoController.get());
+
+    // Expose version info to QML
+    engine.rootContext()->setContextProperty("APP_NAME", APP_NAME);
+    engine.rootContext()->setContextProperty("APP_VERSION", APP_VERSION);
+    engine.rootContext()->setContextProperty("BUILD_DATE", __DATE__);
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
     engine.load(url);

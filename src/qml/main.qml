@@ -79,6 +79,11 @@ ApplicationWindow {
         onAccepted: keyHandler.forceActiveFocus()
     }
 
+    AboutPage {
+        id: aboutDialog
+        anchors.centerIn: parent
+    }
+
     Dialog {
         id: errorDialog
         title: "Error"
@@ -300,6 +305,7 @@ ApplicationWindow {
             }
             Action {
                 text: "About"
+                onTriggered: aboutDialog.open()
             }
         }
 

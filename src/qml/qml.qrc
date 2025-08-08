@@ -8,5 +8,6 @@
     <file>JumpToFramePopup.qml</file>
     <file>CommandsPopup.qml</file>
     <file>MismatchWarningPopup.qml</file>
+    <file>AboutPage.qml</file>
 </qresource>
 </RCC>
