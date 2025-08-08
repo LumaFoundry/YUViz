@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QSet>
 #include <QThread>
 #include <QVariant>
 #include <QtConcurrent>
@@ -98,12 +99,13 @@ class VideoController : public QObject {
 
     QThread m_timerThread;
 
-    // Ensure all FC have uploaded initial frame before starting timer
-    int m_readyCount = 0;
-    bool m_ready = false;
+    QSet<int> m_readyFCs;
+    QSet<int> m_startFCs;
+    QSet<int> m_endFCs;
+    QSet<int> m_seekedFCs;
 
-    int m_startCount = 0;
-    int m_endCount = 0;
+    // Ensure all FC have uploaded initial frame before starting timer
+    bool m_ready = false;
 
     int64_t m_duration = 0;
 

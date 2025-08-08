@@ -89,7 +89,7 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     // Reset seeking flag
     m_isSeeking = false;
     emit seekingChanged();
-    m_seekedCount = 0;
+    m_seekedFCs.clear();
 }
 
 void VideoController::setUpTimer() {
@@ -139,6 +139,12 @@ void VideoController::removeVideo(int index) {
         return;
     }
 
+    // Remove per-FC state to avoid stale membership
+    m_readyFCs.remove(index);
+    m_startFCs.remove(index);
+    m_endFCs.remove(index);
+    m_seekedFCs.remove(index);
+
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
     m_realCount--;
@@ -152,6 +158,13 @@ void VideoController::removeVideo(int index) {
     }
     m_duration = newDuration;
     emit durationChanged();
+
+    // If all remaining FCs are ready, keep ready=true, otherwise false
+    bool allReady = (m_realCount > 0) ? (m_readyFCs.size() == m_realCount) : false;
+    if (m_ready != allReady) {
+        m_ready = allReady;
+        emit readyChanged();
+    }
 
     seekTo(0.0);
 }
@@ -195,21 +208,25 @@ void VideoController::onStep(std::vector<int64_t> pts, std::vector<bool> update,
 }
 
 void VideoController::onReady(int index) {
-    m_readyCount++;
-    qDebug() << "Ready count =" << m_readyCount << "/ " << m_frameControllers.size();
-    if (m_readyCount == m_frameControllers.size()) {
-        // All frame controllers are ready, start playback
+    m_readyFCs.insert(index);
+
+    qDebug() << "Ready count =" << m_readyFCs.size() << "/ " << m_realCount;
+
+    if (m_realCount > 0 && m_readyFCs.size() == m_realCount) {
         qDebug() << "Ready = true";
-        m_ready = true;
-        emit readyChanged();
+        if (!m_ready) {
+            m_ready = true;
+            emit readyChanged();
+        }
     }
 }
 
 void VideoController::onFCStartOfVideo(int index) {
-    m_startCount++;
+    m_startFCs.insert(index);
 
-    if (m_startCount == m_realCount) {
-        m_startCount = 0;
+    if (m_startFCs.size() == m_realCount && m_realCount > 0) {
+        // All FCs reported start
+        m_startFCs.clear();
         m_reachedEnd = false;
         m_direction = 1;
         m_uiDirection = 1;
@@ -223,13 +240,14 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
 
     if (end) {
         qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
-        m_endCount++;
-        qDebug() << "FC end count =" << m_endCount << "/ " << m_realCount;
+        m_endFCs.insert(index);
     } else {
-        m_endCount = std::max(0, m_endCount - 1);
+        m_endFCs.remove(index);
     }
 
-    if (m_endCount == m_realCount) {
+    qDebug() << "FC end count =" << m_endFCs.size() << "/ " << m_realCount;
+
+    if (m_endFCs.size() == m_realCount && m_realCount > 0) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
 
         // Update UI
@@ -238,7 +256,9 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
 
         m_reachedEnd = true;
         pause();
-        m_endCount = 0;
+
+        // Reset end tracking for next run
+        m_endFCs.clear();
     }
 }
 
@@ -356,7 +376,7 @@ void VideoController::seekTo(double timeMs) {
 
     m_isSeeking = true;
     emit seekingChanged();
-    m_seekedCount = 0;
+    m_seekedFCs.clear();
 
     m_reachedEnd = false;
 
@@ -523,10 +543,10 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 }
 
 void VideoController::onSeekCompleted(int index) {
-    m_seekedCount++;
-    qDebug() << "Seek completed for FC" << index << "(" << m_seekedCount << "/" << m_realCount << ")";
+    m_seekedFCs.insert(index);
+    qDebug() << "Seek completed for FC" << index << "(" << m_seekedFCs.size() << "/" << m_realCount << ")";
 
-    if (m_seekedCount >= m_realCount) {
+    if (m_seekedFCs.size() >= m_realCount && m_realCount > 0) {
         // All FrameControllers have completed seeking
         m_isSeeking = false;
         emit seekingChanged();
