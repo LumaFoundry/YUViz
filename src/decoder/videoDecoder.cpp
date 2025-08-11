@@ -632,7 +632,6 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     if (outputFrame != tempFrame)
                         av_frame_free(&outputFrame);
                     av_frame_free(&tempFrame);
-                    // Update metadata pixel format to dstFormat
                     metadata.setPixelFormat(dstFormat);
                     setFormat(dstFormat);
                     if (!eof_reached)
@@ -641,16 +640,13 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     return -1;
                 }
             } else if (ret == AVERROR(EAGAIN)) {
-                // Need more input, break inner loop to read another packet
                 av_frame_free(&tempFrame);
                 break;
             } else if (ret == AVERROR_EOF) {
-                // No more frames available
                 av_frame_free(&tempFrame);
                 av_packet_free(&tempPacket);
                 return -1;
             } else {
-                // Other error
                 av_frame_free(&tempFrame);
                 break;
             }
@@ -690,7 +686,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(srcFmt);
     if (!pixDesc) {
         ErrorReporter::instance().report("Failed to get pixel format descriptor", LogLevel::Error);
-        // Caller owns the packet; do not free here
         retFlag = 2;
         return;
     }
@@ -1138,8 +1133,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     }
 
     currentFrameIndex++;
-
-    // Caller owns the packet; do not unref/free here
 }
 
 int VideoDecoder::getTotalFrames() {
@@ -1316,7 +1309,6 @@ void VideoDecoder::seekToCompressed(int64_t targetPts) {
             ret = avcodec_send_packet(codecContext, packet);
             if (ret < 0) {
                 qDebug() << "Decoder::seekTo failed to send packet to decoder";
-                // Free packet and frame before continuing to avoid leaks
                 av_packet_free(&packet);
                 av_frame_free(&frame);
                 continue;
