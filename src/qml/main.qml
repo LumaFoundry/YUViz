@@ -885,7 +885,7 @@ ApplicationWindow {
             id: globalZoomText
             anchors.centerIn: parent
             color: "white"
-            font.family: "monospace"
+            font.family: "Arial"
             font.pixelSize: 11
             text: sharedViewProperties ? "Zoom: " + (sharedViewProperties.zoom * 100).toFixed(0) + "%" : ""
         }

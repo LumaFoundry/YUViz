@@ -82,7 +82,7 @@ VideoWindow {
             id: videoNameText
             anchors.centerIn: parent
             color: "white"
-            font.family: "sans-serif"
+            font.family: "Arial"
             font.pixelSize: 14
             font.weight: Font.Bold
             text: videoWindow.videoDisplayName
@@ -678,7 +678,7 @@ VideoWindow {
                 var maxWidth = 0;
 
                 // temporarily set font to calculate text width
-                ctx.font = Math.floor(fontSize) + "px sans-serif";
+                ctx.font = Math.floor(fontSize) + "px Arial";
 
                 for (var i = 0; i < lines.length; i++) {
                     var textWidth = ctx.measureText(lines[i]).width;
@@ -709,7 +709,7 @@ VideoWindow {
                 }
 
                 // restore original font
-                ctx.font = "12px monospace";
+                ctx.font = "12px Arial";
             } catch (error) {
                 console.log("QML: drawPixelValue error:", error);
             }
@@ -978,7 +978,7 @@ VideoWindow {
             id: osdText
             anchors.centerIn: parent
             color: "white"
-            font.family: "monospace"
+            font.family: "Arial"
             font.pixelSize: 12
             text: {
                 var durationSec = Math.floor(videoWindow.duration / 1000);
@@ -1016,7 +1016,7 @@ VideoWindow {
             id: loadingText
             anchors.centerIn: parent
             color: "white"
-            font.family: "sans-serif"
+            font.family: "Arial"
             font.pixelSize: 14
             text: videoController && videoController.isSeeking ? "Seeking..." : "Loading..."
             horizontalAlignment: Text.AlignHCenter
