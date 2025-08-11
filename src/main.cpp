@@ -101,6 +101,12 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     qmlRegisterType<DiffWindow>("DiffWindow", 1, 0, "DiffWindow");
+    qmlRegisterSingletonType<VideoFormatUtils>(
+        "VideoFormatUtils", 1, 0, "VideoFormatUtils", [](QQmlEngine* engine, QJSEngine* scriptEngine) -> QObject* {
+            Q_UNUSED(engine)
+            Q_UNUSED(scriptEngine)
+            return new VideoFormatUtils();
+        });
 
     std::shared_ptr<CompareController> compareController = std::make_shared<CompareController>(nullptr);
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr, compareController);

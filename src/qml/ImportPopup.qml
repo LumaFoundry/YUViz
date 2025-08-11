@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic 6.0
 import QtQuick.Controls 6.2
 import QtQuick.Layouts 6.0
 import QtQuick.Dialogs 6.2
+import VideoFormatUtils 1.0
 
 Popup {
     id: importPopup
@@ -140,19 +141,20 @@ Popup {
         ComboBox {
             id: formatInput
             visible: isYUV
-            model: [
-                "420P - YUV420P (Planar)",
-                "422P - YUV422P (Planar)", 
-                "444P - YUV444P (Planar)",
-                "YUYV - YUV422 (Packed)",
-                "UYVY - YUV422 (Packed)",
-                "NV12 - YUV420 (Semi-planar)",
-                "NV21 - YUV420 (Semi-planar)"
-            ]
+            model: {
+                // Filter display names to only show YUV formats
+                var allFormats = VideoFormatUtils.getDisplayNames();
+                var allIds = VideoFormatUtils.getFormatIdentifiers();
+                var yuvFormats = [];
+                for (var i = 0; i < allIds.length; i++) {
+                    if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                        yuvFormats.push(allFormats[i]);
+                    }
+                }
+                return yuvFormats;
+            }
             Layout.fillWidth: true
             currentIndex: 0
-            
-            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY", "NV12", "NV21"]
             
             displayText: model[currentIndex]
         }
@@ -175,7 +177,7 @@ Popup {
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
-                    let format = isYUV ? formatInput.formatValues[formatInput.currentIndex] : "AV_PIX_FMT_NONE";
+                    let format = isYUV ? getYuvIdentifierByIndex(formatInput.currentIndex) : "MP4";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();
@@ -185,26 +187,42 @@ Popup {
     }
     }
     
+    function getYuvIdentifierByIndex(index) {
+        // Get YUV format identifier by index
+        var allIds = VideoFormatUtils.getFormatIdentifiers();
+        var yuvIds = [];
+        for (var i = 0; i < allIds.length; i++) {
+            if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                yuvIds.push(allIds[i]);
+            }
+        }
+        return index >= 0 && index < yuvIds.length ? yuvIds[index] : "";
+    }
+    
+    function findYuvFormatIndex(identifier) {
+        // Find index of YUV format identifier
+        var allIds = VideoFormatUtils.getFormatIdentifiers();
+        var yuvIndex = 0;
+        for (var i = 0; i < allIds.length; i++) {
+            if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                if (allIds[i] === identifier) {
+                    return yuvIndex;
+                }
+                yuvIndex++;
+            }
+        }
+        return -1;
+    }
+
     function autoSelectFormat(filename) {
         if (!isYUV) return;
         
-        const lowerFilename = filename.toLowerCase();
+        // Use VideoFormatUtils to detect format from filename
+        const detectedFormat = VideoFormatUtils.detectFormatFromExtension(filename);
+        const formatIndex = findYuvFormatIndex(detectedFormat);
         
-        // Check for specific format indicators in filename
-        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")  || lowerFilename.includes("420")) {
-            formatInput.currentIndex = 0; // 420P
-        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p") || lowerFilename.includes("422")) {
-            formatInput.currentIndex = 1; // 422P
-        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p") || lowerFilename.includes("444")) {
-            formatInput.currentIndex = 2; // 444P
-        } else if (lowerFilename.includes("yuyv")) {
-            formatInput.currentIndex = 3; // YUYV
-        } else if (lowerFilename.includes("uyvy")) {
-            formatInput.currentIndex = 4; // UYVY
-        } else if (lowerFilename.includes("nv12")) {
-            formatInput.currentIndex = 5; // NV12
-        } else if (lowerFilename.includes("nv21")) {
-            formatInput.currentIndex = 6; // NV21
+        if (formatIndex >= 0) {
+            formatInput.currentIndex = formatIndex;
         } else {
             // Default to 420P for most common YUV files
             formatInput.currentIndex = 0;
