@@ -21,6 +21,7 @@
 #include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
+#include "utils/videoFormatUtils.h"
 
 // These macros are here to prevent editors from complaining
 // To change version and name please go to CMakeLists.txt
@@ -142,13 +143,11 @@ int main(int argc, char* argv[]) {
 
             // Default values
             int width = 0, height = 0;
-            double framerate = 0.0;
-            QString yuvFormat = "AV_PIX_FMT_NONE";
+            double framerate = 25.0;
+            QString pixelFormat = VideoFormatUtils::detectFormatFromExtension(filename);
 
-            if (filename.toLower().endsWith(".yuv")) {
-                // Set default values for optional parameters
-                framerate = 25.0;
-                yuvFormat = "420P";
+            if (VideoFormatUtils::getFormatType(pixelFormat) == FormatType::RAW_YUV) {
+                // This is a raw YUV file that needs explicit parameters
 
                 bool resolutionSet = false;
                 bool framerateSet = false;
@@ -242,7 +241,7 @@ int main(int argc, char* argv[]) {
                                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                                 return -1;
                             }
-                            yuvFormat = part.toUpper();
+                            pixelFormat = part.toUpper();
                             formatSet = true;
                         }
                     }
@@ -262,7 +261,12 @@ int main(int argc, char* argv[]) {
                 }
 
                 qDebug() << "Final parameters for" << filename << "- Resolution:" << width << "x" << height
-                         << "FPS:" << framerate << "Format:" << yuvFormat;
+                         << "FPS:" << framerate << "Format:" << pixelFormat;
+            } else {
+                // Compressed format - use detected format and set reasonable defaults
+                width = 1920; // These will be overridden by decoder
+                height = 1080;
+                qDebug() << "Compressed format detected:" << pixelFormat << "for file:" << filename;
             }
 
             QMetaObject::invokeMethod(root,
@@ -272,7 +276,7 @@ int main(int argc, char* argv[]) {
                                       Q_ARG(QVariant, width),
                                       Q_ARG(QVariant, height),
                                       Q_ARG(QVariant, framerate),
-                                      Q_ARG(QVariant, yuvFormat),
+                                      Q_ARG(QVariant, pixelFormat),
                                       Q_ARG(QVariant, forceSoftware));
         }
     }
