@@ -1,6 +1,7 @@
 #include "videoLoader.h"
 #include <QDebug>
 #include <QQmlContext>
+#include "utils/videoFormatUtils.h"
 
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
                          QObject* parent,
@@ -32,26 +33,11 @@ void VideoLoader::loadVideo(
         return;
     }
 
-    AVPixelFormat yuvFormat = AV_PIX_FMT_NONE;
+    // Use VideoFormatUtils to convert format string to AVPixelFormat
+    AVPixelFormat yuvFormat = VideoFormatUtils::stringToPixelFormat(pixelFormat);
 
-    // Planar YUV formats
-    if (pixelFormat == "420P") {
-        yuvFormat = AV_PIX_FMT_YUV420P;
-    } else if (pixelFormat == "422P") {
-        yuvFormat = AV_PIX_FMT_YUV422P;
-    } else if (pixelFormat == "444P") {
-        yuvFormat = AV_PIX_FMT_YUV444P;
-    } else if (pixelFormat == "AV_PIX_FMT_NONE") {
-        // this is mp4, do nothing
-    } else if (pixelFormat == "YUYV" || pixelFormat == "YUY2") {
-        yuvFormat = AV_PIX_FMT_YUYV422;
-    } else if (pixelFormat == "UYVY") {
-        yuvFormat = AV_PIX_FMT_UYVY422;
-    } else if (pixelFormat == "NV12") {
-        yuvFormat = AV_PIX_FMT_NV12;
-    } else if (pixelFormat == "NV21") {
-        yuvFormat = AV_PIX_FMT_NV21;
-    } else {
+    // Check if the format is valid
+    if (!VideoFormatUtils::isValidFormat(pixelFormat)) {
         QString userMessage =
             QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);
         qWarning() << "Failed to load video:" << userMessage.replace("\n\n", " ");
@@ -59,6 +45,14 @@ void VideoLoader::loadVideo(
         emit videoLoadFailed("Unsupported Video", userMessage);
 
         return;
+    }
+
+    // Log format type for debugging
+    FormatType formatType = VideoFormatUtils::getFormatType(pixelFormat);
+    if (formatType == FormatType::COMPRESSED) {
+        qDebug() << "Loading compressed video format:" << pixelFormat << "for file:" << path;
+    } else {
+        qDebug() << "Loading raw YUV format:" << pixelFormat << "for file:" << path;
     }
 
     QObject* root = m_engine->rootObjects().first();
