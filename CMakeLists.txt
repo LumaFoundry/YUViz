@@ -57,6 +57,7 @@ set(SRC
         src/decoder/videoDecoder.cpp
         src/utils/errorReporter.cpp
         src/utils/sharedViewProperties.cpp
+        src/utils/videoFormatUtils.cpp
         src/ui/videoWindow.cpp
         src/ui/videoLoader.cpp
         src/qml/qml.qrc
