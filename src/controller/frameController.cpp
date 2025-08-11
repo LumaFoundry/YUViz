@@ -145,15 +145,6 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
         qWarning() << "Cannot render frame" << pts;
     }
 
-    if (!(m_endOfVideo && direction == 1) && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
-        // Request to decode more frames if needed
-        int framesToFill = m_frameQueue->getEmpty(direction);
-        qDebug() << "FC::Request decode for" << framesToFill << "in direction" << direction
-                 << "decodeInProgress set to true";
-        m_decodeInProgress = true;
-        emit requestDecode(framesToFill, direction);
-    }
-
     qDebug() << "\n";
 }
 
@@ -295,6 +286,15 @@ void FrameController::onFrameRendered() {
             emit requestUpload(future, m_index);
         } else {
             qWarning() << "Cannot upload frame" << (futurePts);
+        }
+
+        if (!(m_endOfVideo && m_direction == 1) && !(m_ticking == 0 && m_direction == -1) && !m_decodeInProgress) {
+            // Request to decode more frames if needed
+            int framesToFill = m_frameQueue->getEmpty(m_direction);
+            qDebug() << "FC::Request decode for" << framesToFill << "in direction" << m_direction
+                     << "decodeInProgress set to true";
+            m_decodeInProgress = true;
+            emit requestDecode(framesToFill, m_direction);
         }
     }
 }

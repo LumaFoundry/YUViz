@@ -296,18 +296,15 @@ void VideoController::play() {
             m_direction = 1;
             m_uiDirection = 1;
             seekTo(0.0);
-            // Return early instead of immediately play
-            return;
 
         } else {
             // qDebug() << "VideoController::Starting playback in reverse";
             m_direction = -1;
             m_uiDirection = -1;
             seekTo(m_realEndMs);
-
-            // For some reason (likely race condition) we cannot return earlier here
-            // Otherwise playback does not start correctly
         }
+        // Return early instead of immediately play
+        return;
     }
 
     m_isPlaying = true;
