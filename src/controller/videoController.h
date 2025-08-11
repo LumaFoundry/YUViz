@@ -29,6 +29,7 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isForward READ isForward NOTIFY directionChanged)
     Q_PROPERTY(bool ready READ ready NOTIFY readyChanged)
     Q_PROPERTY(bool isSeeking READ isSeeking NOTIFY seekingChanged)
+    Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
 
   public:
     VideoController(QObject* parent,
@@ -44,6 +45,7 @@ class VideoController : public QObject {
     bool isForward() const { return m_uiDirection == 1; }
     bool ready() const { return m_ready; }
     bool isSeeking() const { return m_isSeeking; }
+    bool isBuffering() const { return m_isBuffering; }
 
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
@@ -68,6 +70,7 @@ class VideoController : public QObject {
     void removeVideo(int index);
     void setDiffMode(bool diffMode, int id1, int id2);
     void onSeekCompleted(int index);
+    void onDecoderStalled(int index, bool stalled);
 
   signals:
     void playTimer();
@@ -87,6 +90,7 @@ class VideoController : public QObject {
     void totalFramesChanged();
     void readyChanged();
     void seekingChanged();
+    void isBufferingChanged();
 
   private:
     std::vector<std::unique_ptr<FrameController>> m_frameControllers;
@@ -103,6 +107,7 @@ class VideoController : public QObject {
     QSet<int> m_startFCs;
     QSet<int> m_endFCs;
     QSet<int> m_seekedFCs;
+    QSet<int> m_stalledFCs;
 
     // Ensure all FC have uploaded initial frame before starting timer
     bool m_ready = false;
@@ -123,8 +128,10 @@ class VideoController : public QObject {
     bool m_diffMode = false;
 
     bool m_isSeeking = false;
-    int m_seekedCount = 0;
     bool m_pendingPlay = false;
+
+    bool m_wasPlayingWhenStalled = false;
+    bool m_isBuffering = false;
 
     std::shared_ptr<CompareController> m_compareController;
 };

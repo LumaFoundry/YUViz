@@ -69,6 +69,12 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
             &VideoController::onSeekCompleted,
             Qt::DirectConnection);
 
+    connect(frameController.get(),
+            &FrameController::decoderStalled,
+            this,
+            &VideoController::onDecoderStalled,
+            Qt::DirectConnection);
+
     m_timeBases.push_back(frameController->getTimeBase());
 
     // Get the max duration & totalFrames from all FC (in theory they should all be the same)
@@ -144,6 +150,7 @@ void VideoController::removeVideo(int index) {
     m_startFCs.remove(index);
     m_endFCs.remove(index);
     m_seekedFCs.remove(index);
+    m_stalledFCs.remove(index);
 
     // Remove the FrameController at the specified index
     m_frameControllers[index].reset();
@@ -164,6 +171,13 @@ void VideoController::removeVideo(int index) {
     if (m_ready != allReady) {
         m_ready = allReady;
         emit readyChanged();
+    }
+
+    // Update buffering flag
+    bool buffering = !m_stalledFCs.isEmpty();
+    if (buffering != m_isBuffering) {
+        m_isBuffering = buffering;
+        emit isBufferingChanged();
     }
 
     seekTo(0.0);
@@ -213,7 +227,7 @@ void VideoController::onReady(int index) {
     qDebug() << "Ready count =" << m_readyFCs.size() << "/ " << m_realCount;
 
     if (m_realCount > 0 && m_readyFCs.size() == m_realCount) {
-        qDebug() << "Ready = true";
+        // qDebug() << "Ready = true";
         if (!m_ready) {
             m_ready = true;
             emit readyChanged();
@@ -239,13 +253,13 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
     // Handle end of video for specific FC
 
     if (end) {
-        qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
+        // qDebug() << "VideoController: FrameController with index" << index << "reached end of video";
         m_endFCs.insert(index);
     } else {
         m_endFCs.remove(index);
     }
 
-    qDebug() << "FC end count =" << m_endFCs.size() << "/ " << m_realCount;
+    // qDebug() << "FC end count =" << m_endFCs.size() << "/ " << m_realCount;
 
     if (m_endFCs.size() == m_realCount && m_realCount > 0) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
@@ -265,7 +279,7 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
 // Interface slots / signals
 void VideoController::play() {
 
-    if (!m_ready || m_isSeeking) {
+    if (!m_ready || m_isSeeking || m_isBuffering) {
         return;
     }
 
@@ -563,6 +577,32 @@ void VideoController::onSeekCompleted(int index) {
             } else {
                 emit playBackwardTimer();
             }
+        }
+    }
+}
+
+void VideoController::onDecoderStalled(int index, bool stalled) {
+    if (stalled) {
+        m_stalledFCs.insert(index);
+        if (!m_isBuffering) {
+            m_isBuffering = true;
+            emit isBufferingChanged();
+        }
+        if (m_timer->getStatus() == Status::Playing) {
+            m_wasPlayingWhenStalled = true;
+            pause();
+        }
+    } else {
+        m_stalledFCs.remove(index);
+        const bool bufferingNow = !m_stalledFCs.isEmpty();
+        if (bufferingNow != m_isBuffering) {
+            m_isBuffering = bufferingNow;
+            emit isBufferingChanged();
+        }
+        if (!bufferingNow && m_wasPlayingWhenStalled && m_timer->getStatus() == Status::Paused && !m_isSeeking &&
+            !m_reachedEnd) {
+            m_wasPlayingWhenStalled = false;
+            play();
         }
     }
 }

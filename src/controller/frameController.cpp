@@ -123,23 +123,41 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
             // qDebug() << "End frame = False set by" << target->pts();
             m_endOfVideo = false;
         }
+
+        if (m_stalled) {
+            clearStall();
+        }
+
         m_ticking = pts;
         qDebug() << "Requested render for frame with PTS" << pts;
         emit requestRender(m_index);
         emit endOfVideo(m_endOfVideo, m_index);
+
+    } else if (!m_prefill && !m_endOfVideo && pts >= 0 && pts < totalFrames()) {
+        // If not already stalled, emit signal to VC to pause playback
+        if (!m_stalled) {
+            m_stalled = true;
+            m_waitingPTS = pts;
+            qDebug() << "FrameController::onTimerTick - Stalled at PTS" << pts;
+            emit decoderStalled(m_index, true);
+        }
     } else {
         qWarning() << "Cannot render frame" << pts;
     }
 
+    qDebug() << "m_endOfVideo:" << m_endOfVideo << "!(pts == 0 && direction == -1):" << !(pts == 0 && direction == -1)
+             << "m_decodeInProgress:" << m_decodeInProgress;
+
     if (!m_endOfVideo && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
-        // qDebug() << "FC::Request decode for" << framesToFill;
+        qDebug() << "FC::Request decode for" << framesToFill << "in direction" << direction
+                 << "decodeInProgress set to true";
         m_decodeInProgress = true;
         emit requestDecode(framesToFill, direction);
     }
 
-    // qDebug() << "\n";
+    qDebug() << "\n";
 }
 
 void FrameController::onTimerStep(int64_t pts, int direction) {
@@ -184,6 +202,14 @@ void FrameController::onFrameDecoded(bool success) {
 
     // Safe guard for stack calling decode
     m_decodeInProgress = false;
+    qDebug() << "FC::onFrameDecoded: decodeInProgress set to false";
+
+    // Clear stall if decoder caught up
+    if (m_stalled && m_waitingPTS != -1) {
+        if (m_frameQueue->getHeadFrame(m_waitingPTS)) {
+            clearStall();
+        }
+    }
 
     if (m_prefill) {
         // qDebug() << "Prefill completed for index" << m_index;
@@ -286,15 +312,20 @@ void FrameController::onSeek(int64_t pts) {
 
     // Reset any pending decode
     m_decodeInProgress = false;
+    qDebug() << "FC::onSeek: decodeInProgress set to false";
+
+    // Clear stall on new seek
+    clearStall();
 
     if (frame && !m_frameQueue->isStale(pts)) {
         qDebug() << "Frame " << pts << " found in queue, requesting upload";
         emit requestUpload(frame, m_index);
 
-        int framesToFill = m_frameQueue->getEmpty(1);
+        int framesToFill = m_frameQueue->getEmpty(m_direction);
         qDebug() << "Requesting to fill " << framesToFill << " frames after seeking";
+        qDebug() << "FC::onSeek: decodeInProgress set to true";
         m_decodeInProgress = true;
-        emit requestDecode(framesToFill, 1);
+        emit requestDecode(framesToFill, m_direction);
 
     } else {
         qDebug() << "Frame " << pts << " not in queue, requesting seek";
@@ -311,6 +342,9 @@ void FrameController::onFrameSeeked(int64_t pts) {
     if (m_stepping != -1) {
         targetPts = m_stepping;
     }
+
+    // Clear stall for internal seeks
+    clearStall();
 
     FrameData* frameSeeked = m_frameQueue->getHeadFrame(targetPts);
     if (!frameSeeked) {
@@ -342,4 +376,12 @@ int FrameController::totalFrames() {
 
 int64_t FrameController::getDuration() {
     return m_frameMeta->duration();
+}
+
+void FrameController::clearStall() {
+    if (!m_stalled)
+        return;
+    m_stalled = false;
+    m_waitingPTS = -1;
+    emit decoderStalled(m_index, false);
 }
