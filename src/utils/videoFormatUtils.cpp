@@ -136,8 +136,27 @@ FormatType VideoFormatUtils::getFormatType(const QString& formatString) {
 QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
     QString lowerFilename = filename.toLower();
 
+    // Enhanced detection for YUV files - check for specific format indicators in filename
     if (lowerFilename.endsWith(".yuv") || lowerFilename.endsWith(".y4m")) {
-        return "420P"; // Default YUV format
+        // Check for specific format indicators in filename
+        if (lowerFilename.contains("420p")) {
+            return "420P";
+        } else if (lowerFilename.contains("422p")) {
+            return "422P";
+        } else if (lowerFilename.contains("444p")) {
+            return "444P";
+        } else if (lowerFilename.contains("yuyv")) {
+            return "YUYV";
+        } else if (lowerFilename.contains("uyvy")) {
+            return "UYVY";
+        } else if (lowerFilename.contains("nv12")) {
+            return "NV12";
+        } else if (lowerFilename.contains("nv21")) {
+            return "NV21";
+        } else {
+            // Default to 420P for YUV files without specific format indicators
+            return "420P";
+        }
     } else if (lowerFilename.endsWith(".mp4")) {
         return "MP4";
     } else if (lowerFilename.endsWith(".avi")) {

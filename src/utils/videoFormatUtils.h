@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QList>
+#include <QObject>
 #include <QString>
 #include <QStringList>
 
@@ -20,18 +21,20 @@ struct VideoFormat {
     FormatType type;           // RAW_YUV or COMPRESSED
 };
 
-class VideoFormatUtils {
+class VideoFormatUtils : public QObject {
+    Q_OBJECT
+
   public:
     static const QList<VideoFormat>& getSupportedFormats();
     static AVPixelFormat stringToPixelFormat(const QString& formatString);
     static QString pixelFormatToString(AVPixelFormat format);
-    static QStringList getFormatIdentifiers();
-    static QStringList getDisplayNames();
-    static bool isValidFormat(const QString& formatString);
+    Q_INVOKABLE static QStringList getFormatIdentifiers();
+    Q_INVOKABLE static QStringList getDisplayNames();
+    Q_INVOKABLE static bool isValidFormat(const QString& formatString);
     static VideoFormat getFormatByIdentifier(const QString& identifier);
-    static bool isCompressedFormat(const QString& formatString);
+    Q_INVOKABLE static bool isCompressedFormat(const QString& formatString);
     static FormatType getFormatType(const QString& formatString);
-    static QString detectFormatFromExtension(const QString& filename);
+    Q_INVOKABLE static QString detectFormatFromExtension(const QString& filename);
 
   private:
     static QList<VideoFormat> s_formats;
