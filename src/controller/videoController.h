@@ -117,6 +117,7 @@ class VideoController : public QObject {
     int m_totalFrames = 0;
 
     int64_t m_currentTimeMs = 0;
+    int64_t m_realEndMs = 0;
 
     // 1 for forward, -1 for backward
     int m_direction = 1;

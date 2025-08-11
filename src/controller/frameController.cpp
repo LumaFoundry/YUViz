@@ -116,7 +116,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
     FrameData* target = m_frameQueue->getHeadFrame(pts);
     if (target) {
         m_lastPTS = pts;
-        if (target->isEndFrame()) {
+        if (target->isEndFrame() && direction == 1) {
             // qDebug() << "End frame = True set by" << target->pts();
             m_endOfVideo = true;
         } else if (m_endOfVideo) {
@@ -145,10 +145,7 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
         qWarning() << "Cannot render frame" << pts;
     }
 
-    qDebug() << "m_endOfVideo:" << m_endOfVideo << "!(pts == 0 && direction == -1):" << !(pts == 0 && direction == -1)
-             << "m_decodeInProgress:" << m_decodeInProgress;
-
-    if (!m_endOfVideo && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
+    if (!(m_endOfVideo && direction == 1) && !(pts == 0 && direction == -1) && !m_decodeInProgress) {
         // Request to decode more frames if needed
         int framesToFill = m_frameQueue->getEmpty(direction);
         qDebug() << "FC::Request decode for" << framesToFill << "in direction" << direction
@@ -312,7 +309,6 @@ void FrameController::onSeek(int64_t pts) {
 
     // Reset any pending decode
     m_decodeInProgress = false;
-    qDebug() << "FC::onSeek: decodeInProgress set to false";
 
     // Clear stall on new seek
     clearStall();
@@ -321,11 +317,11 @@ void FrameController::onSeek(int64_t pts) {
         qDebug() << "Frame " << pts << " found in queue, requesting upload";
         emit requestUpload(frame, m_index);
 
-        int framesToFill = m_frameQueue->getEmpty(m_direction);
+        int direction = (frame->isEndFrame()) ? -1 : 1;
+        int framesToFill = m_frameQueue->getEmpty(direction);
         qDebug() << "Requesting to fill " << framesToFill << " frames after seeking";
-        qDebug() << "FC::onSeek: decodeInProgress set to true";
         m_decodeInProgress = true;
-        emit requestDecode(framesToFill, m_direction);
+        emit requestDecode(framesToFill, direction);
 
     } else {
         qDebug() << "Frame " << pts << " not in queue, requesting seek";

@@ -265,6 +265,7 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
 
         // Update UI
+        m_realEndMs = m_currentTimeMs;
         m_currentTimeMs = m_duration;
         emit currentTimeMsChanged();
 
@@ -283,22 +284,30 @@ void VideoController::play() {
         return;
     }
 
-    m_currentTimeMs = 0;
-    emit currentTimeMsChanged();
-
     m_direction = m_uiDirection;
 
     if (m_reachedEnd && m_timer->getStatus() == Status::Paused) {
-        // qDebug() << "VideoController::Restarting playback from beginning";
-        seekTo(0.0);
         m_reachedEnd = false;
-        m_direction = 1;
-        m_uiDirection = 1;
         m_pendingPlay = true;
         emit directionChanged();
 
-        // Return early instead of immediately play
-        return;
+        if (m_direction == 1) {
+            // qDebug() << "VideoController::Restarting playback from beginning";
+            m_direction = 1;
+            m_uiDirection = 1;
+            seekTo(0.0);
+            // Return early instead of immediately play
+            return;
+
+        } else {
+            // qDebug() << "VideoController::Starting playback in reverse";
+            m_direction = -1;
+            m_uiDirection = -1;
+            seekTo(m_realEndMs);
+
+            // For some reason (likely race condition) we cannot return earlier here
+            // Otherwise playback does not start correctly
+        }
     }
 
     m_isPlaying = true;
@@ -406,7 +415,7 @@ void VideoController::seekTo(double timeMs) {
 
         if (m_frameControllers[i]) {
             // Call seek on the FC
-            // qDebug() << "Seeking FrameController index" << fc->m_index << "to PTS" << pts;
+            // qDebug() << "Seeking FrameController index" << i << "to PTS" << pts;
             m_frameControllers[i]->onSeek(pts);
         }
 
@@ -560,7 +569,7 @@ void VideoController::onSeekCompleted(int index) {
     m_seekedFCs.insert(index);
     qDebug() << "Seek completed for FC" << index << "(" << m_seekedFCs.size() << "/" << m_realCount << ")";
 
-    if (m_seekedFCs.size() >= m_realCount && m_realCount > 0) {
+    if (m_seekedFCs.size() == m_realCount && m_realCount > 0) {
         // All FrameControllers have completed seeking
         m_isSeeking = false;
         emit seekingChanged();
@@ -569,14 +578,7 @@ void VideoController::onSeekCompleted(int index) {
         // Play if pending due to end of video
         if (m_pendingPlay) {
             m_pendingPlay = false;
-            m_isPlaying = true;
-            emit isPlayingChanged();
-
-            if (m_direction == 1) {
-                emit playForwardTimer();
-            } else {
-                emit playBackwardTimer();
-            }
+            play();
         }
     }
 }
@@ -599,8 +601,8 @@ void VideoController::onDecoderStalled(int index, bool stalled) {
             m_isBuffering = bufferingNow;
             emit isBufferingChanged();
         }
-        if (!bufferingNow && m_wasPlayingWhenStalled && m_timer->getStatus() == Status::Paused && !m_isSeeking &&
-            !m_reachedEnd) {
+        if (!bufferingNow && (m_wasPlayingWhenStalled || m_isPlaying) && m_timer->getStatus() == Status::Paused &&
+            !m_isSeeking && !m_reachedEnd) {
             m_wasPlayingWhenStalled = false;
             play();
         }
