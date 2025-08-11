@@ -477,8 +477,10 @@ int64_t VideoDecoder::loadYUVFrame() {
             copyFrame(tempPacket, frameData, retFlag);
             if (retFlag == 2)
                 break;
+            av_packet_free(&tempPacket);
             return pts;
         }
+        av_packet_unref(tempPacket);
     }
 
     if (ret < 0 && ret != AVERROR_EOF) {
@@ -607,6 +609,10 @@ int64_t VideoDecoder::loadCompressedFrame() {
                               dstLinesize);
                     sws_freeContext(swsCtx);
 
+                    if (outputFrame != tempFrame) {
+                        av_frame_free(&outputFrame);
+                    }
+
                     // Set pts to normalized pts
                     frameData->setPts(normalized_pts);
                     frameData->setEndFrame(false);
@@ -625,7 +631,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     emit framesLoaded(false);
                     if (outputFrame != tempFrame)
                         av_frame_free(&outputFrame);
-                    // Update metadata pixel format to dstFormat
+                    av_frame_free(&tempFrame);
                     metadata.setPixelFormat(dstFormat);
                     setFormat(dstFormat);
                     if (!eof_reached)
@@ -634,16 +640,13 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     return -1;
                 }
             } else if (ret == AVERROR(EAGAIN)) {
-                // Need more input, break inner loop to read another packet
                 av_frame_free(&tempFrame);
                 break;
             } else if (ret == AVERROR_EOF) {
-                // No more frames available
                 av_frame_free(&tempFrame);
                 av_packet_free(&tempPacket);
                 return -1;
             } else {
-                // Other error
                 av_frame_free(&tempFrame);
                 break;
             }
@@ -683,7 +686,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(srcFmt);
     if (!pixDesc) {
         ErrorReporter::instance().report("Failed to get pixel format descriptor", LogLevel::Error);
-        av_packet_unref(tempPacket);
         retFlag = 2;
         return;
     }
@@ -1131,9 +1133,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
     }
 
     currentFrameIndex++;
-
-    av_packet_unref(tempPacket);
-    av_packet_free(&tempPacket);
 }
 
 int VideoDecoder::getTotalFrames() {
@@ -1310,7 +1309,8 @@ void VideoDecoder::seekToCompressed(int64_t targetPts) {
             ret = avcodec_send_packet(codecContext, packet);
             if (ret < 0) {
                 qDebug() << "Decoder::seekTo failed to send packet to decoder";
-                av_packet_unref(packet);
+                av_packet_free(&packet);
+                av_frame_free(&frame);
                 continue;
             }
 
