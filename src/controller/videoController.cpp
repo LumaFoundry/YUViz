@@ -83,6 +83,10 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     m_totalFrames = std::max(m_totalFrames, frameController->totalFrames());
     emit totalFramesChanged();
 
+    m_realEndMs =
+        (static_cast<double>(m_totalFrames - 1) / static_cast<double>(m_totalFrames)) * static_cast<double>(m_duration);
+    qDebug() << "Real end time in ms:" << m_realEndMs;
+
     m_frameControllers.push_back(std::move(frameController));
     // qDebug() << "FrameController count now:" << m_frameControllers.size();
 
@@ -265,7 +269,6 @@ void VideoController::onFCEndOfVideo(bool end, int index) {
         qDebug() << "All FrameControllers reached end of video, stopping playback";
 
         // Update UI
-        m_realEndMs = m_currentTimeMs;
         m_currentTimeMs = m_duration;
         emit currentTimeMsChanged();
 
@@ -405,10 +408,12 @@ void VideoController::seekTo(double timeMs) {
 
     std::vector<int64_t> seekPts;
 
+    double target = (timeMs >= m_duration) ? m_realEndMs : timeMs;
+
     for (size_t i = 0; i < m_frameControllers.size(); ++i) {
         // Convert timeMs to PTS using the FC's timebase
         AVRational timebase = m_timeBases[i];
-        int64_t pts = llrint((timeMs / 1000.0) / av_q2d(timebase));
+        int64_t pts = llrint((target / 1000.0) / av_q2d(timebase));
 
         if (m_frameControllers[i]) {
             // Call seek on the FC
