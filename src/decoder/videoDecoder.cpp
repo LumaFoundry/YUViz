@@ -1,6 +1,7 @@
 #include "videoDecoder.h"
 #include <chrono>
 #include <thread>
+#include "utils/videoFormatUtils.h"
 
 VideoDecoder::VideoDecoder(QObject* parent) :
     QObject(parent),
@@ -64,10 +65,12 @@ void VideoDecoder::openFile() {
     const AVInputFormat* inputFormat = nullptr;
 
     // Check if this is likely a raw YUV file based on file extension
-    std::string fileName = m_fileName;
-    if (fileName.find(".yuv") != std::string::npos || fileName.find(".raw") != std::string::npos) {
+    QString qFileName = QString::fromStdString(m_fileName);
+    QString formatIdentifier = VideoFormatUtils::detectFormatFromExtension(qFileName);
+
+    if (VideoFormatUtils::getFormatType(formatIdentifier) == FormatType::RAW_YUV) {
         inputFormat = av_find_input_format("rawvideo");
-        qDebug() << "VideoDecoder: Detected raw YUV file, using rawvideo input format";
+        qDebug() << "VideoDecoder: Detected raw video file, using rawvideo input format";
     }
 
     // av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
