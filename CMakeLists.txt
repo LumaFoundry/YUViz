@@ -75,12 +75,11 @@ set(QRC_SOURCES
 # Platform-specific icon resources
 set(PLATFORM_ICON_SOURCES)
 if (WIN32)
-    # Add .rc file so the .ico is embedded in the Windows executable
+    set(app_icon_resource_windows "src/icons/app_icon.rc")
     list(APPEND PLATFORM_ICON_SOURCES src/icons/app_icon.rc)
 endif ()
 
 if (APPLE)
-    # Add .icns file to bundle Resources and set bundle icon
     set(MACOSX_BUNDLE_ICON_FILE icon.icns)
     set(app_icon_macos "src/icons/icon.icns")
     set_source_files_properties(src/icons/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
