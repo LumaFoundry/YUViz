@@ -124,7 +124,6 @@ ApplicationWindow {
 
     AboutPage {
         id: aboutDialog
-        anchors.centerIn: parent
         visible: Qt.platform.os !== "osx" && aboutDialog.visible
     }
 
@@ -364,7 +363,7 @@ ApplicationWindow {
                     if (Qt.platform.os === "osx") {
                         NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE);
                     } else {
-                        aboutDialog.open();
+                        aboutDialog.visible = true;
                     }
                 }
             }
