@@ -108,7 +108,7 @@ void FrameController::start() {
 
 // Slots Definitions
 void FrameController::onTimerTick(int64_t pts, int direction) {
-    // qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
+    qDebug() << "onTimerTick with pts" << pts << " for index" << m_index;
 
     m_direction = direction;
 
@@ -140,6 +140,18 @@ void FrameController::onTimerTick(int64_t pts, int direction) {
             m_waitingPTS = pts;
             qDebug() << "FrameController::onTimerTick - Stalled at PTS" << pts;
             emit decoderStalled(m_index, true);
+
+            if (!m_decodeInProgress) {
+                m_decodeInProgress = true;
+
+                if (direction == 1) {
+                    emit requestSeek(pts, m_frameQueue->getSize() / 2);
+                } else {
+                    // Safe guard for negative PTS
+                    int64_t targetPts = std::max(pts - m_frameQueue->getSize() / 2, int64_t(0));
+                    emit requestSeek(targetPts, m_frameQueue->getSize() / 2);
+                }
+            }
         }
     } else {
         qWarning() << "Cannot render frame" << pts;
@@ -196,6 +208,11 @@ void FrameController::onFrameDecoded(bool success) {
     if (m_stalled && m_waitingPTS != -1) {
         if (m_frameQueue->getHeadFrame(m_waitingPTS)) {
             clearStall();
+        } else {
+            if (!m_decodeInProgress) {
+                m_decodeInProgress = true;
+                emit requestSeek(m_waitingPTS, m_frameQueue->getSize() / 2);
+            }
         }
     }
 
@@ -264,6 +281,10 @@ void FrameController::onFrameUploaded() {
         m_stepping = -1; // Reset stepping after upload
         emit requestRender(m_index);
     }
+
+    if (m_ticking != -1) {
+        m_ticking = -1;
+    }
 }
 
 void FrameController::onFrameRendered() {
@@ -274,7 +295,7 @@ void FrameController::onFrameRendered() {
         // Upload future frame if inside frameQueue
         int64_t futurePts = m_ticking + 1 * m_direction;
         if (futurePts < 0) {
-            qWarning() << "Future PTS is negative, cannot upload frame";
+            qWarning() << "Future PTS " << futurePts << " is negative, cannot upload frame in tick" << m_ticking;
             emit startOfVideo(m_index);
             m_endOfVideo = false;
             return;
@@ -286,6 +307,7 @@ void FrameController::onFrameRendered() {
             emit requestUpload(future, m_index);
         } else {
             qWarning() << "Cannot upload frame" << (futurePts);
+            m_ticking = -1;
         }
 
         if (!(m_endOfVideo && m_direction == 1) && !(m_ticking == 0 && m_direction == -1) && !m_decodeInProgress) {
