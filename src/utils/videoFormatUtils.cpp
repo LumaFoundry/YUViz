@@ -21,14 +21,7 @@ void VideoFormatUtils::initializeFormats() {
     s_formats.append({"NV21", "NV21 - YUV420 (Semi-planar)", AV_PIX_FMT_NV21, FormatType::RAW_YUV});
 
     // Compressed formats - handled by FFmpeg decoder
-    s_formats.append({"MP4", "MP4 - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"AVI", "AVI - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"MKV", "MKV - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"MOV", "MOV - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"WEBM", "WEBM - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"HEVC", "HEVC - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"H264", "H264 - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
-    s_formats.append({"H265", "H265 - Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
+    s_formats.append({"COMPRESSED", "Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
 
     s_initialized = true;
 }
@@ -157,21 +150,8 @@ QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
             // Default to 420P for YUV files without specific format indicators
             return "420P";
         }
-    } else if (lowerFilename.endsWith(".mp4")) {
-        return "MP4";
-    } else if (lowerFilename.endsWith(".avi")) {
-        return "AVI";
-    } else if (lowerFilename.endsWith(".mkv")) {
-        return "MKV";
-    } else if (lowerFilename.endsWith(".mov")) {
-        return "MOV";
-    } else if (lowerFilename.endsWith(".webm")) {
-        return "WEBM";
-    } else if (lowerFilename.endsWith(".hevc") || lowerFilename.endsWith(".265")) {
-        return "HEVC";
-    } else if (lowerFilename.endsWith(".264")) {
-        return "H264";
     }
 
-    return "MP4"; // Default for unknown compressed formats
+    // For everything else, let FFmpeg figure it out.
+    return "COMPRESSED";
 }
