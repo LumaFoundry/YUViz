@@ -787,7 +787,7 @@ Window {
                     var maxWidth = 0;
 
                     // temporarily set font to calculate text width
-                    ctx.font = Math.floor(fontSize) + "px Arial";
+                    ctx.font = Math.floor(fontSize) + "px " + Theme.fontFamily;
 
                     for (var i = 0; i < lines.length; i++) {
                         var textWidth = ctx.measureText(lines[i]).width;
@@ -818,7 +818,7 @@ Window {
                     }
 
                     // restore original font
-                    ctx.font = "12px Arial";
+                    ctx.font = "12px " + Theme.fontFamily;
                 } catch (error) {
                     console.log("QML: drawPixelValue error:", error);
                 }
@@ -842,7 +842,7 @@ Window {
                 id: osdText
                 anchors.centerIn: parent
                 color: "white"
-                font.family: "Arial"
+                font.family: Theme.fontFamily
                 font.pixelSize: 12
                 text: {
                     var osdStr = diffWindow.psnrInfo;
