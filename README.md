@@ -98,6 +98,33 @@ Options:
 - `-q <size>`: Set frame queue size (default: 50).
 - `-s`, `--software`: Force software decoding (disables hardware acceleration).
 
+## Troubleshooting
+### macOS Rendering Issues
+
+On macOS systems, the default Metal graphics backend used by Qt 6 may cause issues (e.g., a crash).
+
+To fix this, you can force the application to use the OpenGL backend by setting an environment variable before running the application.
+
+```bash
+# Prepend the variable to the command for a one-time run
+QSG_RHI_BACKEND=opengl ./videoplayer [arguments...]
+```
+
+Alternatively, you can export the variable first, which will apply it to your entire terminal session:
+
+```bash
+export QSG_RHI_BACKEND=opengl
+./videoplayer [arguments...]
+```
+
+For a permanent fix to avoid typing this every time, you can add the setting to your shell's configuration file. Run the following command to add the line to your ~/.zshrc file:
+
+```bash
+echo 'export QSG_RHI_BACKEND=opengl' >> ~/.zshrc
+```
+
+For the change to take effect, you must either restart your terminal or run `source ~/.zshrc`.
+
 ## Module descriptions
 
 #### `frames/` - Frame Data Management
