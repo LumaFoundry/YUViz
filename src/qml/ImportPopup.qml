@@ -22,8 +22,57 @@ Popup {
     signal videoImported(string filePath, int width, int height, double fps, string pixelFormat)
     signal accepted
 
+    // Component to be used as a template for creating the dialog
+    Component {
+        id: fileDialogComponent
+        FileDialog {
+            id: dialog
+            title: "Choose a video file"
+            options: FileDialog.DontUseNativeDialog
+        }
+    }
+
     function openFileDialog() {
-        fileDialog.open();
+        const compressedExtensions = "*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265";
+        const rawExts = VideoFormatUtils.getRawVideoExtensions();
+        const rawWildcards = rawExts.map(ext => "*" + ext).join(" ");
+        const dynamicFilters = [
+            `All Video Files (${rawWildcards} ${compressedExtensions})`,
+            `Raw YUV Files (${rawWildcards})`,
+            `Compressed Video Files (${compressedExtensions})`,
+            "All Files (*)"
+        ];
+
+        var dialog = fileDialogComponent.createObject(importPopup, {
+            "parentWindow": importPopup.mainWindow,
+            "nameFilters": dynamicFilters
+        });
+
+        dialog.accepted.connect(function() {
+            importPopup.selectedFile = dialog.selectedFile.toString().replace("file://", "");
+            const file = importPopup.selectedFile.split('/').pop();
+
+            // Strict match: resolution followed by underscore/dash and FPS
+            const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
+            if (match) {
+                resolutionInput.editText = match[1] + "x" + match[2];
+                fpsInput.text = match[3];
+            } else {
+                // Fallback: just try to extract resolution anywhere
+                const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
+                if (resMatch) {
+                    resolutionInput.editText = resMatch[0];
+                } else {
+                    resolutionInput.editText = "";
+                }
+                fpsInput.text = "";
+            }
+
+            // Auto-select format based on filename
+            autoSelectFormat(file);
+        });
+
+        dialog.open();
     }
 
     background: Rectangle {
@@ -59,46 +108,9 @@ Popup {
                 Layout.fillWidth: true
             }
 
-            FileDialog {
-                id: fileDialog
-                title: "Choose a video file"
-                parentWindow: mainWindow
-                options: FileDialog.DontUseNativeDialog
-                nameFilters: [
-                    "All Video Files (*.yuv *.y4m *.raw *.nv12 *.nv21 *.yuyv *.uyvy *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)",
-                    "Raw YUV Files (*.yuv *.y4m *.raw *.nv12 *.nv21 *.yuyv *.uyvy)",
-                    "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)",
-                    "All Files (*)"
-                ]
-
-                onAccepted: {
-                    importPopup.selectedFile = selectedFile.toString().replace("file://", "");
-                    const file = importPopup.selectedFile.split('/').pop();
-
-                    // Strict match: resolution followed by underscore/dash and FPS
-                    const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
-                    if (match) {
-                        resolutionInput.editText = match[1] + "x" + match[2];
-                        fpsInput.text = match[3];
-                    } else {
-                        // Fallback: just try to extract resolution anywhere
-                        const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
-                        if (resMatch) {
-                            resolutionInput.editText = resMatch[0];
-                        } else {
-                            resolutionInput.editText = "";
-                        }
-                        fpsInput.text = "";
-                    }
-                    
-                    // Auto-select format based on filename
-                    autoSelectFormat(file);
-                }
-            }
-
             Button {
                 text: "Browse"
-                onClicked: fileDialog.open()
+                onClicked: openFileDialog()
             }
         }
 
@@ -178,7 +190,7 @@ Popup {
                 enabled: importPopup.selectedFile !== "" && (!isYUV || (filePathInput.text !== "" && resolutionInput.editText.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))))
                 onClicked: {
                     const res = resolutionInput.editText.split("x");
-                    const filePath = fileDialog.selectedFile;
+                    const filePath = importPopup.selectedFile;
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;

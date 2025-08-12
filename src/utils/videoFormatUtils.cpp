@@ -30,7 +30,7 @@ void VideoFormatUtils::initializeFormats() {
     s_initialized = true;
 }
 
-const QStringList& VideoFormatUtils::getRawVideoExtensions() {
+QStringList VideoFormatUtils::getRawVideoExtensions() {
     initializeFormats();
     return s_rawVideoExtensions;
 }
