@@ -125,7 +125,7 @@ ApplicationWindow {
     AboutPage {
         id: aboutDialog
         anchors.centerIn: parent
-        visible: Qt.platform.os !== "osx" && aboutDialog.visible
+        visible: Qt.platform.os !== "osx" && Qt.platform.os !== "windows"
     }
 
     Dialog {
@@ -361,7 +361,7 @@ ApplicationWindow {
             Action {
                 text: "About"
                 onTriggered: {
-                    if (Qt.platform.os === "osx") {
+                    if (Qt.platform.os === "osx" || Qt.platform.os === "windows") {
                         NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE)
                     } else {
                         aboutDialog.open()
