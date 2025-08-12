@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic 6.0
 import QtQuick 6.0
 import QtQuick.Layouts 1.15
 import Theme 1.0
+import NativeAbout 1.0
 
 ApplicationWindow {
     id: mainWindow
@@ -124,6 +125,7 @@ ApplicationWindow {
     AboutPage {
         id: aboutDialog
         anchors.centerIn: parent
+        visible: Qt.platform.os !== "osx" && aboutDialog.visible
     }
 
     Dialog {
@@ -358,7 +360,13 @@ ApplicationWindow {
             }
             Action {
                 text: "About"
-                onTriggered: aboutDialog.open()
+                onTriggered: {
+                    if (Qt.platform.os === "osx") {
+                        NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE)
+                    } else {
+                        aboutDialog.open()
+                    }
+                }
             }
         }
 

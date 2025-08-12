@@ -65,6 +65,7 @@ set(SRC
         src/ui/diffWindow.cpp
         src/rendering/diffRenderer.cpp
         src/rendering/diffRenderNode.cpp
+        src/utils/aboutHelper.mm
 )
 
 set(QRC_SOURCES

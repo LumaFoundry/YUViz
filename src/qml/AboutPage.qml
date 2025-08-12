@@ -1,10 +1,12 @@
 import QtQuick.Window 6.0
-import QtQuick.Controls.Basic 6.0
+import QtQuick.Controls 6.0
 import QtQuick 6.0
 import QtQuick.Layouts 1.15
 
 Dialog {
     id: aboutDialog
+    // Shown only on non-macOS platforms (macOS uses native About panel)
+    visible: Qt.platform.os !== "osx"
     title: "About"
     modal: true
     standardButtons: Dialog.Ok
@@ -70,62 +72,34 @@ Dialog {
                 font.bold: true
                 font.pixelSize: Theme.fontSizeNormal
                 color: Theme.textColor
+                horizontalAlignment: Text.AlignHCenter
+                width: parent.width
             }
-
             Column {
                 width: parent.width
                 spacing: Theme.spacingSmall
-
-                Row {
+                Text {
+                    text: "Version: " + (typeof APP_VERSION !== 'undefined' && APP_VERSION !== "" ? APP_VERSION : "DEV")
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.textColor
+                    horizontalAlignment: Text.AlignHCenter
                     width: parent.width
-
-                    Text {
-                        text: "Version:"
-                        font.family: "sans-serif"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.accentColor
-                        width: 120
-                    }
-                    Text {
-                        text: typeof APP_VERSION !== 'undefined' && APP_VERSION !== "" ? APP_VERSION : "DEV"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textColor
-                    }
                 }
-
-                Row {
+                Text {
+                    text: "Built: " + BUILD_DATE
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.textColor
+                    horizontalAlignment: Text.AlignHCenter
                     width: parent.width
-
-                    Text {
-                        text: "Built:"
-                        font.family: "sans-serif"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.accentColor
-                        width: 120
-                    }
-                    Text {
-                        text: BUILD_DATE
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.textColor
-                    }
                 }
-                Row {
+                Text {
+                    text: "<a href='https://github.com/LokiW-03/qt6-videoplayer'>Source: GitHub Repository</a>"
+                    font.pixelSize: Theme.fontSizeSmall
+                    color: Theme.accentColor
+                    textFormat: Text.RichText
+                    horizontalAlignment: Text.AlignHCenter
                     width: parent.width
-
-                    Text {
-                        text: "Source:"
-                        font.family: "sans-serif"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.accentColor
-                        width: 120
-                    }
-                    Text {
-                        text: "<a href='https://github.com/LokiW-03/qt6-videoplayer'>GitHub Repository</a>"
-                        font.pixelSize: Theme.fontSizeSmall
-                        color: Theme.accentColor
-                        textFormat: Text.RichText
-                        onLinkActivated: Qt.openUrlExternally(link)
-                    }
+                    onLinkActivated: Qt.openUrlExternally(link)
                 }
             }
         }
