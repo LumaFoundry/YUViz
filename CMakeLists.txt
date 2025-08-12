@@ -12,6 +12,25 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
 
+# Enable code coverage (default: OFF, can be enabled via -DENABLE_COVERAGE=ON)
+option(ENABLE_COVERAGE "Enable code coverage" OFF)
+if(ENABLE_COVERAGE)
+    set(CMAKE_BUILD_TYPE Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_EXE_LINKER_FLAGS_DEBUG "${CMAKE_EXE_LINKER_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -fprofile-arcs -ftest-coverage")
+    message(STATUS "Code coverage enabled")
+endif()
+
+# Enable testing (default: OFF, can be enabled via -DBUILD_TESTS=ON)
+option(BUILD_TESTS "Build unit tests" OFF)
+if(BUILD_TESTS)
+    message(STATUS "Unit tests will be built")
+else()
+    message(STATUS "Unit tests will be skipped")
+endif()
+
 if (APPLE)
     list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew/opt/qt/lib/cmake")
 endif ()
@@ -80,8 +99,11 @@ qt6_add_shaders(${TARGET_NAME} "${TARGET_NAME}_shaders"
         FILES ${SHADER_FILES}
 )
 
-# enable_testing()
-# add_subdirectory(test)
+# Only enable testing if BUILD_TESTS is ON
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src

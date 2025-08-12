@@ -55,56 +55,104 @@ set(SRC_SOURCES
 
 )
 
+# Enable testing
+enable_testing()
+
+# Find Qt6 Test module
+find_package(Qt6 REQUIRED COMPONENTS Test GuiPrivate)
+
+# Find Google Test (optional, for more advanced testing)
+find_package(GTest QUIET)
+
+# Test source files
 set(TEST_SOURCES
-    frames/test_framequeue.cpp
-    controller/test_framecontroller.cpp
-    # frames/test_framedata.cpp
+    test_main.cpp
+    utils/errorReporterTest.cpp
+    utils/appConfigTest.cpp
+    utils/psnrResultTest.cpp
+    utils/videoFileInfoTest.cpp
+    controller/timerTest.cpp
+    controller/videoControllerTest.cpp
+    controller/compareControllerTest.cpp
+    decoder/videoDecoderTest.cpp
+    rendering/videoRendererTest.cpp
+    rendering/diffRendererTest.cpp
+    ui/videoWindowTest.cpp
+    ui/videoLoaderTest.cpp
 )
 
-foreach(test_file ${TEST_SOURCES})
-    get_filename_component(test_name ${test_file} NAME_WE)
+# Source files needed for tests
+set(TEST_IMPL_SOURCES
+    ../src/utils/errorReporter.cpp
+    ../src/utils/sharedViewProperties.cpp
+    ../src/utils/compareHelper.cpp
+    ../src/controller/timer.cpp
+    ../src/controller/compareController.cpp
+    ../src/controller/videoController.cpp
+    ../src/controller/frameController.cpp
+    ../src/decoder/videoDecoder.cpp
+    ../src/rendering/videoRenderer.cpp
+    ../src/rendering/diffRenderer.cpp
+    ../src/rendering/videoRenderNode.cpp
+    ../src/rendering/diffRenderNode.cpp
+    ../src/ui/videoWindow.cpp
+    ../src/ui/videoLoader.cpp
+    ../src/ui/diffWindow.cpp
+    ../src/frames/frameMeta.cpp
+    ../src/frames/frameQueue.cpp
+    ../src/frames/frameData.cpp
+)
 
-    add_executable(
-        ${test_name}
-        ${test_file}
-        ${SRC_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_decoder.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
-    )
+# Create test executable
+add_executable(unit_tests ${TEST_SOURCES} ${TEST_IMPL_SOURCES})
 
-    file(GLOB_RECURSE SHADER_FILES
-        "${CMAKE_SOURCE_DIR}/src/shaders/*.vert"
-        "${CMAKE_SOURCE_DIR}/src/shaders/*.frag"
-    )
+# Add shader resources
+file(GLOB_RECURSE SHADER_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/*.vert"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders/*.frag"
+)
 
-    qt6_add_shaders(${test_name} videoplayer_shaders
-        PREFIX "/shaders"
-        BASE "${CMAKE_SOURCE_DIR}/src/shaders"
-        FILES ${SHADER_FILES}
-    )
+qt6_add_shaders(unit_tests "videoplayer_shaders"
+    PREFIX "/shaders"
+    BASE "${CMAKE_CURRENT_SOURCE_DIR}/../src/shaders"
+    FILES ${SHADER_FILES}
+)
 
-    target_include_directories(${test_name} PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_CURRENT_SOURCE_DIR}/mock
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${FFMPEG_INCLUDE_DIRS}
-    )
+# Include directories
+target_include_directories(unit_tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/frames
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/controller
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/decoder
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/rendering
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/utils
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/ui
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${FFMPEG_INCLUDE_DIRS}
+)
 
-    target_link_libraries(${test_name} PRIVATE
-        Qt6::Core
-        Qt6::Gui
-        Qt6::Quick
-        Qt6::GuiPrivate
-        Qt6::Widgets
-        Qt6::Concurrent
-        Qt6::Test
-        Qt6::ShaderTools
-        GTest::gtest
-        GTest::gmock
-        ${FFMPEG_LIBRARIES}
-    )
+# Link libraries
+target_link_libraries(unit_tests PRIVATE
+    Qt6::Core
+    Qt6::Gui
+    Qt6::GuiPrivate
+    Qt6::Quick
+    Qt6::Widgets
+    Qt6::Concurrent
+    Qt6::Test
+    ${FFMPEG_LIBRARIES}
+)
 
-    set_target_properties(${test_name} PROPERTIES AUTOMOC ON)
+# Link directories
+target_link_directories(unit_tests PRIVATE ${FFMPEG_LIBRARY_DIRS})
 
-    add_test(NAME ${test_name} COMMAND ${test_name})
-endforeach()
+# Add test
+add_test(NAME UnitTests COMMAND unit_tests)
+
+# Set test properties
+set_tests_properties(UnitTests PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+)
+
+# Enable CTest integration
+include(CTest)
