@@ -68,10 +68,6 @@ set(SRC
         src/utils/aboutHelper.mm
 )
 
-if (WIN32)
-        list(APPEND SRC src/utils/aboutHelper_win.cpp)
-endif ()
-
 set(QRC_SOURCES
         src/qml/qml.qrc
         src/icons/icons.qrc
@@ -134,10 +130,6 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         Qt6::ShaderTools
         ${FFMPEG_LIBRARIES}
 )
-
-if (WIN32)
-        target_link_libraries(${TARGET_NAME} PRIVATE Comctl32)
-endif ()
 
 if (APPLE)
     set_target_properties(${TARGET_NAME} PROPERTIES

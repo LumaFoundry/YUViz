@@ -5,8 +5,8 @@ import QtQuick.Layouts 1.15
 
 Dialog {
     id: aboutDialog
-    // Shown only on platforms without a native About implementation (exclude macOS and Windows)
-    visible: Qt.platform.os !== "osx" && Qt.platform.os !== "windows"
+    // Shown only on non-macOS platforms (macOS uses native About panel)
+    visible: Qt.platform.os !== "osx"
     title: "About"
     modal: true
     standardButtons: Dialog.Ok
