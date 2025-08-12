@@ -68,28 +68,29 @@ set(SRC
 )
 
 set(QRC_SOURCES
-                src/qml/qml.qrc
-                src/icons/icons.qrc
+        src/qml/qml.qrc
+        src/icons/icons.qrc
 )
 
 # Platform-specific icon resources
 set(PLATFORM_ICON_SOURCES)
 if (WIN32)
-        # Add .rc file so the .ico is embedded in the Windows executable
-        list(APPEND PLATFORM_ICON_SOURCES src/icons/app_icon.rc)
+    # Add .rc file so the .ico is embedded in the Windows executable
+    list(APPEND PLATFORM_ICON_SOURCES src/icons/app_icon.rc)
 endif ()
 
 if (APPLE)
-        # Add .icns file to bundle Resources and set bundle icon
-        set(MACOSX_BUNDLE_ICON_FILE icon.icns)
-        set_source_files_properties(src/icons/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
-        list(APPEND PLATFORM_ICON_SOURCES src/icons/icon.icns)
+    # Add .icns file to bundle Resources and set bundle icon
+    set(MACOSX_BUNDLE_ICON_FILE icon.icns)
+    set(app_icon_macos "src/icons/icon.icns")
+    set_source_files_properties(src/icons/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    list(APPEND PLATFORM_ICON_SOURCES src/icons/icon.icns)
 endif ()
 
 add_executable(${TARGET_NAME}
-                ${SRC}
-                ${QRC_SOURCES}
-                ${PLATFORM_ICON_SOURCES}
+        ${SRC}
+        ${QRC_SOURCES}
+        ${PLATFORM_ICON_SOURCES}
 )
 
 file(GLOB_RECURSE SHADER_FILES
@@ -141,14 +142,14 @@ endif ()
 
 # Get git tag for version
 execute_process(
-    COMMAND git describe --tags --abbrev=0
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND git describe --tags --abbrev=0
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
 # Pass version info as compiler definitions
 target_compile_definitions(${TARGET_NAME} PRIVATE
-    APP_VERSION="${GIT_VERSION}"
-    APP_NAME="${APP_DISPLAY_NAME}"
+        APP_VERSION="${GIT_VERSION}"
+        APP_NAME="${APP_DISPLAY_NAME}"
 )
