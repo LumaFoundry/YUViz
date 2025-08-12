@@ -4,11 +4,11 @@
 #include <QtQml/QQmlEngine>
 #include <QtQml/qqml.h>
 
-
 class AboutHelper : public QObject {
     Q_OBJECT
   public:
-    using QObject::QObject;
+    explicit AboutHelper(QObject* parent = nullptr) :
+        QObject(parent) {}
     Q_INVOKABLE void showNativeAbout(const QString& appName, const QString& version, const QString& buildDate);
 };
 

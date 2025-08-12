@@ -19,6 +19,7 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
+#include "utils/aboutHelper.h"
 #include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
@@ -111,6 +112,9 @@ int main(int argc, char* argv[]) {
     }
 
     QQmlApplicationEngine engine;
+
+    // Register AboutHelper for QML
+    registerAboutHelper();
 
     SharedViewProperties sharedViewProperties;
     engine.rootContext()->setContextProperty("sharedViewProperties", &sharedViewProperties);
