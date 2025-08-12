@@ -5,12 +5,17 @@
 
 set -e
 
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
 echo "=== Qt6 Video Player Test Suite ==="
 echo "Building and running tests..."
+echo "Project root: $PROJECT_ROOT"
 
 # Build the project with tests
 echo "Building project..."
-cd ..
+cd "$PROJECT_ROOT"
 mkdir -p build
 cd build
 
