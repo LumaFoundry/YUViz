@@ -65,8 +65,13 @@ set(SRC
         src/ui/diffWindow.cpp
         src/rendering/diffRenderer.cpp
         src/rendering/diffRenderNode.cpp
-        src/utils/aboutHelper.mm
 )
+
+if(APPLE)
+        list(APPEND SRC src/utils/aboutHelper.mm)
+else()
+        list(APPEND SRC src/utils/aboutHelper_stub.cpp)
+endif()
 
 set(QRC_SOURCES
         src/qml/qml.qrc

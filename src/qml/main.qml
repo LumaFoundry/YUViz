@@ -362,9 +362,9 @@ ApplicationWindow {
                 text: "About"
                 onTriggered: {
                     if (Qt.platform.os === "osx") {
-                        NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE)
+                        NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE);
                     } else {
-                        aboutDialog.open()
+                        aboutDialog.open();
                     }
                 }
             }
