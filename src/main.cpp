@@ -41,6 +41,8 @@ int main(int argc, char* argv[]) {
     // Set the application/window icon from resources (supports svg/ico automatically)
     // Uses the best available size variant for the platform.
     app.setWindowIcon(QIcon("qrc:/icons/icon.ico"));
+    app.setApplicationName("YUViz");
+    app.setApplicationDisplayName("YUViz");
 
     // Set QDebug output to be off by default
     qSetMessagePattern("");

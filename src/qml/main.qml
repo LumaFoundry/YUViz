@@ -45,7 +45,7 @@ ApplicationWindow {
         }
     }
 
-    title: "videoplayer"
+    title: APP_NAME
     width: 800
     height: 600
     color: Theme.backgroundColor

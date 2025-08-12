@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(qt6_videoplayer LANGUAGES CXX)
 
-set(TARGET_NAME videoplayer)
-set(APP_DISPLAY_NAME "Visual Inspection Tool")
+set(TARGET_NAME YUViz)
+set(APP_DISPLAY_NAME "YUViz")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -98,7 +98,7 @@ file(GLOB_RECURSE SHADER_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.frag"
 )
 
-qt6_add_shaders(${TARGET_NAME} "${TARGET_NAME}_shaders"
+qt6_add_shaders(${TARGET_NAME} "shaders"
         PREFIX "/shaders"
         BASE "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders"
         FILES ${SHADER_FILES}
@@ -132,8 +132,17 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 )
 
 if (APPLE)
+    # Configure the Info.plist template
+    configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/Info.plist.in"
+            "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+            @ONLY
+    )
+
     set_target_properties(${TARGET_NAME} PROPERTIES
             MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
+            MACOSX_BUNDLE_ICON_FILE icon.icns
             INSTALL_NAME_DIR "@rpath"
             BUILD_WITH_INSTALL_RPATH TRUE
             INSTALL_RPATH "@executable_path/../Frameworks;/opt/homebrew/opt/qt/lib"
