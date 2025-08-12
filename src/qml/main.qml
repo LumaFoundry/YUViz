@@ -21,7 +21,6 @@ ApplicationWindow {
         objectName: "qmlBridge"
 
         function createVideoWindow(index) {
-            console.log("[qmlBridge] createVideoWindow called with index:", index);
             let obj = videoWindowComponent.createObject(videoWindowContainer, {
                 videoId: index,
                 assigned: false
@@ -33,7 +32,6 @@ ApplicationWindow {
 
                 // Sync OSD state with existing video windows
                 obj.osdState = mainWindow.globalOsdState;
-                console.log("[qmlBridge] Synced OSD state to:", mainWindow.globalOsdState);
             }
             return obj;
         }
@@ -116,7 +114,7 @@ ApplicationWindow {
                 diffEmbeddedInstance.removePersistentRect();
             }
         } catch (e) {
-            console.log("[mainWindow] clearAllRectangles error:", e);
+            console.log("[QML] clearAllRectangles error:", e);
         }
     }
 
@@ -127,47 +125,6 @@ ApplicationWindow {
     AboutPage {
         id: aboutDialog
         visible: Qt.platform.os !== "osx" && aboutDialog.visible
-    }
-
-    Dialog {
-        id: shortcutsDialog
-        title: "Keyboard Shortcuts"
-        modal: true
-        standardButtons: Dialog.Close
-        width: 420
-        height: 520
-        contentItem: Flickable {
-            anchors.fill: parent
-            contentWidth: parent.width
-            contentHeight: shortcutsColumn.implicitHeight
-            clip: true
-            Column {
-                id: shortcutsColumn
-                width: parent.width - 24
-                spacing: 8
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.margins: 12
-                Repeater {
-                    model: [
-                        { k: "Space", d: "Play / Pause" },
-                        { k: "Left Arrow", d: "Step backward 1 frame" },
-                        { k: "Right Arrow", d: "Step forward 1 frame" },
-                        { k: "Ctrl + Drag", d: "Select rectangle (zoom/analysis)" },
-                        { k: "J", d: "Jump to frame" },
-                        { k: "O", d: "Cycle OSD overlay modes" },
-                        { k: "Esc", d: "Exit fullscreen" },
-                        { k: "Ctrl + Mouse Wheel", d: "Zoom in/out" },
-                        { k: "Diff Button", d: "Open/Close diff comparison" }
-                    ]
-                    delegate: Row {
-                        width: parent.width
-                        spacing: 12
-                        Text { text: modelData.k; font.bold: true; color: Theme.textColor; width: 140; wrapMode: Text.NoWrap }
-                        Text { text: modelData.d; color: Theme.textSecondary; wrapMode: Text.WordWrap; width: parent.width - 152 }
-                    }
-                }
-            }
-        }
     }
 
     Dialog {
@@ -312,19 +269,16 @@ ApplicationWindow {
                 return;
 
             if (event.key === Qt.Key_Space) {
-                // console.log("Space key pressed");
                 videoController.togglePlayPause();
                 event.accepted = true;
             }
 
             if (event.key == Qt.Key_Right) {
-                // console.log("Right arrow key pressed");
                 videoController.stepForward();
                 event.accepted = true;
             }
 
             if (event.key == Qt.Key_Left) {
-                // console.log("Left arrow key pressed");
                 videoController.stepBackward();
                 event.accepted = true;
             }
@@ -756,7 +710,7 @@ ApplicationWindow {
                             let leftId = videoWindowContainer.children[0].videoId;
                             let rightId = videoWindowContainer.children[1].videoId;
 
-                            console.log("Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
+                            console.log("[QML] Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
 
                             // Pass video IDs
                             diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
@@ -764,7 +718,7 @@ ApplicationWindow {
                                 rightVideoId: rightId
                             });
                             diffPopupInstance.objectName = "diffPopupInstance";
-                            console.log("Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
+                            console.log("[QML] Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
 
                             diffPopupInstance.visible = true;
                             // Cleanup when window closes
@@ -911,7 +865,6 @@ ApplicationWindow {
                                 // On release: first seek to current value, then reset dragging state
                                 var finalPosition = value;
                                 videoController.seekTo(finalPosition);
-                                // console.log("Slider released, seeking to: " + finalPosition);
 
                                 // Now change dragging state and return focus
                                 dragging = false;
@@ -984,7 +937,6 @@ ApplicationWindow {
         importedFps = fps;
         importedFormat = format;
 
-        console.log("[importVideoFromParams] calling videoLoader");
         videoLoader.loadVideo(importedFilePath, importedWidth, importedHeight, importedFps, importedFormat, forceSoftware);
         videoLoaded = true;
         keyHandler.forceActiveFocus();
@@ -1016,7 +968,7 @@ ApplicationWindow {
     // Removed inline Ctrl usage hint in favor of dedicated shortcuts dialog
 
     function removeVideoWindowById(id) {
-        console.log("[removeVideoWindowById] Called with id:", id);
+        console.log("[QML] removeVideoWindowById Called with id:", id);
 
         if (diffEmbeddedInstance && (id === rightVideoIdForDiff || id === leftVideoIdForDiff)) {
             disableEmbeddedDiffAndRestore();
@@ -1026,7 +978,7 @@ ApplicationWindow {
         clearAllRectangles();
 
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
-            console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
+            console.log("[QML] removeVideoWindowById Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             diffPopupInstance.visible = false;
         }
@@ -1042,7 +994,7 @@ ApplicationWindow {
         // If no windows left, reset global OSD state
         if (videoWindowContainer.children.length === 0) {
             mainWindow.globalOsdState = 0;
-            console.log("[mainWindow] Reset global OSD state to 0");
+            console.log("[QML] mainWindow Reset global OSD state to 0");
         }
 
         videoController.removeVideo(id);

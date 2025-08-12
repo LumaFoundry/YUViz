@@ -1,8 +1,8 @@
 #include "videoLoader.h"
-#include <QDebug>
 #include <QFile>
 #include <QQmlContext>
 #include <QUrl>
+#include "utils/debugManager.h"
 #include "utils/videoFormatUtils.h"
 
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
@@ -34,7 +34,7 @@ void VideoLoader::loadVideo(
     }
 
     if (!QFile::exists(path)) {
-        qWarning() << "File does not exist:" << path;
+        ErrorReporter::instance().report(QString("File does not exist: %1").arg(path), LogLevel::Error);
         return;
     }
 
@@ -45,7 +45,8 @@ void VideoLoader::loadVideo(
     if (!VideoFormatUtils::isValidFormat(pixelFormat)) {
         QString userMessage =
             QString("The pixel format '%1' is not supported.\n\nThe video will not be loaded.").arg(pixelFormat);
-        qWarning() << "Failed to load video:" << userMessage.replace("\n\n", " ");
+        ErrorReporter::instance().report(QString("Failed to load video: %1").arg(userMessage.replace("\n\n", " ")),
+                                         LogLevel::Error);
 
         emit videoLoadFailed("Unsupported Video", userMessage);
 
@@ -55,9 +56,9 @@ void VideoLoader::loadVideo(
     // Log format type for debugging
     FormatType formatType = VideoFormatUtils::getFormatType(pixelFormat);
     if (formatType == FormatType::COMPRESSED) {
-        qDebug() << "Loading compressed video format:" << pixelFormat << "for file:" << path;
+        debug("vl", QString("Loading compressed video format: %1 for file: %2").arg(pixelFormat).arg(path), true);
     } else {
-        qDebug() << "Loading raw YUV format:" << pixelFormat << "for file:" << path;
+        debug("vl", QString("Loading raw YUV format: %1 for file: %2").arg(pixelFormat).arg(path), true);
     }
 
     QObject* root = m_engine->rootObjects().first();
@@ -69,14 +70,15 @@ void VideoLoader::loadVideo(
     if (!obj) {
         QObject* qmlBridge = root->findChild<QObject*>("qmlBridge");
         if (!qmlBridge) {
-            qWarning() << "Could not find qmlBridge";
+            ErrorReporter::instance().report("Could not find qmlBridge", LogLevel::Error);
             return;
         }
         QVariant returnedValue;
         bool ok = QMetaObject::invokeMethod(
             qmlBridge, "createVideoWindow", Q_RETURN_ARG(QVariant, returnedValue), Q_ARG(QVariant, index));
         if (!ok || !returnedValue.isValid()) {
-            qWarning() << "Failed to create VideoWindow with index" << index;
+            ErrorReporter::instance().report(QString("Failed to create VideoWindow with index %1").arg(index),
+                                             LogLevel::Error);
             return;
         }
         obj = returnedValue.value<QObject*>();
@@ -101,14 +103,14 @@ void VideoLoader::loadVideo(
     info.windowPtr = windowPtr;
     info.forceSoftwareDecoding = effectiveForceSoftware;
 
-    qDebug() << "adding video" << info.filename;
+    debug("vl", QString("adding video %1").arg(info.filename));
     m_vcPtr->addVideo(info);
 }
 
 void VideoLoader::setGlobalForceSoftwareDecoding(bool force) {
     m_globalForceSoftwareDecoding = force;
     if (force) {
-        qDebug() << "Global software decoding enabled - all videos will use software decoding";
+        debug("vl", "Global software decoding enabled - all videos will use software decoding");
     }
 }
 
@@ -123,19 +125,19 @@ void VideoLoader::setupDiffWindow(int leftId, int rightId) {
         diffInstance = root->findChild<QObject*>("diffPopupInstance");
 
     if (!diffInstance) {
-        qWarning() << "[setupDiffWindow] No diff instance (embedded or popup) found";
+        ErrorReporter::instance().report("Diff popup instance not found", LogLevel::Error);
         return;
     }
 
     QObject* obj = diffInstance->findChild<QObject*>("diffWindow");
     if (!obj) {
-        qWarning() << "[setupDiffWindow] Could not find DiffWindow in" << diffInstance->objectName();
+        ErrorReporter::instance().report("Could not find VideoWindow in DiffWindow", LogLevel::Error);
         return;
     }
 
     auto* diffWindow = qobject_cast<DiffWindow*>(obj);
     if (!diffWindow) {
-        qWarning() << "[setupDiffWindow] diffWindow object is not a DiffWindow";
+        ErrorReporter::instance().report("DiffWindow object is not a VideoWindow", LogLevel::Error);
         return;
     }
 
@@ -149,6 +151,10 @@ void VideoLoader::setupDiffWindow(int leftId, int rightId) {
     // Set up metadata and start diff mode
     m_vcPtr->setDiffMode(true, leftId, rightId);
 
-    qDebug() << "[setupDiffWindow] wired to" << diffInstance->objectName() << "leftId=" << leftId
-             << "rightId=" << rightId;
+    debug("vl",
+          QString("[setupDiffWindow] wired to %1 leftId=%2 rightId=%3")
+              .arg(diffInstance->objectName())
+              .arg(leftId)
+              .arg(rightId),
+          true);
 }

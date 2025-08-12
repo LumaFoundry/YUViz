@@ -532,7 +532,7 @@ Item {
 
                     // Additional bounds checking
                     if (startX < 0 || startY < 0 || endX > yWidth || endY > yHeight) {
-                        console.log("QML: Invalid bounds detected");
+                        console.log("[QML] Invalid bounds detected");
                         return;
                     }
 
@@ -561,13 +561,13 @@ Item {
                                     drawPixelValue(ctx, screenX, screenY, y1Value, y2Value, diffValue);
                                 }
                             } catch (error) {
-                                console.log("QML: Error processing pixel at", x, y, ":", error);
+                                console.log("[QML] Error processing pixel at", x, y, ":", error);
                                 continue;
                             }
                         }
                     }
                 } catch (error) {
-                    console.log("QML: Canvas onPaint error:", error);
+                    console.log("[QML] Canvas onPaint error:", error);
                 }
             }
 
@@ -611,7 +611,7 @@ Item {
                     var maxWidth = 0;
 
                     // temporarily set font to calculate text width
-                    ctx.font = Math.floor(fontSize) + "px sans-serif";
+                    ctx.font = Math.floor(fontSize) + "px " + Theme.fontFamily;
 
                     for (var i = 0; i < lines.length; i++) {
                         var textWidth = ctx.measureText(lines[i]).width;
@@ -642,9 +642,9 @@ Item {
                     }
 
                     // restore original font
-                    ctx.font = "12px monospace";
+                    ctx.font = "12px " + Theme.fontFamily;
                 } catch (error) {
-                    console.log("QML: drawPixelValue error:", error);
+                    console.log("[QML] drawPixelValue error:", error);
                 }
             }
         }
@@ -664,7 +664,7 @@ Item {
                 id: osdText
                 anchors.centerIn: parent
                 color: "white"
-                font.family: "sans-serif"
+                font.family: Theme.fontFamily
                 font.pixelSize: 12
                 text: {
                     var s = diffPane.psnrInfo;
@@ -728,7 +728,7 @@ Item {
 
     function drawCoordinateText(ctx, screenRect, coordText) {
         try {
-            ctx.font = "12px monospace";
+            ctx.font = "12px " + Theme.fontFamily;
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             var textX = screenRect.x + 5;
@@ -740,7 +740,7 @@ Item {
             ctx.fillStyle = "white";
             ctx.fillText(coordText, textX, textY);
         } catch (error) {
-            console.log("QML: drawCoordinateText error:", error);
+            console.log("[QML] drawCoordinateText error:", error);
         }
     }
 
@@ -790,7 +790,7 @@ Item {
             ctx.lineWidth = 1;
             ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
         } catch (error) {
-            console.log("QML: drawResizeHandles error:", error);
+            console.log("[QML] drawResizeHandles error:", error);
         }
     }
 

@@ -1,5 +1,6 @@
 #include "videoRenderer.h"
 #include <QFile>
+#include "utils/debugManager.h"
 #include "utils/errorReporter.h"
 
 VideoRenderer::VideoRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) :
@@ -13,9 +14,11 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_rhi = rhi;
 
     if (m_rhi) {
-        qDebug() << m_rhi->backendName() << m_rhi->driverInfo();
+        debug("vr",
+              QString("%1 %2").arg(m_rhi->backendName()).arg(QString::fromUtf8(m_rhi->driverInfo().deviceName)),
+              true);
     } else {
-        qWarning() << "Failed to initialize RHI";
+        ErrorReporter::instance().report("Failed to initialize RHI", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -43,7 +46,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     QByteArray fsQsb = loadShaderSource(":/shaders/fragment.frag.qsb");
 
     if (vsQsb.isEmpty() || fsQsb.isEmpty()) {
-        qWarning() << "Failed to open shader file";
+        ErrorReporter::instance().report("Failed to open shader file", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -127,8 +130,7 @@ void VideoRenderer::setComponentDisplayMode(int mode) {
 
 void VideoRenderer::uploadFrame(FrameData* frame) {
     if (!frame || !frame->yPtr() || !frame->uPtr() || !frame->vPtr()) {
-        qDebug() << "VideoRenderer::uploadFrame called with invalid frame";
-        ErrorReporter::instance().report("Invalid frame data provided to VideoRenderer::uploadFrame");
+        ErrorReporter::instance().report("Invalid frame data provided to VideoRenderer::uploadFrame", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -195,7 +197,6 @@ void VideoRenderer::uploadFrame(FrameData* frame) {
 }
 
 void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt) {
-    // qDebug() << "VideoRenderer:: renderFrame called";
 
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
@@ -210,8 +211,6 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
         m_frameBatch = nullptr;
     }
     emit batchIsEmpty();
-
-    // qDebug() << "VideoRenderer::init ready";
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();

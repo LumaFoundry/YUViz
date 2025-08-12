@@ -1,8 +1,8 @@
 #include "compareHelper.h"
-#include <QDebug>
 #include <QString>
 #include <cmath>
 #include <limits>
+#include "utils/debugManager.h"
 
 CompareHelper::CompareHelper() = default;
 CompareHelper::~CompareHelper() = default;
@@ -28,7 +28,8 @@ static inline uint64_t sumSquaredDiff(const uint8_t* __restrict p1, const uint8_
     }
         SSD_STEP(0)
         SSD_STEP(1)
-        SSD_STEP(2) SSD_STEP(3) SSD_STEP(4) SSD_STEP(5) SSD_STEP(6) SSD_STEP(7)
+        SSD_STEP(2)
+        SSD_STEP(3) SSD_STEP(4) SSD_STEP(5) SSD_STEP(6) SSD_STEP(7)
 #undef SSD_STEP
 #define SSD_STEP(k)                                                                                                    \
     {                                                                                                                  \
@@ -126,8 +127,10 @@ PSNRResult CompareHelper::getPSNR(FrameData* frame1, FrameData* frame2, FrameMet
     uint64_t vSSD = sumSquaredDiff(v1, v2, uvCount);
 
     if (ySSD == 0 && uSSD == 0 && vSSD == 0) {
-        return PSNRResult(std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity(),
-                         std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity());
+        return PSNRResult(std::numeric_limits<double>::infinity(),
+                          std::numeric_limits<double>::infinity(),
+                          std::numeric_limits<double>::infinity(),
+                          std::numeric_limits<double>::infinity());
     }
 
     // If any plane pointer invalid we would have returned earlier; here SSD of 0 means identical plane.

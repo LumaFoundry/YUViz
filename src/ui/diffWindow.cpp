@@ -6,6 +6,8 @@
 #include "frames/frameMeta.h"
 #include "rendering/diffRenderNode.h"
 #include "rendering/diffRenderer.h"
+#include "utils/debugManager.h"
+#include "utils/errorReporter.h"
 
 extern "C" {
 #include <libavutil/pixdesc.h>
@@ -29,8 +31,11 @@ void DiffWindow::initialize(std::shared_ptr<FrameMeta> metaPtr,
     // Set aspect ratio based on actual frame dimensions from frameMeta
     if (metaPtr && metaPtr->yHeight() > 0) {
         m_videoAspectRatio = static_cast<qreal>(metaPtr->yWidth()) / metaPtr->yHeight();
-        qDebug() << "[DiffWindow] Setting aspect ratio to" << m_videoAspectRatio << "from frame dimensions"
-                 << metaPtr->yWidth() << "x" << metaPtr->yHeight();
+        debug("dw",
+              QString("Setting aspect ratio to %1 from frame dimensions %2x%3")
+                  .arg(m_videoAspectRatio)
+                  .arg(metaPtr->yWidth())
+                  .arg(metaPtr->yHeight()));
     }
 
     if (window()) {
@@ -41,7 +46,7 @@ void DiffWindow::initialize(std::shared_ptr<FrameMeta> metaPtr,
             &QQuickItem::windowChanged,
             this,
             [=](QQuickWindow* win) {
-                qDebug() << "[DiffWindow] window became available, calling update()";
+                debug("dw", "window became available, calling update()");
                 update();
             },
             Qt::DirectConnection);
@@ -59,14 +64,12 @@ qreal DiffWindow::getAspectRatio() const {
 }
 
 void DiffWindow::uploadFrame(FrameData* frame1, FrameData* frame2) {
-    // qDebug() << "DiffWindow::uploadFrame called in thread";
     m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame1, frame2);
     emit frameReady();
 }
 
 void DiffWindow::renderFrame() {
-    // qDebug() << "DiffWindow::renderFrame called in thread" << QThread::currentThread();
     update();
 }
 
@@ -139,17 +142,20 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
     auto meta = m_renderer->getFrameMeta();
 
     if (!frame1 || !frame2 || !meta)
-        return QVariant();
+        ErrorReporter::instance().report("Invalid frame data provided to DiffWindow::getDiffValue", LogLevel::Error);
+    return QVariant();
 
     int yW = meta->yWidth(), yH = meta->yHeight();
     if (x < 0 || y < 0 || x >= yW || y >= yH)
-        return QVariant();
+        ErrorReporter::instance().report("Invalid coordinates provided to DiffWindow::getDiffValue", LogLevel::Error);
+    return QVariant();
 
     // Check if frame pointers are valid
     uint8_t* y1Ptr = frame1->yPtr();
     uint8_t* y2Ptr = frame2->yPtr();
     if (!y1Ptr || !y2Ptr)
-        return QVariant();
+        ErrorReporter::instance().report("Invalid frame data provided to DiffWindow::getDiffValue", LogLevel::Error);
+    return QVariant();
 
     // Get Y values from both frames with bounds checking
     int y1Val = 0, y2Val = 0;
@@ -157,7 +163,7 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
         y1Val = y1Ptr[y * yW + x];
         y2Val = y2Ptr[y * yW + x];
     } catch (...) {
-        qDebug() << "DiffWindow::getDiffValue - Exception caught when accessing pixel data";
+        ErrorReporter::instance().report("Exception caught when accessing pixel data", LogLevel::Error);
         return QVariant();
     }
 
@@ -170,8 +176,6 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
 }
 
 QSGNode* DiffWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
-    // qDebug() << "DiffWindow::updatePaintNode called in thread" << QThread::currentThread();
-
     if (!m_renderer || !m_sharedView) {
         return nullptr;
     }

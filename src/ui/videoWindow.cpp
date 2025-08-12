@@ -7,6 +7,7 @@
 #include "frames/frameMeta.h"
 #include "rendering/videoRenderNode.h"
 #include "rendering/videoRenderer.h"
+#include "utils/debugManager.h"
 
 extern "C" {
 #include <libavutil/pixdesc.h>
@@ -26,22 +27,17 @@ void VideoWindow::initialize(std::shared_ptr<FrameMeta> metaPtr) {
     // Set aspect ratio based on actual frame dimensions from frameMeta
     if (metaPtr && metaPtr->yHeight() > 0) {
         m_videoAspectRatio = static_cast<qreal>(metaPtr->yWidth()) / metaPtr->yHeight();
-        qDebug() << "[VideoWindow] Setting aspect ratio to" << m_videoAspectRatio << "from frame dimensions"
-                 << metaPtr->yWidth() << "x" << metaPtr->yHeight();
+        debug("vw",
+              QString("Setting aspect ratio to %1 from frame dimensions %2x%3")
+                  .arg(m_videoAspectRatio)
+                  .arg(metaPtr->yWidth())
+                  .arg(metaPtr->yHeight()));
     }
 
     if (window()) {
         update();
     } else {
-        connect(
-            this,
-            &QQuickItem::windowChanged,
-            this,
-            [=](QQuickWindow* win) {
-                qDebug() << "[VideoWindow] window became available, calling update()";
-                update();
-            },
-            Qt::DirectConnection);
+        connect(this, &QQuickItem::windowChanged, this, [=](QQuickWindow* win) { update(); }, Qt::DirectConnection);
     }
     emit metadataInitialized();
 }
@@ -57,14 +53,12 @@ qreal VideoWindow::getAspectRatio() const {
 }
 
 void VideoWindow::uploadFrame(FrameData* frame) {
-    // qDebug() << "VideoWindow::uploadFrame called in thread";
     m_renderer->releaseBatch();
     m_renderer->uploadFrame(frame);
     emit frameReady();
 }
 
 void VideoWindow::renderFrame() {
-    // qDebug() << "VideoWindow::renderFrame called in thread" << QThread::currentThread();
 
     // Update frame info
     if (m_renderer && m_frameMeta) {
@@ -111,7 +105,6 @@ void VideoWindow::setSharedView(SharedViewProperties* view) {
 }
 
 QSGNode* VideoWindow::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) {
-    // qDebug() << "VideoWindow::updatePaintNode called in thread" << QThread::currentThread();
 
     if (!m_renderer || !m_sharedView) {
         return nullptr;

@@ -28,7 +28,7 @@ QtObject {
     property int fontSizeSmall: Math.round(12 * scaleFactor)
     property int fontSizeNormal: Math.round(14 * scaleFactor)
     property int fontSizeLarge: Math.round(18 * scaleFactor)
-    property string fontFamily: Qt.application.font.family && Qt.application.font.family.length > 0 ? Qt.application.font.family : "Sans Serif"
+    property string fontFamily: "Arial"
 
     // Spacing
     property int spacingSmall: Math.round(4 * scaleFactor)

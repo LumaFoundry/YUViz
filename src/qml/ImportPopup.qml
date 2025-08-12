@@ -197,7 +197,6 @@ Popup {
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
                     let format = isYUV ? getYuvIdentifierByIndex(formatInput.currentIndex) : "COMPRESSED";
-                    console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();
                 }
@@ -245,8 +244,6 @@ Popup {
         } else {
             // Default to 420P for most common YUV files
             formatInput.currentIndex = 0;
-        }
-        
-        console.log("Auto-selected format:", formatInput.displayText, "for file:", filename);
+        }        
     }
 }

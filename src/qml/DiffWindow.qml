@@ -708,7 +708,7 @@ Window {
 
                     // Additional bounds checking
                     if (startX < 0 || startY < 0 || endX > yWidth || endY > yHeight) {
-                        console.log("QML: Invalid bounds detected");
+                        console.log("[QML] Invalid bounds detected");
                         return;
                     }
 
@@ -737,13 +737,13 @@ Window {
                                     drawPixelValue(ctx, screenX, screenY, y1Value, y2Value, diffValue);
                                 }
                             } catch (error) {
-                                console.log("QML: Error processing pixel at", x, y, ":", error);
+                                console.log("[QML] Error processing pixel at", x, y, ":", error);
                                 continue;
                             }
                         }
                     }
                 } catch (error) {
-                    console.log("QML: Canvas onPaint error:", error);
+                    console.log("[QML] Canvas onPaint error:", error);
                 }
             }
 
@@ -820,7 +820,7 @@ Window {
                     // restore original font
                     ctx.font = "12px " + Theme.fontFamily;
                 } catch (error) {
-                    console.log("QML: drawPixelValue error:", error);
+                    console.log("[QML] drawPixelValue error:", error);
                 }
             }
         }
@@ -975,7 +975,7 @@ Window {
     function drawCoordinateText(ctx, screenRect, coordText) {
         try {
             // Set font
-            ctx.font = "12px monospace";
+            ctx.font = "12px " + Theme.fontFamily;
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             
@@ -995,7 +995,7 @@ Window {
             ctx.fillStyle = "white";
             ctx.fillText(coordText, textX, textY);
         } catch (error) {
-            console.log("QML: drawCoordinateText error:", error);
+            console.log("[QML] drawCoordinateText error:", error);
         }
     }
 
@@ -1064,7 +1064,7 @@ Window {
             ctx.lineWidth = 1;
             ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
         } catch (error) {
-            console.log("QML: drawResizeHandles error:", error);
+            console.log("[QML] drawResizeHandles error:", error);
         }
     }
 

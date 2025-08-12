@@ -287,13 +287,15 @@ int main(int argc, char* argv[]) {
                           .arg(width)
                           .arg(height)
                           .arg(framerate)
-                          .arg(yuvFormat),
+                          .arg(pixelFormat),
                       true);
             } else {
                 // Compressed format - use detected format and set reasonable defaults
                 width = 1920; // These will be overridden by decoder
                 height = 1080;
-                qDebug() << "Compressed format detected:" << pixelFormat << "for file:" << filename;
+                debug("main",
+                      QString("Compressed format detected: %1 for file: %2").arg(pixelFormat).arg(filename),
+                      true);
             }
 
             QMetaObject::invokeMethod(root,
