@@ -59,6 +59,7 @@ class FrameController : public QObject {
     void endOfVideo(bool end, int index);
     void requestSeek(int64_t pts, int loadCount);
     void seekCompleted(int index);
+    void decoderStalled(int index, bool stalled);
 
   private:
     // YUVReader to read frames from video file
@@ -91,4 +92,9 @@ class FrameController : public QObject {
     int64_t m_seeking = -1;
 
     bool m_decodeInProgress = false;
+
+    bool m_stalled = false;
+    int64_t m_waitingPTS = -1;
+
+    void clearStall();
 };

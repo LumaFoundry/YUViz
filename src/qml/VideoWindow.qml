@@ -523,14 +523,14 @@ VideoWindow {
 
     // Loading Indicator
     Rectangle {
-        visible: videoController && (!videoController.ready || videoController.isSeeking)
+        visible: videoController && (!videoController.ready || videoController.isSeeking || videoController.isBuffering)
         anchors.centerIn: parent
         width: loadingText.width + 40
         height: loadingText.height + 20
         color: "black"
         opacity: 0.8
         radius: 8
-        z: 102 // On top of everything
+        z: 102
 
         Text {
             id: loadingText

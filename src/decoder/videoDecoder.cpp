@@ -277,6 +277,9 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
     int64_t maxpts = -1;
     int64_t minpts = INT64_MAX;
 
+    qDebug() << "VideoDecoder::loadFrames called with num_frames: " << num_frames << ", direction: " << direction
+             << ", currentFrameIndex: " << currentFrameIndex;
+
     // Seek to correct frame before loading
     if (direction == -1) {
         if (currentFrameIndex == 0) {
@@ -298,9 +301,6 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
     }
 
     localTail = currentFrameIndex;
-
-    qDebug() << "VideoDecoder::loadFrames called with num_frames: " << num_frames << ", direction: " << direction
-             << ", currentFrameIndex: " << currentFrameIndex;
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
@@ -351,12 +351,13 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         minpts = std::min(minpts, std::max(temp_pts, (int64_t)0));
     }
 
-    qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex;
+    qDebug() << "VideoDecoder:: Loaded from " << localTail << " to " << currentFrameIndex << " in direction "
+             << direction;
 
     if (direction == 1) {
         m_frameQueue->updateTail(maxpts);
     } else {
-        m_frameQueue->updateTail(minpts);
+        m_frameQueue->updateTail(maxpts);
     }
 
     emit framesLoaded(true);
@@ -616,7 +617,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
                     // Set pts to normalized pts
                     frameData->setPts(normalized_pts);
                     frameData->setEndFrame(false);
-                    currentFrameIndex = normalized_pts;
+                    currentFrameIndex = normalized_pts + 1;
 
                     // qDebug() << "VideoDecoder::loadCompressedFrame loaded frame" << normalized_pts << "from raw PTS"
                     //          << raw_pts << "at queue index" << normalized_pts;
