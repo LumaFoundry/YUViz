@@ -2,6 +2,7 @@
 
 // Static member definitions
 QList<VideoFormat> VideoFormatUtils::s_formats;
+QStringList VideoFormatUtils::s_rawVideoExtensions;
 bool VideoFormatUtils::s_initialized = false;
 
 void VideoFormatUtils::initializeFormats() {
@@ -23,7 +24,15 @@ void VideoFormatUtils::initializeFormats() {
     // Compressed formats - handled by FFmpeg decoder
     s_formats.append({"COMPRESSED", "Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
 
+    // Initialize the list of raw extensions
+    s_rawVideoExtensions = {".yuv", ".y4m", ".raw", ".nv12", ".nv21", ".yuyv", ".uyvy"};
+
     s_initialized = true;
+}
+
+const QStringList& VideoFormatUtils::getRawVideoExtensions() {
+    initializeFormats();
+    return s_rawVideoExtensions;
 }
 
 const QList<VideoFormat>& VideoFormatUtils::getSupportedFormats() {
@@ -123,14 +132,23 @@ FormatType VideoFormatUtils::getFormatType(const QString& formatString) {
         }
     }
 
-    return FormatType::RAW_YUV; // Default assumption
+    return FormatType::COMPRESSED; // Default assumption
 }
 
 QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
+    initializeFormats();
+
     QString lowerFilename = filename.toLower();
 
-    // Enhanced detection for YUV files - check for specific format indicators in filename
-    if (lowerFilename.endsWith(".yuv") || lowerFilename.endsWith(".y4m")) {
+    bool isRaw = false;
+    for (const QString& ext : s_rawVideoExtensions) {
+        if (lowerFilename.endsWith(ext)) {
+            isRaw = true;
+            break;
+        }
+    }
+
+    if (isRaw) {
         // Check for specific format indicators in filename
         if (lowerFilename.contains("420p")) {
             return "420P";

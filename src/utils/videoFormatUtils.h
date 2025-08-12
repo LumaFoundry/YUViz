@@ -35,9 +35,11 @@ class VideoFormatUtils : public QObject {
     Q_INVOKABLE static bool isCompressedFormat(const QString& formatString);
     static FormatType getFormatType(const QString& formatString);
     Q_INVOKABLE static QString detectFormatFromExtension(const QString& filename);
+    Q_INVOKABLE static const QStringList& getRawVideoExtensions();
 
   private:
     static QList<VideoFormat> s_formats;
     static bool s_initialized;
     static void initializeFormats();
+    static QStringList s_rawVideoExtensions;
 };
