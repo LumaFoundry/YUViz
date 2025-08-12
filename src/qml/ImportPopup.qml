@@ -17,7 +17,7 @@ Popup {
 
     property string mode: "new"  // "new" or "add"
     property string selectedFile: ""
-    property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
+    property bool isYUV: !VideoFormatUtils.isCompressedFormat(VideoFormatUtils.detectFormatFromExtension(selectedFile))
     property var mainWindow
     signal videoImported(string filePath, int width, int height, double fps, string pixelFormat)
     signal accepted
@@ -64,7 +64,12 @@ Popup {
                 title: "Choose a video file"
                 parentWindow: mainWindow
                 options: FileDialog.DontUseNativeDialog
-                nameFilters: ["All Video Files (*.yuv *.y4m *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "Raw YUV Files (*.yuv *.y4m)", "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "All Files (*)"]
+                nameFilters: [
+                    "All Video Files (*.yuv *.y4m *.raw *.nv12 *.nv21 *.yuyv *.uyvy *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)",
+                    "Raw YUV Files (*.yuv *.y4m *.raw *.nv12 *.nv21 *.yuyv *.uyvy)",
+                    "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)",
+                    "All Files (*)"
+                ]
 
                 onAccepted: {
                     importPopup.selectedFile = selectedFile.toString().replace("file://", "");
