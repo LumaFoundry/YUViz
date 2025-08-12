@@ -41,17 +41,27 @@ int main(int argc, char* argv[]) {
     qSetMessagePattern("");
 
     QCommandLineParser parser;
+
+    QStringList uncompressedFormats;
+    for (const VideoFormat& format : VideoFormatUtils::getSupportedFormats()) {
+        if (format.type == FormatType::RAW_YUV) {
+            uncompressedFormats << format.identifier;
+        }
+    }
+
     parser.setApplicationDescription("Visual Inspection Tool\n\n"
                                      "Imports up to two videos from the command line.\n"
                                      "For YUV files, specify parameters separated by colons. Resolution is mandatory.\n"
                                      "Format: path/to/file.yuv:resolution[:framerate][:pixelformat]\n"
                                      "  - Resolution (mandatory): widthxheight (e.g., 1920x1080)\n"
                                      "  - Framerate (optional): A number (e.g., 25). Default: 25.\n"
-                                     "  - Pixel Format (optional): 420P, 422P, or 444P. Default: 420P.\n"
+                                     "  - Pixel Format (optional): One of: " +
+                                     uncompressedFormats.join(", ") +
+                                     ". Default: 420P.\n"
                                      "Parameters can be in any order.\n"
                                      "Example: myvideo.yuv:1920x1080:25:444P\n"
                                      "Example: myvideo.yuv:420P:1280x720\n"
-                                     "For other formats (e.g., mp4), just provide the path.");
+                                     "For compressed formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("files", "Video files to open. Up to 2 are supported.", "[file1] [file2]");
