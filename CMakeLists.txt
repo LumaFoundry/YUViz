@@ -67,8 +67,30 @@ set(SRC
         src/rendering/diffRenderNode.cpp
 )
 
-set(QRC_SOURCES src/qml/qml.qrc)
-add_executable(${TARGET_NAME} ${SRC} ${QRC_SOURCES})
+set(QRC_SOURCES
+                src/qml/qml.qrc
+                src/icons/icons.qrc
+)
+
+# Platform-specific icon resources
+set(PLATFORM_ICON_SOURCES)
+if (WIN32)
+        # Add .rc file so the .ico is embedded in the Windows executable
+        list(APPEND PLATFORM_ICON_SOURCES src/icons/app_icon.rc)
+endif ()
+
+if (APPLE)
+        # Add .icns file to bundle Resources and set bundle icon
+        set(MACOSX_BUNDLE_ICON_FILE icon.icns)
+        set_source_files_properties(src/icons/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+        list(APPEND PLATFORM_ICON_SOURCES src/icons/icon.icns)
+endif ()
+
+add_executable(${TARGET_NAME}
+                ${SRC}
+                ${QRC_SOURCES}
+                ${PLATFORM_ICON_SOURCES}
+)
 
 file(GLOB_RECURSE SHADER_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.vert"

@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QRegularExpression>
@@ -36,6 +37,10 @@
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
     qDebug() << "Application starting with arguments:" << app.arguments();
+
+    // Set the application/window icon from resources (supports svg/ico automatically)
+    // Uses the best available size variant for the platform.
+    app.setWindowIcon(QIcon("qrc:/icons/icon.ico"));
 
     // Set QDebug output to be off by default
     qSetMessagePattern("");
