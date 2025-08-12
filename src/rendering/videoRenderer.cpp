@@ -285,6 +285,10 @@ void VideoRenderer::releaseBatch() {
         m_frameBatch->release();
         m_frameBatch = nullptr;
     }
+    if (m_resizeParamsBatch) {
+        m_resizeParamsBatch->release();
+        m_resizeParamsBatch = nullptr;
+    }
 }
 
 void VideoRenderer::setZoomAndOffset(const float zoom, const float centerX, const float centerY) {

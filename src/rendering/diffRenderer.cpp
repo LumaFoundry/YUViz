@@ -114,8 +114,14 @@ void DiffRenderer::setDiffConfig(int displayMode, float diffMultiplier, int diff
 }
 
 void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
-    if (!frame1 || !frame2) {
+    if (!frame1 || !frame2 || !frame1->yPtr() || !frame2->yPtr()) {
         qDebug() << "DiffRenderer::uploadFrame called with invalid frame";
+        emit rendererError();
+        return;
+    }
+
+    if (!m_rhi || !m_yTex1.get() || !m_yTex2.get()) {
+        qDebug() << "DiffRenderer::uploadFrame called before initialization";
         emit rendererError();
         return;
     }
@@ -125,12 +131,37 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
 
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
+    if (!m_frameBatch) {
+        qDebug() << "Failed to create frame batch for uploading Y texture";
+        emit rendererError();
+        return;
+    }
+
     QRhiTextureUploadDescription yDesc1;
     {
         QRhiTextureSubresourceUploadDescription sd(frame1->yPtr(), m_metaPtr->yWidth() * m_metaPtr->yHeight());
         sd.setDataStride(m_metaPtr->yWidth());
         yDesc1.setEntries({{0, 0, sd}});
     }
+
+    if (!m_yTex1.get() || !frame1->yPtr()) {
+        qDebug() << "Invalid parameters for uploading Y texture";
+        emit rendererError();
+        return;
+    }
+
+    if (!m_frameBatch) {
+        qDebug() << "Failed to create frame batch for uploading Y texture";
+        emit rendererError();
+        return;
+    }
+
+    if (!m_metaPtr->yWidth() || !m_metaPtr->yHeight()) {
+        qDebug() << "Invalid Y texture dimensions";
+        emit rendererError();
+        return;
+    }
+
     m_frameBatch->uploadTexture(m_yTex1.get(), yDesc1);
 
     QRhiTextureUploadDescription yDesc2;
@@ -158,8 +189,8 @@ void DiffRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRh
     if (m_frameBatch) {
         cb->resourceUpdate(m_frameBatch);
         m_frameBatch = nullptr;
-        emit batchIsEmpty();
     }
+    emit batchIsEmpty();
 
     // qDebug() << "DiffRenderer::init ready";
 
