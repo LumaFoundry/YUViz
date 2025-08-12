@@ -1,5 +1,6 @@
 # Ignore everything
 /*
+*.DS_Store
 
 # But NOT these:
 !/CMakeLists.txt
