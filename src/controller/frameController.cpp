@@ -52,11 +52,11 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
             &VideoRenderer::batchIsFull,
             this,
             &FrameController::onFrameUploaded,
-            Qt::DirectConnection);
+            Qt::QueuedConnection);
     // qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
 
     // Request & Receive for uploading to GPU and rendering frames (same-thread communication)
-    connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::DirectConnection);
+    connect(this, &FrameController::requestRender, m_window, &VideoWindow::renderFrame, Qt::QueuedConnection);
     // qDebug() << "Connected requestRender to VideoRenderer::renderFrame";
 
     connect(m_window->m_renderer,
