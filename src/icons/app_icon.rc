@@ -1,0 +1,28 @@
+#include <windows.h>
+
+IDI_ICON1 ICON "icon.ico"
+
+VS_VERSION_INFO VERSIONINFO
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0x0L
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_APP
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "Visual Inspection Tool"
+            VALUE "FileDescription", "Visual Inspection Tool"
+            VALUE "InternalName", "YUViz"
+            VALUE "LegalCopyright", "Copyright"
+            VALUE "OriginalFilename", "YUViz.exe"
+            VALUE "ProductName", "Visual Inspection Tool"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

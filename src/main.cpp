@@ -3,6 +3,7 @@
 #include <QDebug>
 #include <QFile>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QRegularExpression>
@@ -18,6 +19,7 @@
 #include "rendering/videoRenderer.h"
 #include "ui/videoLoader.h"
 #include "ui/videoWindow.h"
+#include "utils/aboutHelper.h"
 #include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
@@ -35,7 +37,14 @@
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
+
     qDebug() << "Application starting with arguments:" << app.arguments();
+
+    // Set the application/window icon from resources (supports svg/ico automatically)
+    // Uses the best available size variant for the platform.
+    app.setWindowIcon(QIcon("qrc:/icons/icon.ico"));
+    app.setApplicationName("YUViz");
+    app.setApplicationDisplayName("YUViz");
 
     // Set QDebug output to be off by default
     qSetMessagePattern("");
@@ -104,6 +113,9 @@ int main(int argc, char* argv[]) {
     }
 
     QQmlApplicationEngine engine;
+
+    // Register AboutHelper for QML
+    registerAboutHelper();
 
     SharedViewProperties sharedViewProperties;
     engine.rootContext()->setContextProperty("sharedViewProperties", &sharedViewProperties);

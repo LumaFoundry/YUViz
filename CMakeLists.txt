@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(qt6_videoplayer LANGUAGES CXX)
 
-set(TARGET_NAME videoplayer)
-set(APP_DISPLAY_NAME "Visual Inspection Tool")
+set(TARGET_NAME YUViz)
+set(APP_DISPLAY_NAME "YUViz")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -67,15 +67,43 @@ set(SRC
         src/rendering/diffRenderNode.cpp
 )
 
-set(QRC_SOURCES src/qml/qml.qrc)
-add_executable(${TARGET_NAME} ${SRC} ${QRC_SOURCES})
+if (APPLE)
+    list(APPEND SRC src/utils/aboutHelper.mm)
+else ()
+    list(APPEND SRC src/utils/aboutHelper_stub.cpp)
+endif ()
+
+set(QRC_SOURCES
+        src/qml/qml.qrc
+        src/icons/icons.qrc
+)
+
+# Platform-specific icon resources
+set(PLATFORM_ICON_SOURCES)
+if (WIN32)
+    set(app_icon_resource_windows "src/icons/app_icon.rc")
+    list(APPEND PLATFORM_ICON_SOURCES src/icons/app_icon.rc)
+endif ()
+
+if (APPLE)
+    set(MACOSX_BUNDLE_ICON_FILE icon.icns)
+    set(app_icon_macos "src/icons/icon.icns")
+    set_source_files_properties(src/icons/icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    list(APPEND PLATFORM_ICON_SOURCES src/icons/icon.icns)
+endif ()
+
+add_executable(${TARGET_NAME}
+        ${SRC}
+        ${QRC_SOURCES}
+        ${PLATFORM_ICON_SOURCES}
+)
 
 file(GLOB_RECURSE SHADER_FILES
         "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.vert"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/*.frag"
 )
 
-qt6_add_shaders(${TARGET_NAME} "${TARGET_NAME}_shaders"
+qt6_add_shaders(${TARGET_NAME} "shaders"
         PREFIX "/shaders"
         BASE "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders"
         FILES ${SHADER_FILES}
@@ -111,6 +139,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 if (APPLE)
     set_target_properties(${TARGET_NAME} PROPERTIES
             MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_ICON_FILE icon.icns
             INSTALL_NAME_DIR "@rpath"
             BUILD_WITH_INSTALL_RPATH TRUE
             INSTALL_RPATH "@executable_path/../Frameworks;/opt/homebrew/opt/qt/lib"
@@ -119,14 +148,14 @@ endif ()
 
 # Get git tag for version
 execute_process(
-    COMMAND git describe --tags --abbrev=0
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    OUTPUT_VARIABLE GIT_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
+        COMMAND git describe --tags --abbrev=0
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_VERSION
+        OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
 # Pass version info as compiler definitions
 target_compile_definitions(${TARGET_NAME} PRIVATE
-    APP_VERSION="${GIT_VERSION}"
-    APP_NAME="${APP_DISPLAY_NAME}"
+        APP_VERSION="${GIT_VERSION}"
+        APP_NAME="${APP_DISPLAY_NAME}"
 )

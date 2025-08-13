@@ -1,8 +1,10 @@
 import QtQuick.Window 6.0
+// Use standard Controls for native styling when QQuickStyle is set
 import QtQuick.Controls.Basic 6.0
 import QtQuick 6.0
 import QtQuick.Layouts 1.15
 import Theme 1.0
+import NativeAbout 1.0
 
 ApplicationWindow {
     id: mainWindow
@@ -11,6 +13,8 @@ ApplicationWindow {
     property var videoWindows: []
     property int globalOsdState: 0
     property string videoOriginalName: ""
+    // Detect if we should prefer native styling (macOS / Windows)
+    readonly property bool nativeStyle: (Qt.platform.os === "osx" || Qt.platform.os === "windows")
 
     QtObject {
         id: qmlBridge
@@ -44,9 +48,10 @@ ApplicationWindow {
         }
     }
 
-    title: "videoplayer"
+    title: APP_NAME
     width: 800
     height: 600
+    // Force dark app background regardless of native style
     color: Theme.backgroundColor
     visible: true
     flags: Qt.Window
@@ -117,13 +122,52 @@ ApplicationWindow {
 
     CommandsPopup {
         id: commandsDialog
-        anchors.centerIn: parent
-        onAccepted: keyHandler.forceActiveFocus()
     }
 
     AboutPage {
         id: aboutDialog
-        anchors.centerIn: parent
+        visible: Qt.platform.os !== "osx" && aboutDialog.visible
+    }
+
+    Dialog {
+        id: shortcutsDialog
+        title: "Keyboard Shortcuts"
+        modal: true
+        standardButtons: Dialog.Close
+        width: 420
+        height: 520
+        contentItem: Flickable {
+            anchors.fill: parent
+            contentWidth: parent.width
+            contentHeight: shortcutsColumn.implicitHeight
+            clip: true
+            Column {
+                id: shortcutsColumn
+                width: parent.width - 24
+                spacing: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.margins: 12
+                Repeater {
+                    model: [
+                        { k: "Space", d: "Play / Pause" },
+                        { k: "Left Arrow", d: "Step backward 1 frame" },
+                        { k: "Right Arrow", d: "Step forward 1 frame" },
+                        { k: "Ctrl + Drag", d: "Select rectangle (zoom/analysis)" },
+                        { k: "J", d: "Jump to frame" },
+                        { k: "O", d: "Cycle OSD overlay modes" },
+                        { k: "Esc", d: "Exit fullscreen" },
+                        { k: "Ctrl + Mouse Wheel", d: "Zoom in/out" },
+                        { k: "Diff Button", d: "Open/Close diff comparison" }
+                    ]
+                    delegate: Row {
+                        width: parent.width
+                        spacing: 12
+                        Text { text: modelData.k; font.bold: true; color: Theme.textColor; width: 140; wrapMode: Text.NoWrap }
+                        Text { text: modelData.d; color: Theme.textSecondary; wrapMode: Text.WordWrap; width: parent.width - 152 }
+                    }
+                }
+            }
+        }
     }
 
     Dialog {
@@ -171,6 +215,8 @@ ApplicationWindow {
         onJumpToFrame: function (frameNumber) {
             videoController.jumpToFrame(frameNumber);
         }
+    // Restore key focus whenever the popup is dismissed (Cancel / accepted / any close)
+    onVisibleChanged: if (!visible) { keyHandler.forceActiveFocus(); }
     }
 
     Timer {
@@ -288,14 +334,11 @@ ApplicationWindow {
                 event.accepted = true;
             }
 
-            if (event.key === Qt.Key_O) {
-                console.log("O key pressed, toggling global OSD state");
-                mainWindow.toggleGlobalOsdState();
-                event.accepted = true;
-            }
+            // 'O' key shortcut for OSD now handled via Menu Action shortcut to avoid double triggering here.
 
             if (event.key === Qt.Key_J) {
                 jumpPopup.open();
+                keyHandler.forceActiveFocus();
                 event.accepted = true;
             }
         }
@@ -350,15 +393,34 @@ ApplicationWindow {
                 onTriggered: Qt.quit()
             }
         }
+        // Newly added View menu with OSD toggle
+        Menu {
+            title: "View"
+            Action {
+                text: "OSD"
+                shortcut: "O" // Displays 'O' on the right side (mac-style) and triggers the action
+                onTriggered: mainWindow.toggleGlobalOsdState()
+            }
+        }
         Menu {
             title: "Help"
             Action {
                 text: "Show all Commands"
-                onTriggered: commandsDialog.open()
+                onTriggered: commandsDialog.visible = true
+            }
+            Action {
+                text: "Keyboard Shortcuts"
+                onTriggered: shortcutsDialog.open()
             }
             Action {
                 text: "About"
-                onTriggered: aboutDialog.open()
+                onTriggered: {
+                    if (Qt.platform.os === "osx") {
+                        NativeAbout.showNativeAbout(APP_NAME, APP_VERSION, BUILD_DATE);
+                    } else {
+                        aboutDialog.visible = true;
+                    }
+                }
             }
         }
 
@@ -386,7 +448,7 @@ ApplicationWindow {
         background: Rectangle {
             implicitWidth: 40
             implicitHeight: 40
-            color: "#5d383838"
+            color: "#2a2a2a"
 
             Rectangle {
                 color: Theme.textColor
@@ -490,7 +552,7 @@ ApplicationWindow {
         }
         ToolBar {
             background: Rectangle {
-                color: "#5d383838"
+                color: "#2a2a2a"
             }
             enabled: videoWindowContainer.children.length > 0
             Layout.fillWidth: true
@@ -506,56 +568,82 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     spacing: 10
 
-                    Button {
-                        id: playPauseButton
-                        text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
-                        Layout.preferredWidth: Theme.iconSize
-                        Layout.preferredHeight: Theme.iconSize
-                        background: Rectangle {
-                            color: "#5d383838"
-                        }
-
-                        contentItem: Text {
-                            text: playPauseButton.text
-                            font.pixelSize: playPauseButton.font.pixelSize
-                            color: Theme.iconColor
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                            anchors.centerIn: parent
-                        }
-
-                        onClicked: {
-                            videoController.togglePlayPause();
-                            keyHandler.focus = true; //Do not change, Windows requires
-                        }
-                    }
-
-                    // Direction switch
                     RowLayout {
-                        spacing: 6
+                        id: transportButtons
+                        spacing: 0
 
-                        Text {
-                            text: "Direction:"
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-
-                        Switch {
-                            id: directionSwitch
-                            checked: videoController ? videoController.isForward : true
-                            scale: 0.8
-                            onToggled: {
-                                videoController.toggleDirection();
+                        Button {
+                            id: stepBackwardButton
+                            text: "←"
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.bold: true
+                            background: Rectangle { color: "#2f2f2f" }
+                            contentItem: Text {
+                                text: stepBackwardButton.text
+                                font.pixelSize: stepBackwardButton.font.pixelSize
+                                font.bold: true
+                                color: Theme.iconColor
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                anchors.centerIn: parent
+                            }
+                            onClicked: {
+                                if (videoController) videoController.stepBackward();
                                 keyHandler.forceActiveFocus();
                             }
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Step Backward (Left Arrow)"
                         }
 
-                        Text {
-                            text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
-                            color: "white"
-                            verticalAlignment: Text.AlignVCenter
-                            Layout.preferredWidth: 80
-                            font.pixelSize: Theme.fontSizeSmall
+                        Button {
+                            id: playPauseButton
+                            text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
+                            background: Rectangle { color: "#3a3a3a" }
+                            font.bold: true
+                            contentItem: Text {
+                                text: playPauseButton.text
+                                font.pixelSize: playPauseButton.font.pixelSize
+                                font.bold: true
+                                color: Theme.iconColor
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                anchors.centerIn: parent
+                            }
+                            onClicked: {
+                                videoController.togglePlayPause();
+                                keyHandler.focus = true; //Do not change, Windows requires
+                            }
+                            ToolTip.visible: hovered
+                            ToolTip.text: videoController && videoController.isPlaying ? "Pause (Space)" : "Play (Space)"
+                        }
+
+                        Button {
+                            id: stepForwardButton
+                            text: "→"
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: Theme.fontSizeNormal
+                            font.bold: true
+                            background: Rectangle { color: "#2f2f2f" }
+                            contentItem: Text {
+                                text: stepForwardButton.text
+                                font.pixelSize: stepForwardButton.font.pixelSize
+                                font.bold: true
+                                color: Theme.iconColor
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                anchors.centerIn: parent
+                            }
+                            onClicked: {
+                                if (videoController) videoController.stepForward();
+                                keyHandler.forceActiveFocus();
+                            }
+                            ToolTip.visible: hovered
+                            ToolTip.text: "Step Forward (Right Arrow)"
                         }
                     }
 
@@ -563,7 +651,6 @@ ApplicationWindow {
                     RowLayout {
                         spacing: 6
                         Text {
-                            text: "Speed:"
                             color: "white"
                             font.pixelSize: Theme.fontSizeSmall
                         }
@@ -587,30 +674,31 @@ ApplicationWindow {
                             }
                         }
                     }
-                    // Reset View Button
-                    Button {
-                        text: "Reset View"
-                        Layout.preferredWidth: Theme.buttonWidth
-                        Layout.preferredHeight: Theme.buttonHeight
-                        font.pixelSize: Theme.fontSizeSmall
-                        onClicked: {
-                            sharedViewProperties.reset();
+                    // Grouped layout with reduced spacing for Reset / Diff / Jump / Direction
+                    RowLayout {
+                        id: analysisButtons
+                        spacing: 5
 
-                            for (var i = 0; i < videoWindowContainer.children.length; ++i) {
-                                var child = videoWindowContainer.children[i];
-                                if (child && child.resetSelectionCanvas) {
-                                    child.resetSelectionCanvas();
+                        // Reset View Button
+                        Button {
+                            text: "Reset View"
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: Theme.fontSizeSmall
+                            onClicked: {
+                                sharedViewProperties.reset();
+                                for (var i = 0; i < videoWindowContainer.children.length; ++i) {
+                                    var child = videoWindowContainer.children[i];
+                                    if (child && child.resetSelectionCanvas) {
+                                        child.resetSelectionCanvas();
+                                    }
                                 }
+                                keyHandler.focus = true;
                             }
-
-                            keyHandler.focus = true;
                         }
-                    }
 
                     Button {
                         id: diffButton
                         text: "Diff"
-                        Layout.preferredWidth: Theme.buttonWidth
                         Layout.preferredHeight: Theme.buttonHeight
                         font.pixelSize: Theme.fontSizeSmall
                         enabled: {
@@ -707,31 +795,73 @@ ApplicationWindow {
                         }
                     }
 
-                    // Fullscreen toggle
-                    Button {
-                        id: fullscreenButton
-                        Layout.preferredWidth: Theme.iconSize
-                        Layout.preferredHeight: Theme.iconSize
-                        text: mainWindow.visibility === Window.FullScreen ? "🗗" : "⤢"
-                        font.pixelSize: Theme.fontSizeNormal
-                        background: Rectangle {
-                            color: "#5d383838"
+                        // Jump To Frame button (mirrors 'J' key behavior)
+                        Button {
+                            text: "Jump To"
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: Theme.fontSizeSmall
+                            enabled: videoWindowContainer.children.length > 0 && videoController
+                            onClicked: {
+                                jumpPopup.open();
+                                keyHandler.forceActiveFocus();
+                            }
                         }
 
+                        Button {
+                            id: directionToggleButton
+                            text: videoController && videoController.isForward ? "⏵⏵" : "⏴⏴"
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: playPauseButton.font.pixelSize
+                            font.bold: true
+                            background: Rectangle { color: "#3a3a3a" }
+                            contentItem: Text {
+                                text: directionToggleButton.text
+                                font.pixelSize: directionToggleButton.font.pixelSize
+                                font.bold: true
+                                color: Theme.iconColor
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                                anchors.centerIn: parent
+                            }
+                            Accessible.name: "Playback Direction"
+                            Accessible.description: videoController && videoController.isForward ? "Forward" : "Reverse"
+                            onClicked: {
+                                if (videoController) {
+                                    videoController.toggleDirection();
+                                    keyHandler.forceActiveFocus();
+                                }
+                            }
+                            ToolTip.visible: hovered
+                            ToolTip.text: videoController && videoController.isForward ? "Forward (click to switch to reverse)" : "Reverse (click to switch to forward)"
+                        }
+                    }
+
+                    // Fullscreen toggle (styled like seek buttons)
+                    Button {
+                        id: fullscreenButton
+                        Layout.preferredWidth: Theme.buttonHeight
+                        Layout.preferredHeight: Theme.buttonHeight
+                        // Single diagonal arrow glyph used for both enter/exit fullscreen
+                        text: "⤢"
+                        font.pixelSize: Theme.fontSizeLarge + 2
+                            font.bold: true
+                        background: Rectangle { color: "#2f2f2f" }
                         contentItem: Text {
                             text: fullscreenButton.text
                             font.pixelSize: fullscreenButton.font.pixelSize
+                                font.bold: true
                             color: Theme.iconColor
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
                             anchors.centerIn: parent
                         }
-
-                        // Use the toggleFullScreen function to handle fullscreen state
                         onClicked: {
                             toggleFullScreen();
                             keyHandler.focus = true; // Do not change, Windows requires
                         }
+                        ToolTip.visible: hovered
+                        ToolTip.text: mainWindow.visibility === Window.FullScreen ? "Exit Fullscreen" : "Enter Fullscreen"
                     }
                 }
 
@@ -877,20 +1007,13 @@ ApplicationWindow {
             id: globalZoomText
             anchors.centerIn: parent
             color: "white"
-            font.family: "monospace"
+            font.family: Theme.fontFamily
             font.pixelSize: 11
             text: sharedViewProperties ? "Zoom: " + (sharedViewProperties.zoom * 100).toFixed(0) + "%" : ""
         }
     }
 
-    Text {
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.bottomMargin: 80
-        color: Theme.textColor
-        text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
-        font.pixelSize: Theme.fontSizeNormal
-    }
+    // Removed inline Ctrl usage hint in favor of dedicated shortcuts dialog
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);

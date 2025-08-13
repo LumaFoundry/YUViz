@@ -38,7 +38,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_resizeParams->create();
 
     // Load shaders
-    Q_INIT_RESOURCE(videoplayer_shaders);
+    Q_INIT_RESOURCE(shaders);
     QByteArray vsQsb = loadShaderSource(":/shaders/vertex.vert.qsb");
     QByteArray fsQsb = loadShaderSource(":/shaders/fragment.frag.qsb");
 
