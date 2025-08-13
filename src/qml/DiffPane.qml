@@ -67,7 +67,10 @@ Item {
                     horizontalAlignment: Text.AlignHCenter
                     verticalAlignment: Text.AlignVCenter
                 }
-                onClicked: menu.open()
+                onClicked: {
+                    menu.open();
+                    keyHandler.forceActiveFocus();
+                }
 
                 Menu {
                     id: menu
@@ -144,8 +147,7 @@ Item {
                         text: "Restore second video"
                         onTriggered: {
                             mainWindow.disableEmbeddedDiffAndRestore();
-                            // keep popup open or closed as you prefer; closing popup here is optional
-                            // diffWindow.close();
+                            keyHandler.forceActiveFocus();
                         }
                     }
                 }

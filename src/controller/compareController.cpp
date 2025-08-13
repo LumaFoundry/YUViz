@@ -89,7 +89,7 @@ void CompareController::onRequestRender(int index) {
 }
 
 void CompareController::onCompareRendered() {
-    qDebug() << "CompareController::onCompareRendered";
+    // qDebug() << "CompareController::onCompareRendered";
     if (m_ready1) {
         m_ready1 = false;
     }

@@ -574,6 +574,7 @@ ApplicationWindow {
                     }
 
                     Button {
+                        id: diffButton
                         text: "Diff"
                         Layout.preferredWidth: Theme.buttonWidth
                         Layout.preferredHeight: Theme.buttonHeight
@@ -913,6 +914,9 @@ ApplicationWindow {
         videoOriginalName = videoWindowContainer.children[1].videoName;
         videoWindowContainer.children[1].videoDisplayName = "Difference";
 
+        // Disable diff button
+        diffButton.enabled = false;
+
         // Overlay fill
         diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
         // Bind width/height to parent (right video window)
@@ -949,9 +953,10 @@ ApplicationWindow {
         leftVideoIdForDiff = -1;
         rightVideoIdForDiff = -1;
 
-        // Hide OSD & title for second video
+        // Restore OSD & title for second video
         videoWindowContainer.children[1].osdState = globalOsdState;
         videoWindowContainer.children[1].videoDisplayName = videoOriginalName;
+        diffButton.enabled = true;
 
         keyHandler.forceActiveFocus();
     }
