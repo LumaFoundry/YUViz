@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QDebug>
 #include <QMutex>
 #include <QWaitCondition>
 #include <atomic>

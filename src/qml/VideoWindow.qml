@@ -634,7 +634,7 @@ VideoWindow {
                     }
                 }
             } catch (error) {
-                console.log("QML: Canvas onPaint error:", error);
+                console.log("[QML] Canvas onPaint error:", error);
             }
         }
 
@@ -711,7 +711,7 @@ VideoWindow {
                 // restore original font
                 ctx.font = "12px " + Theme.fontFamily;
             } catch (error) {
-                console.log("QML: drawPixelValue error:", error);
+                console.log("[QML] drawPixelValue error:", error);
             }
         }
     }
@@ -820,7 +820,7 @@ VideoWindow {
     function drawCoordinateText(ctx, screenRect, coordText) {
         try {
             // Set font
-            ctx.font = "12px monospace";
+            ctx.font = "12px " + Theme.fontFamily;
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             
@@ -840,7 +840,7 @@ VideoWindow {
             ctx.fillStyle = "white";
             ctx.fillText(coordText, textX, textY);
         } catch (error) {
-            console.log("QML: drawCoordinateText error:", error);
+            console.log("[QML] drawCoordinateText error:", error);
         }
     }
 
@@ -909,7 +909,7 @@ VideoWindow {
             ctx.lineWidth = 1;
             ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
         } catch (error) {
-            console.log("QML: drawResizeHandles error:", error);
+            console.log("[QML] drawResizeHandles error:", error);
         }
     }
 

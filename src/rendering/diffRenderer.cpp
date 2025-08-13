@@ -1,5 +1,7 @@
 #include "diffRenderer.h"
 #include <QFile>
+#include "utils/debugManager.h"
+#include "utils/errorReporter.h"
 
 DiffRenderer::DiffRenderer(QObject* parent, std::shared_ptr<FrameMeta> metaPtr) :
     QObject(parent),
@@ -12,9 +14,11 @@ void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_rhi = rhi;
 
     if (m_rhi) {
-        qDebug() << m_rhi->backendName() << m_rhi->driverInfo();
+        debug("dr",
+              QString("%1 %2").arg(m_rhi->backendName()).arg(QString::fromUtf8(m_rhi->driverInfo().deviceName)),
+              true);
     } else {
-        qWarning() << "Failed to initialize RHI";
+        ErrorReporter::instance().report("Failed to initialize RHI", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -41,7 +45,7 @@ void DiffRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     QByteArray fsQsb = loadShaderSource(":/shaders/fragment-diff.frag.qsb");
 
     if (vsQsb.isEmpty() || fsQsb.isEmpty()) {
-        qWarning() << "Failed to open shader file";
+        ErrorReporter::instance().report("Failed to open shader file", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -115,13 +119,13 @@ void DiffRenderer::setDiffConfig(int displayMode, float diffMultiplier, int diff
 
 void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
     if (!frame1 || !frame2 || !frame1->yPtr() || !frame2->yPtr()) {
-        qDebug() << "DiffRenderer::uploadFrame called with invalid frame";
+        ErrorReporter::instance().report("uploadFrame called with invalid frame", LogLevel::Error);
         emit rendererError();
         return;
     }
 
     if (!m_rhi || !m_yTex1.get() || !m_yTex2.get()) {
-        qDebug() << "DiffRenderer::uploadFrame called before initialization";
+        ErrorReporter::instance().report("uploadFrame called before initialization", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -132,7 +136,7 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
     m_frameBatch = m_rhi->nextResourceUpdateBatch();
 
     if (!m_frameBatch) {
-        qDebug() << "Failed to create frame batch for uploading Y texture";
+        ErrorReporter::instance().report("Failed to create frame batch for uploading Y texture", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -145,19 +149,19 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
     }
 
     if (!m_yTex1.get() || !frame1->yPtr()) {
-        qDebug() << "Invalid parameters for uploading Y texture";
+        ErrorReporter::instance().report("Invalid parameters for uploading Y texture", LogLevel::Error);
         emit rendererError();
         return;
     }
 
     if (!m_frameBatch) {
-        qDebug() << "Failed to create frame batch for uploading Y texture";
+        ErrorReporter::instance().report("Failed to create frame batch for uploading Y texture", LogLevel::Error);
         emit rendererError();
         return;
     }
 
     if (!m_metaPtr->yWidth() || !m_metaPtr->yHeight()) {
-        qDebug() << "Invalid Y texture dimensions";
+        ErrorReporter::instance().report("Invalid Y texture dimensions", LogLevel::Error);
         emit rendererError();
         return;
     }
@@ -176,7 +180,6 @@ void DiffRenderer::uploadFrame(FrameData* frame1, FrameData* frame2) {
 }
 
 void DiffRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt) {
-    // qDebug() << "DiffRenderer:: renderFrame called";
 
     if (m_initBatch) {
         cb->resourceUpdate(m_initBatch);
@@ -191,8 +194,6 @@ void DiffRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRh
         m_frameBatch = nullptr;
     }
     emit batchIsEmpty();
-
-    // qDebug() << "DiffRenderer::init ready";
 
     // Preserve aspect ratio by computing a letterboxed viewport
     float windowAspect = float(viewport.width()) / viewport.height();

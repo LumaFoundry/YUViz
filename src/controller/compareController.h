@@ -32,7 +32,6 @@ class CompareController : public QObject {
 
   public slots:
     void onReceiveFrame(FrameData* frame, int index);
-    void onCompareUploaded();
     void onRequestRender(int index);
     void onCompareRendered();
 

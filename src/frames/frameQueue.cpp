@@ -1,4 +1,5 @@
 #include "frameQueue.h"
+#include "utils/debugManager.h"
 
 FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta, int queueSize) :
     m_metaPtr(meta),
@@ -34,7 +35,7 @@ int FrameQueue::getEmpty(int direction) {
         empty = (tailVal + m_queueSize / 2) - headVal;
     }
 
-    // qDebug() << "Queue:: tail: " << tailVal << "head: " << headVal << "empty: " << empty;
+    debug("fq", QString("tail: %1 head: %2 empty: %3").arg(tailVal).arg(headVal).arg(empty));
 
     if (empty < 0) {
         empty = 0;
@@ -45,7 +46,7 @@ int FrameQueue::getEmpty(int direction) {
 
 // IMPORTANT: Must not call decoder when seeking / stepping
 FrameData* FrameQueue::getHeadFrame(int64_t pts) {
-    // qDebug() << "Queue:: Tail: " << (tail.load(std::memory_order_acquire));
+    debug("fq", QString("Tail: %1").arg(tail.load(std::memory_order_acquire)));
     FrameData* target = &m_queue[pts % m_queueSize];
 
     // Check if target is loaded in queue
@@ -59,13 +60,13 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 }
 
 FrameData* FrameQueue::getTailFrame(int64_t pts) {
-    // qDebug() << "Queue:: Tail index: " << (pts % m_queueSize);
+    debug("fq", QString("Tail index: %1").arg(pts % m_queueSize));
     return &m_queue[pts % m_queueSize];
 }
 
 // IMPORTANT: Needs to be called after done decoding
 void FrameQueue::updateTail(int64_t pts) {
-    // qDebug() << "Queue:: updateTail called with pts: " << pts;
+    debug("fq", QString("updateTail called with pts: %1").arg(pts));
     if (pts >= 0) {
         tail.store(pts, std::memory_order_release);
     }

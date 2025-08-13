@@ -1,5 +1,5 @@
 #include "compareController.h"
-#include <QDebug>
+#include "utils/debugManager.h"
 
 CompareController::CompareController(QObject* parent) :
     QObject(parent) {
@@ -20,8 +20,6 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
     if (m_metadata1 && m_metadata2 && m_metadata1->yWidth() == m_metadata2->yWidth() &&
         m_metadata1->yHeight() == m_metadata2->yHeight()) {
 
-        qDebug() << "CompareController::Meta is set";
-
         if (m_diffWindow) {
             m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
             connect(
@@ -34,7 +32,7 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
                     &CompareController::onCompareRendered,
                     Qt::DirectConnection);
         } else {
-            qWarning() << "CompareController::setMetadata - m_diffWindow is not initialized";
+            warning("cc", "diffWindow is not initialized");
         }
     }
 }
@@ -45,12 +43,12 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
     // Make a copy of the frame data
     if (index == m_index1 && frame) {
         m_frame1 = std::make_unique<FrameData>(*frame);
-        // qDebug() << "Received frame from index:" << index;
+        debug("cc", QString("Received frame from index: %1").arg(index));
     } else if (index == m_index2 && frame) {
         m_frame2 = std::make_unique<FrameData>(*frame);
-        // qDebug() << "Received frame from index:" << index;
+        debug("cc", QString("Received frame from index: %1").arg(index));
     } else {
-        qWarning() << "Received frame for unknown index:" << index;
+        warning("cc", "Received frame for unknown index:" + QString::number(index));
         return;
     }
 
@@ -59,17 +57,15 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
         AVRational time2 = av_mul_q(AVRational{static_cast<int>(m_frame2->pts()), 1}, m_metadata2->timeBase());
 
         if (av_cmp_q(time1, time2) == 0) {
-            qDebug() << "Received both frames, diffing";
+            debug("cc", "Received same time frames, diffing");
             m_psnrResult =
                 m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
             m_psnr = m_psnrResult.average; // Keep backward compatibility
             emit requestUpload(m_frame1.get(), m_frame2.get());
+        } else {
+            debug("cc", "Received different time frames, skipping");
         }
     }
-}
-
-void CompareController::onCompareUploaded() {
-    qDebug() << "CompareController::onCompareUploaded";
 }
 
 // when either FC requested to render frames
@@ -82,14 +78,12 @@ void CompareController::onRequestRender(int index) {
     }
 
     if (m_ready1 && m_ready2) {
-        qDebug() << "Both frames are ready for rendering";
         // Emit signal to render frames
         emit requestRender();
     }
 }
 
 void CompareController::onCompareRendered() {
-    // qDebug() << "CompareController::onCompareRendered";
     if (m_ready1) {
         m_ready1 = false;
     }
@@ -103,8 +97,6 @@ void CompareController::onCompareRendered() {
                  "\nV: " + QString::number(m_psnrResult.v);
 
     emit psnrChanged();
-
-    // qDebug() << m_psnrInfo;
 
     // Clear cache to make sure we don't compare stale frames
     if (m_frame1) {

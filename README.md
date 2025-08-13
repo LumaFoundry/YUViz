@@ -114,7 +114,7 @@ For .yuv files, append parameters to the filename using colons. Resolution is ma
 ./YUViz video.yuv:1920x1080
 
 # All parameters specified, with debug flag
-./YUViz video.yuv:30:444P:1920x1080 -d
+./YUViz video.yuv:30:444P:1920x1080 -d min
 ```
 
 ### Example with Mixed Files
@@ -124,7 +124,10 @@ For .yuv files, append parameters to the filename using colons. Resolution is ma
 
 Options:
 - `--help`: print application information and instructions
-- `-d`, `--debug`: Enable debug output (can affect performance).
+- `-d min`, `--debug`: Enable debug output (can affect performance).
+    - debug levels:
+    `min`, `max`, `xx`, `xx:yy:...`
+    - replace `xx` and `yy` to any class alias (e.g. for FrameController, `fc`)
 - `-q <size>`: Set frame queue size (default: 50).
 - `-s`, `--software`: Force software decoding (disables hardware acceleration).
 

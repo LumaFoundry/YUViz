@@ -21,6 +21,7 @@
 #include "ui/videoWindow.h"
 #include "utils/aboutHelper.h"
 #include "utils/appConfig.h"
+#include "utils/debugManager.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
 #include "utils/videoFormatUtils.h"
@@ -37,8 +38,6 @@
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
-
-    qDebug() << "Application starting with arguments:" << app.arguments();
 
     // Set the application/window icon from resources (supports svg/ico automatically)
     // Uses the best available size variant for the platform.
@@ -75,7 +74,10 @@ int main(int argc, char* argv[]) {
     parser.addHelpOption();
     parser.addPositionalArgument("files", "Video files to open. Up to 2 are supported.", "[file1] [file2]");
 
-    QCommandLineOption debugOption({"d", "debug"}, "Enable debug output");
+    QCommandLineOption debugOption({"d", "debug"},
+                                   "Enable debug output (use 'max' for all components, 'min' for min components, or "
+                                   "specify components like 'vc:cc:fc')",
+                                   "components");
     parser.addOption(debugOption);
 
     QCommandLineOption queueSizeOption({"q", "queue-size"}, QLatin1String("Frame queue size"), QLatin1String("size"));
@@ -89,11 +91,14 @@ int main(int argc, char* argv[]) {
     const QStringList args = parser.positionalArguments();
 
     if (parser.isSet(debugOption)) {
+        QString debugFilters = parser.value(debugOption);
+        DebugManager::instance().initialize(debugFilters);
         qSetMessagePattern("[%{type}] %{message}");
     }
 
+    debug("main", QString("Application starting with arguments: %1").arg(app.arguments().join(", ")), true);
+
     if (args.size() > 2) {
-        qWarning() << "A maximum of 2 video files can be specified.";
         ErrorReporter::instance().report("A maximum of 2 video files can be specified.", LogLevel::Error);
         return -1;
     }
@@ -103,13 +108,12 @@ int main(int argc, char* argv[]) {
         bool ok;
         int queueSize = parser.value(queueSizeOption).toInt(&ok);
         if (!ok || queueSize <= 0) {
-            qWarning() << "Invalid queue size:" << parser.value(queueSizeOption);
             ErrorReporter::instance().report(QString("Invalid queue size: %1").arg(parser.value(queueSizeOption)),
                                              LogLevel::Error);
             return -1;
         }
         AppConfig::instance().setQueueSize(queueSize);
-        qDebug() << "Setting frame queue size to:" << queueSize;
+        debug("main", QString("Setting frame queue size to: %1").arg(queueSize), true);
     }
 
     QQmlApplicationEngine engine;
@@ -164,7 +168,6 @@ int main(int argc, char* argv[]) {
 
             if (!QFile::exists(filename)) {
                 QString errorMsg = QString("File does not exist: %1").arg(filename);
-                qWarning() << errorMsg;
                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                 return -1;
             }
@@ -191,14 +194,11 @@ int main(int argc, char* argv[]) {
                     width = match.captured(1).toInt();
                     height = match.captured(2).toInt();
                     framerate = match.captured(3).toDouble();
-                    qDebug() << "Extracted from filename - Resolution:" << width << "x" << height
-                             << "FPS:" << framerate;
                 } else {
                     match = resOnlyRegex.match(filename);
                     if (match.hasMatch()) {
                         width = match.captured(1).toInt();
                         height = match.captured(2).toInt();
-                        qDebug() << "Extracted from filename - Resolution:" << width << "x" << height;
                     }
                 }
 
@@ -213,7 +213,6 @@ int main(int argc, char* argv[]) {
                     QString errorMsg = QString("Too many parameters for .yuv file '%1'. Maximum is 3, but got %2.")
                                            .arg(filename)
                                            .arg(paramCount);
-                    qWarning() << errorMsg;
                     ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                     return -1;
                 }
@@ -225,7 +224,6 @@ int main(int argc, char* argv[]) {
                     if (part.contains('x', Qt::CaseInsensitive)) { // Resolution
                         if (resolutionSet) {
                             QString errorMsg = QString("Duplicate resolution specified for '%1'.").arg(filename);
-                            qWarning() << errorMsg;
                             ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                             return -1;
                         }
@@ -233,7 +231,6 @@ int main(int argc, char* argv[]) {
                         if (resParts.size() != 2) {
                             QString errorMsg =
                                 QString("Invalid resolution format '%1'. Expected 'widthxheight'.").arg(part);
-                            qWarning() << errorMsg;
                             ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                             return -1;
                         }
@@ -242,7 +239,6 @@ int main(int argc, char* argv[]) {
                         height = resParts[1].toInt(&okH);
                         if (!okW || !okH || width <= 0 || height <= 0) {
                             QString errorMsg = QString("Invalid resolution value '%1'.").arg(part);
-                            qWarning() << errorMsg;
                             ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                             return -1;
                         }
@@ -255,7 +251,6 @@ int main(int argc, char* argv[]) {
                         if (isNumeric && fps_candidate > 0) { // Framerate
                             if (framerateSet) {
                                 QString errorMsg = QString("Duplicate framerate specified for '%1'.").arg(filename);
-                                qWarning() << errorMsg;
                                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                                 return -1;
                             }
@@ -265,7 +260,6 @@ int main(int argc, char* argv[]) {
                         } else { // Pixel Format
                             if (formatSet) {
                                 QString errorMsg = QString("Duplicate pixel format specified for '%1'.").arg(filename);
-                                qWarning() << errorMsg;
                                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                                 return -1;
                             }
@@ -283,18 +277,25 @@ int main(int argc, char* argv[]) {
                             "Either include it in the filename (e.g., video_1920x1080.yuv) or specify it as a "
                             "parameter (:1920x1080).")
                             .arg(filename);
-                    qWarning() << errorMsg;
                     ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                     return -1;
                 }
 
-                qDebug() << "Final parameters for" << filename << "- Resolution:" << width << "x" << height
-                         << "FPS:" << framerate << "Format:" << pixelFormat;
+                debug("main",
+                      QString("Final parameters for %1 - Resolution: %2x%3 - FPS: %4 - Format: %5")
+                          .arg(filename)
+                          .arg(width)
+                          .arg(height)
+                          .arg(framerate)
+                          .arg(pixelFormat),
+                      true);
             } else {
                 // Compressed format - use detected format and set reasonable defaults
                 width = 1920; // These will be overridden by decoder
                 height = 1080;
-                qDebug() << "Compressed format detected:" << pixelFormat << "for file:" << filename;
+                debug("main",
+                      QString("Compressed format detected: %1 for file: %2").arg(pixelFormat).arg(filename),
+                      true);
             }
 
             QMetaObject::invokeMethod(root,
