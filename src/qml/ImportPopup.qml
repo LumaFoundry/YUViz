@@ -49,8 +49,10 @@ Popup {
         });
 
         dialog.accepted.connect(function() {
-            importPopup.selectedFile = dialog.selectedFile.toString().replace("file://", "");
-            const file = importPopup.selectedFile.split('/').pop();
+            // Keep URL as-is; C++ normalizes via QUrl::fromUserInput().toLocalFile()
+            const urlStr = dialog.selectedFile.toString();
+            importPopup.selectedFile = urlStr;
+            const file = urlStr.split('/').pop();
 
             // Strict match: resolution followed by underscore/dash and FPS
             const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
