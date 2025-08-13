@@ -906,30 +906,31 @@ ApplicationWindow {
         let right = videos[1];
         if (!left || !right)
             return;
+        // Prevent duplicates
+        if (diffEmbeddedInstance)
+            return;
 
-        // Park the second video outside the grid (keep alive)
-        parkedSecondVideo = right;
-        parkedSecondVideo.visible = false;
-        parkedSecondVideo.parent = hiddenBin;
-
-        // Create embedded diff in freed slot
-        diffEmbeddedInstance = diffEmbeddedComponent.createObject(videoWindowContainer, {});
+        // Create embedded diff as overlay ON TOP of the right video instead of replacing it
+        diffEmbeddedInstance = diffEmbeddedComponent.createObject(right, {});
         if (!diffEmbeddedInstance)
             return;
 
+        // Overlay fill
+        diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
+        // Bind width/height to parent (right video window)
+        diffEmbeddedInstance.width = right.width; // implicit binding
+        diffEmbeddedInstance.height = right.height;
+        right.widthChanged.connect(function () { if (diffEmbeddedInstance) diffEmbeddedInstance.width = right.width; });
+        right.heightChanged.connect(function () { if (diffEmbeddedInstance) diffEmbeddedInstance.height = right.height; });
         diffEmbeddedInstance.visible = true;
-
-        // Bind embedded cell size like a normal grid cell
-        diffEmbeddedInstance.width = (videoArea.width / videoWindowContainer.columns);
-        diffEmbeddedInstance.height = (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns));
 
         if (diffEmbeddedInstance.diffVideoWindow)
             diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
 
         leftVideoIdForDiff = left.videoId;
-        rightVideoIdForDiff = parkedSecondVideo.videoId;
+        rightVideoIdForDiff = right.videoId;
 
-        // (Re)wire controllers to the embedded diff instance
+        // Wire controllers to the embedded diff instance
         videoLoader.setupDiffWindow(leftVideoIdForDiff, rightVideoIdForDiff);
         keyHandler.forceActiveFocus();
     }
@@ -938,14 +939,8 @@ ApplicationWindow {
         if (diffEmbeddedInstance) {
             // stop diff mode for this pair
             videoController.setDiffMode(false, leftVideoIdForDiff, rightVideoIdForDiff);
-
             diffEmbeddedInstance.destroy();
             diffEmbeddedInstance = null;
-        }
-        if (parkedSecondVideo) {
-            parkedSecondVideo.parent = videoWindowContainer;
-            parkedSecondVideo.visible = true;
-            parkedSecondVideo = null;
         }
         leftVideoIdForDiff = -1;
         rightVideoIdForDiff = -1;
@@ -957,9 +952,6 @@ ApplicationWindow {
     }
 
     function _resizeEmbeddedDiff() {
-        if (!diffEmbeddedInstance)
-            return;
-        diffEmbeddedInstance.width = (videoArea.width / videoWindowContainer.columns);
-        diffEmbeddedInstance.height = (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns));
+    // When overlaying, sizing handled by parent (right video); nothing needed here.
     }
 }
