@@ -67,11 +67,11 @@ set(SRC
         src/rendering/diffRenderNode.cpp
 )
 
-if(APPLE)
-        list(APPEND SRC src/utils/aboutHelper.mm)
-else()
-        list(APPEND SRC src/utils/aboutHelper_stub.cpp)
-endif()
+if (APPLE)
+    list(APPEND SRC src/utils/aboutHelper.mm)
+else ()
+    list(APPEND SRC src/utils/aboutHelper_stub.cpp)
+endif ()
 
 set(QRC_SOURCES
         src/qml/qml.qrc
@@ -137,16 +137,8 @@ target_link_libraries(${TARGET_NAME} PRIVATE
 )
 
 if (APPLE)
-    # Configure the Info.plist template
-    configure_file(
-            "${CMAKE_CURRENT_SOURCE_DIR}/cmake/macos/Info.plist.in"
-            "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
-            @ONLY
-    )
-
     set_target_properties(${TARGET_NAME} PROPERTIES
             MACOSX_BUNDLE TRUE
-            MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/Info.plist"
             MACOSX_BUNDLE_ICON_FILE icon.icns
             INSTALL_NAME_DIR "@rpath"
             BUILD_WITH_INSTALL_RPATH TRUE
