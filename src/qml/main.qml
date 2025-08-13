@@ -92,6 +92,25 @@ ApplicationWindow {
         }
     }
 
+    // Clear all persistent rectangles across all windows to avoid potential segfaults
+    function clearAllRectangles() {
+        try {
+            // Clear rectangles in all video windows
+            for (let i = 0; i < videoWindowContainer.children.length; ++i) {
+                const child = videoWindowContainer.children[i];
+                if (child && child.removePersistentRect) {
+                    child.removePersistentRect();
+                }
+            }
+            // Clear rectangle in diff window if exists
+            if (diffPopupInstance && diffPopupInstance.removePersistentRect) {
+                diffPopupInstance.removePersistentRect();
+            }
+        } catch (e) {
+            console.log("[mainWindow] clearAllRectangles error:", e);
+        }
+    }
+
     CommandsPopup {
         id: commandsDialog
         anchors.centerIn: parent
@@ -298,6 +317,8 @@ ApplicationWindow {
             Action {
                 text: "Open New Video"
                 onTriggered: {
+                    // Close all rectangles before opening new video set
+                    clearAllRectangles();
                     destroyTimer.destroyIndex = videoWindowContainer.children.length - 1;
                     destroyTimer.start();
                 }
@@ -306,6 +327,8 @@ ApplicationWindow {
                 text: "Add Video"
                 enabled: videoCount < 2
                 onTriggered: {
+                    // Close all rectangles before adding a new video window
+                    clearAllRectangles();
                     importDialog.mode = "add";
                     importDialog.open();
                     importDialog.openFileDialog();
@@ -615,9 +638,15 @@ ApplicationWindow {
 
                         onClicked: {
                             videoController.pause();
+                            // Always close rectangles before toggling diff
+                            clearAllRectangles();
 
                             // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
+                                // Ensure diff window rectangle is cleared before hide
+                                if (diffPopupInstance.removePersistentRect) {
+                                    diffPopupInstance.removePersistentRect();
+                                }
                                 diffPopupInstance.visible = false;
                                 keyHandler.forceActiveFocus();
 
@@ -649,6 +678,11 @@ ApplicationWindow {
                                     if (!mainWindow.closingDiffPopupForEmbed) {
                                         // Only disable diff mode if we're closing the popup for real
                                         videoController.setDiffMode(false, leftId, rightId);
+                                    }
+
+                                    // Clear rectangle before destroy
+                                    if (diffPopupInstance.removePersistentRect) {
+                                        diffPopupInstance.removePersistentRect();
                                     }
 
                                     diffPopupInstance.destroy();
@@ -853,6 +887,9 @@ ApplicationWindow {
         if (diffEmbeddedInstance && (id === rightVideoIdForDiff || id === leftVideoIdForDiff)) {
             disableEmbeddedDiffAndRestore();
         }
+
+        // Clear rectangles early to avoid dangling references during removal
+        clearAllRectangles();
 
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
             console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
