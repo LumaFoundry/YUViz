@@ -18,16 +18,36 @@ A lightweight video inspection tool for YUV format files.
 
 ## How to build
 1. Install Dependencies
-    ### Windows (MSYS2)
+    ### Windows 
+    #### MSYS2
     ```bash
-   pacman -Syu
-   pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
-   pacman -S \
+    pacman -Syu
+    pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja
+    pacman -S \
     mingw-w64-x86_64-qt6-base \
     mingw-w64-x86_64-qt6-declarative \
     mingw-w64-x86_64-qt6-shadertools
-   pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkgconf
+    pacman -S mingw-w64-x86_64-ffmpeg mingw-w64-x86_64-pkgconf
     ```
+
+    #### WSL
+
+    1. Prereqs 
+        ```bash
+        sudo apt update
+        sudo apt install -y \
+        build-essential cmake ninja-build pkg-config git \
+        ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavfilter-dev \
+        libxkbcommon-dev libxkbcommon-x11-dev \
+        python3-pip p7zip-full
+        ```
+
+    2. Install Qt using aqtinstall (`apt` only supported versions)
+        ```bash
+        python3 -m pip install --user aqtinstall
+        ~/.local/bin/aqt install-qt -O $HOME/Qt linux desktop 6.9.1 gcc_64 -m qtshadertools
+        ```
+    - Note: Using WSL will use Linux(Ubuntu) UI
 
     ### Mac (Homebrew)
     ```bash
@@ -41,13 +61,32 @@ A lightweight video inspection tool for YUV format files.
     sudo chmod +x qt-online-installer-linux-x64-online.run 
     ./qt-online-installer-linux-x64-online.run install qt6.9.1-sdk  # Follow the steps, you will need a Qt account
     ```
-    
+
+
+2. Clone and build
+
+    ```bash
+    git clone https://github.com/LokiW-03/qt6-videoplayer.git
+    cd qt6-videoplayer
+    mkdir build && cd build
+    ```
+
+    ### Mac / Windows (Msys2)
+    ```bash
+    cmake .. -G Ninja
+    ninja
+    ```
+
+    ### Linux / Windows WSL
+
     **Configure environment variables (choose one option):**
     
     **Option A: Set environment variables once**
     ```bash
     export PATH=$HOME/Qt/6.9.1/gcc_64/bin:$PATH
     export CMAKE_PREFIX_PATH=$HOME/Qt/6.9.1/gcc_64
+    cmake .. -G Ninja
+    ninja
     ```
     
     **Option B: Use Qt's built-in qt-cmake**
@@ -56,19 +95,10 @@ A lightweight video inspection tool for YUV format files.
     $HOME/Qt/6.9.1/gcc_64/bin/qt-cmake .. -G Ninja
     ```
 
-2. Clone and build
-    ```bash
-    git clone https://github.com/LokiW-03/qt6-videoplayer.git
-    cd qt6-videoplayer
-    mkdir build && cd build
-    cmake .. -G Ninja # Linux option B user should use the command mentioned
-    ninja
-    ```
-
 ## Running the application
 ### General Usage
 ```bash
-./videoplayer [file1] [file2] [options]
+./YUViz [file1] [file2] [options]
 ```
 For standard files like `.mp4`, just provide the path. For `.yuv` files, see below.
 
@@ -81,15 +111,15 @@ For .yuv files, append parameters to the filename using colons. Resolution is ma
 
 ```bash
 # Mandatory resolution only (uses defaults for framerate and format)
-./videoplayer video.yuv:1920x1080
+./YUViz video.yuv:1920x1080
 
 # All parameters specified, with debug flag
-./videoplayer video.yuv:30:444P:1920x1080 -d
+./YUViz video.yuv:30:444P:1920x1080 -d
 ```
 
 ### Example with Mixed Files
 ```bash
-./videoplayer video.mp4 video.yuv:1920x1080:30
+./YUViz video.mp4 video.yuv:1920x1080:30
 ```
 
 Options:
@@ -107,14 +137,14 @@ To fix this, you can force the application to use the OpenGL backend by setting 
 
 ```bash
 # Prepend the variable to the command for a one-time run
-QSG_RHI_BACKEND=opengl ./videoplayer [arguments...]
+QSG_RHI_BACKEND=opengl ./YUViz [arguments...]
 ```
 
 Alternatively, you can export the variable first, which will apply it to your entire terminal session:
 
 ```bash
 export QSG_RHI_BACKEND=opengl
-./videoplayer [arguments...]
+./YUViz [arguments...]
 ```
 
 For a permanent fix to avoid typing this every time, you can add the setting to your shell's configuration file. Run the following command to add the line to your ~/.zshrc file:
@@ -136,16 +166,17 @@ For the change to take effect, you must either restart your terminal or run `sou
 - **timer.cpp/h**: Provides precise timing mechanisms for frame presentation
 - **videoController.cpp/h**: Coordinates overall video playback operations for multiple videos
 - **frameController.cpp/h**: Manages frame decoding, timing, updates, and rendering coordination for each video
+- **compareController.cpp/h**: Manages comparison, PSNR updates of two video frames
 
 #### `decoder/` - Video Decoding
 - **videoDecoder.cpp/h**: Handles FFmpeg integration for decoding various formats, supports seeking
 
 #### `rendering/` - Video Display
-- **videoRenderer.cpp/h**: Low-level rendering component that uses Qt RHI to upload YUV data to GPU textures and render frames with custom shaders
-- **videoRenderNode.cpp/h**: Integrates with Qt's scene graph system to bridge between Qt's rendering pipeline and the custom VideoRenderer
+- **videoRenderer.cpp/h**, **diffRenderer.cpp/h**: Low-level rendering component that uses Qt RHI to upload YUV data to GPU textures and render frames with custom shaders
+- **videoRenderNode.cpp/h**, **diffRenderNode.cpp/h**: Integrates with Qt's scene graph system to bridge between Qt's rendering pipeline and the custom VideoRenderer
 
 #### `ui/` - User Interface
-- **videoWindow.cpp/h**: QML-exposable component that handles video display, user interactions (zooming, panning, selection), and manages the rendering pipeline
+- **videoWindow.cpp/h**, **diffWindow.cpp/h**: QML-exposable component that handles video display, user interactions (zooming, panning, selection), and manages the rendering pipeline
 
 #### `utils/` - Helper Utilities
 - Common utilities and helper functions
