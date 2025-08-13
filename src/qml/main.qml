@@ -614,18 +614,14 @@ ApplicationWindow {
                         }
 
                         onClicked: {
-                            if (videoController.isPlaying) {
-                                videoController.pause();
-                            }
+                            videoController.pause();
 
                             // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
                                 diffPopupInstance.visible = false;
                                 keyHandler.forceActiveFocus();
 
-                                if (videoController.isPlaying) {
-                                    videoController.pause();
-                                }
+                                videoController.pause();
                                 return;
                             }
 
@@ -900,9 +896,7 @@ ApplicationWindow {
     }
 
     function enableEmbeddedDiff() {
-        if (videoController.isPlaying) {
-            videoController.pause();
-        }
+        videoController.pause();
         const videos = videoWindowContainer.children;
         if (videos.length < 2)
             return;
