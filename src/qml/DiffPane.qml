@@ -9,6 +9,7 @@ Item {
     property alias diffVideoWindow: diffVideoWindow
     property bool wasPlayingBeforeResize: false
 
+    // Legacy transient selection (unused after persistent rectangle logic migrated)
     property bool isSelecting: false
     property point selectionStart: Qt.point(0, 0)
     property point selectionEnd: Qt.point(0, 0)
@@ -18,6 +19,23 @@ Item {
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
     property bool resizing: false
     property string psnrInfo: compareController.psnrInfo
+
+    // Persistent rectangle state (stored in video pixel coordinates)
+    property bool hasPersistentRect: false
+    property rect persistentRect: Qt.rect(0, 0, 0, 0)
+    property bool isPersistentRectSelecting: false
+    property point persistentRectStart: Qt.point(0, 0)
+    property point persistentRectEnd: Qt.point(0, 0)
+
+    // Rectangle dragging state
+    property bool isDraggingPersistentRect: false
+    property point dragStartOffset: Qt.point(0, 0)
+
+    // Rectangle resizing state
+    property bool isResizingRect: false
+    property string resizeHandle: ""
+    property point resizeStartPoint: Qt.point(0, 0)
+    property rect resizeStartRect: Qt.rect(0, 0, 0, 0)
 
     DiffWindow {
         id: diffVideoWindow
@@ -36,6 +54,10 @@ Item {
             enabled: mainWindow !== null
             function onIsCtrlPressedChanged() {
                 diffPane.isCtrlPressed = mainWindow.isCtrlPressed;
+                // Ensure only one rectangle exists globally: clear embedded rectangle when Ctrl is pressed
+                if (mainWindow.isCtrlPressed && diffPane.hasPersistentRect) {
+                    removePersistentRect();
+                }
             }
         }
 
@@ -202,55 +224,251 @@ Item {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
             hoverEnabled: true
-            cursorShape: diffPane.isCtrlPressed ? Qt.CrossCursor : diffPane.isZoomed ? (diffPane.isMouseDown ? Qt.ClosedHandCursor : Qt.OpenHandCursor) : Qt.ArrowCursor
+            cursorShape: {
+                // Show resize cursors when hovering over handles
+                if (diffPane.hasPersistentRect) {
+                    var screenRect = convertVideoToScreenCoordinates(diffPane.persistentRect);
+                    var handle = getResizeHandleAtPoint(Qt.point(mouseX, mouseY), screenRect);
+                    switch (handle) {
+                    case "nw":
+                    case "se":
+                        return Qt.SizeFDiagCursor;
+                    case "ne":
+                    case "sw":
+                        return Qt.SizeBDiagCursor;
+                    case "n":
+                    case "s":
+                        return Qt.SizeVerCursor;
+                    case "w":
+                    case "e":
+                        return Qt.SizeHorCursor;
+                    }
+                }
+                if (diffPane.isCtrlPressed)
+                    return Qt.CrossCursor;
+                if (diffPane.isZoomed) {
+                    return (diffPane.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
+                }
+                return Qt.ArrowCursor;
+            }
             onPressed: function (mouse) {
-                if (diffPane.isCtrlPressed) {
-                    diffPane.isProcessingSelection = false;
-                    diffPane.isSelecting = true;
-                    diffPane.selectionStart = Qt.point(mouse.x, mouse.y);
-                    diffPane.selectionEnd = diffPane.selectionStart;
-                } else
+                // Determine Ctrl state from event modifiers to avoid stale state
+                var ctrlDown = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                diffPane.isCtrlPressed = ctrlDown;
+                if (ctrlDown) {
+                    // Clear existing rectangle before starting a new selection
+                    if (diffPane.hasPersistentRect) {
+                        removePersistentRect();
+                    }
+                    diffPane.isPersistentRectSelecting = true;
+                    var videoPoint = convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
+                    diffPane.persistentRectStart = videoPoint;
+                    diffPane.persistentRectEnd = videoPoint;
+                } else if (diffPane.hasPersistentRect && !diffPane.isPersistentRectSelecting) {
+                    var screenPoint = Qt.point(mouse.x, mouse.y);
+                    var screenRect = convertVideoToScreenCoordinates(diffPane.persistentRect);
+                    var handle = getResizeHandleAtPoint(screenPoint, screenRect);
+                    if (handle !== "") {
+                        diffPane.isResizingRect = true;
+                        diffPane.resizeHandle = handle;
+                        diffPane.resizeStartPoint = screenPoint;
+                        diffPane.resizeStartRect = diffPane.persistentRect;
+                        mouse.accepted = true;
+                    } else if (isPointInScreenRect(screenPoint, screenRect)) {
+                        diffPane.isDraggingPersistentRect = true;
+                        var videoPoint2 = convertScreenToPixelCoordinates(screenPoint);
+                        diffPane.dragStartOffset = Qt.point(videoPoint2.x - diffPane.persistentRect.x, videoPoint2.y - diffPane.persistentRect.y);
+                        mouse.accepted = true;
+                    } else {
+                        mouse.accepted = false;
+                    }
+                } else {
                     mouse.accepted = false;
+                }
             }
             onPositionChanged: function (mouse) {
-                if (diffPane.isSelecting) {
-                    var cur = Qt.point(mouse.x, mouse.y);
-                    var dx = cur.x - diffPane.selectionStart.x;
-                    var dy = cur.y - diffPane.selectionStart.y;
-                    if (dx || dy) {
-                        diffPane.selectionEnd = Qt.point(diffPane.selectionStart.x + dx, diffPane.selectionStart.y + dy);
-                        selectionCanvas.requestPaint();
+                if (!diffPane.isPersistentRectSelecting && !diffPane.isDraggingPersistentRect && !diffPane.isResizingRect) {
+                    // Keep Ctrl state in sync while idle
+                    diffPane.isCtrlPressed = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                }
+                if (diffPane.isPersistentRectSelecting) {
+                    var currentVideoPos = convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
+                    var rect = Qt.rect(
+                        Math.min(diffPane.persistentRectStart.x, currentVideoPos.x),
+                        Math.min(diffPane.persistentRectStart.y, currentVideoPos.y),
+                        Math.abs(currentVideoPos.x - diffPane.persistentRectStart.x),
+                        Math.abs(currentVideoPos.y - diffPane.persistentRectStart.y)
+                    );
+                    diffPane.persistentRectEnd = Qt.point(rect.x + rect.width, rect.y + rect.height);
+                    persistentRectCanvas.requestPaint();
+                } else if (diffPane.isDraggingPersistentRect) {
+                    var currentVideoPos2 = convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
+                    var newX = currentVideoPos2.x - diffPane.dragStartOffset.x;
+                    var newY = currentVideoPos2.y - diffPane.dragStartOffset.y;
+                    diffPane.persistentRect.x = newX;
+                    diffPane.persistentRect.y = newY;
+                    persistentRectCanvas.requestPaint();
+                } else if (diffPane.isResizingRect) {
+                    var currentVideoPos3 = convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
+                    var startVideoPos = convertScreenToPixelCoordinates(diffPane.resizeStartPoint);
+                    var deltaX = currentVideoPos3.x - startVideoPos.x;
+                    var deltaY = currentVideoPos3.y - startVideoPos.y;
+                    var newRect = Qt.rect(diffPane.resizeStartRect.x, diffPane.resizeStartRect.y, diffPane.resizeStartRect.width, diffPane.resizeStartRect.height);
+                    switch (diffPane.resizeHandle) {
+                        case "nw":
+                            newRect.x = Math.min(diffPane.resizeStartRect.x + deltaX, diffPane.resizeStartRect.x + diffPane.resizeStartRect.width - 10);
+                            newRect.y = Math.min(diffPane.resizeStartRect.y + deltaY, diffPane.resizeStartRect.y + diffPane.resizeStartRect.height - 10);
+                            newRect.width = diffPane.resizeStartRect.width - (newRect.x - diffPane.resizeStartRect.x);
+                            newRect.height = diffPane.resizeStartRect.height - (newRect.y - diffPane.resizeStartRect.y);
+                            break;
+                        case "ne":
+                            newRect.y = Math.min(diffPane.resizeStartRect.y + deltaY, diffPane.resizeStartRect.y + diffPane.resizeStartRect.height - 10);
+                            newRect.width = Math.max(10, diffPane.resizeStartRect.width + deltaX);
+                            newRect.height = diffPane.resizeStartRect.height - (newRect.y - diffPane.resizeStartRect.y);
+                            break;
+                        case "sw":
+                            newRect.x = Math.min(diffPane.resizeStartRect.x + deltaX, diffPane.resizeStartRect.x + diffPane.resizeStartRect.width - 10);
+                            newRect.width = diffPane.resizeStartRect.width - (newRect.x - diffPane.resizeStartRect.x);
+                            newRect.height = Math.max(10, diffPane.resizeStartRect.height + deltaY);
+                            break;
+                        case "se":
+                            newRect.width = Math.max(10, diffPane.resizeStartRect.width + deltaX);
+                            newRect.height = Math.max(10, diffPane.resizeStartRect.height + deltaY);
+                            break;
+                        case "n":
+                            newRect.y = Math.min(diffPane.resizeStartRect.y + deltaY, diffPane.resizeStartRect.y + diffPane.resizeStartRect.height - 10);
+                            newRect.height = diffPane.resizeStartRect.height - (newRect.y - diffPane.resizeStartRect.y);
+                            break;
+                        case "s":
+                            newRect.height = Math.max(10, diffPane.resizeStartRect.height + deltaY);
+                            break;
+                        case "w":
+                            newRect.x = Math.min(diffPane.resizeStartRect.x + deltaX, diffPane.resizeStartRect.x + diffPane.resizeStartRect.width - 10);
+                            newRect.width = diffPane.resizeStartRect.width - (newRect.x - diffPane.resizeStartRect.x);
+                            break;
+                        case "e":
+                            newRect.width = Math.max(10, diffPane.resizeStartRect.width + deltaX);
+                            break;
                     }
+                    diffPane.persistentRect = newRect;
+                    persistentRectCanvas.requestPaint();
                 }
             }
             onReleased: function (mouse) {
-                if (diffPane.isSelecting) {
-                    diffPane.isSelecting = false;
-                    diffPane.isProcessingSelection = true;
-                    var rect = Qt.rect(Math.min(diffPane.selectionStart.x, diffPane.selectionEnd.x), Math.min(diffPane.selectionStart.y, diffPane.selectionEnd.y), Math.abs(diffPane.selectionEnd.x - diffPane.selectionStart.x), Math.abs(diffPane.selectionEnd.y - diffPane.selectionStart.y));
-                    diffVideoWindow.zoomToSelection(rect);
-                    diffPane.selectionStart = Qt.point(0, 0);
-                    diffPane.selectionEnd = Qt.point(0, 0);
-                    selectionCanvas.requestPaint();
-                    diffPane.isProcessingSelection = false;
+                if (diffPane.isPersistentRectSelecting) {
+                    diffPane.isPersistentRectSelecting = false;
+                    var rect = Qt.rect(
+                        Math.min(diffPane.persistentRectStart.x, diffPane.persistentRectEnd.x),
+                        Math.min(diffPane.persistentRectStart.y, diffPane.persistentRectEnd.y),
+                        Math.abs(diffPane.persistentRectEnd.x - diffPane.persistentRectStart.x),
+                        Math.abs(diffPane.persistentRectEnd.y - diffPane.persistentRectStart.y)
+                    );
+                    if (rect.width > 5 && rect.height > 5) {
+                        diffPane.hasPersistentRect = true;
+                        diffPane.persistentRect = rect;
+                        persistentRectCanvas.requestPaint();
+                    }
+                    diffPane.persistentRectStart = Qt.point(0, 0);
+                    diffPane.persistentRectEnd = Qt.point(0, 0);
+                    if (!diffPane.hasPersistentRect) {
+                        persistentRectCanvas.requestPaint();
+                    }
+                } else if (diffPane.isDraggingPersistentRect) {
+                    diffPane.isDraggingPersistentRect = false;
+                    diffPane.dragStartOffset = Qt.point(0, 0);
+                } else if (diffPane.isResizingRect) {
+                    diffPane.isResizingRect = false;
+                    diffPane.resizeHandle = "";
+                    diffPane.resizeStartPoint = Qt.point(0, 0);
+                    diffPane.resizeStartRect = Qt.rect(0, 0, 0, 0);
+                }
+                // Update Ctrl state from event to ensure cursor resets properly on Windows
+                diffPane.isCtrlPressed = (mouse.modifiers & Qt.ControlModifier) !== 0;
+            }
+
+            onDoubleClicked: function (mouse) {
+                if (diffPane.hasPersistentRect) {
+                    // End any ongoing drag/resize/select to ensure double-click is handled
+                    diffPane.isPersistentRectSelecting = false;
+                    diffPane.isDraggingPersistentRect = false;
+                    diffPane.isResizingRect = false;
+
+                    var screenPoint = Qt.point(mouse.x, mouse.y);
+                    var screenRect = convertVideoToScreenCoordinates(diffPane.persistentRect);
+                    if (isPointInScreenRect(screenPoint, screenRect)) {
+                        // Zoom to the rectangle (convert to screen coordinates for sharedView)
+                        var zoomRect = convertVideoToScreenCoordinates(diffPane.persistentRect);
+                        if (diffVideoWindow.sharedView) {
+                            diffVideoWindow.sharedView.zoomToSelection(
+                                zoomRect,
+                                pixelValuesCanvas.getVideoRect(),
+                                diffVideoWindow.sharedView.zoom,
+                                diffVideoWindow.sharedView.centerX,
+                                diffVideoWindow.sharedView.centerY
+                            );
+                        }
+                        // Clear the persistent rectangle after zoom
+                        removePersistentRect();
+                    }
                 }
             }
         }
 
+        // Keep rectangle synced with view changes and frames
+        Connections {
+            target: diffVideoWindow.sharedView
+            enabled: diffVideoWindow.sharedView !== null
+            function onViewChanged() {
+                if (persistentRectCanvas)
+                    persistentRectCanvas.requestPaint();
+            }
+        }
+        Connections {
+            target: diffVideoWindow
+            function onFrameReady() {
+                if (persistentRectCanvas)
+                    persistentRectCanvas.requestPaint();
+            }
+        }
+
+        // Draw persistent rectangle and creation overlay
         Canvas {
-            id: selectionCanvas
+            id: persistentRectCanvas
             anchors.fill: parent
-            z: 1
+            z: 3
             onPaint: {
                 var ctx = getContext("2d");
                 ctx.clearRect(0, 0, width, height);
-                if (diffPane.isSelecting || (diffPane.selectionStart.x || diffPane.selectionStart.y)) {
-                    var rect = Qt.rect(Math.min(diffPane.selectionStart.x, diffPane.selectionEnd.x), Math.min(diffPane.selectionStart.y, diffPane.selectionEnd.y), Math.abs(diffPane.selectionEnd.x - diffPane.selectionStart.x), Math.abs(diffPane.selectionEnd.y - diffPane.selectionStart.y));
-                    ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
-                    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-                    ctx.strokeStyle = "blue";
+                // Draw persistent rectangle if it exists
+                if (diffPane.hasPersistentRect) {
+                    var screenRect = convertVideoToScreenCoordinates(diffPane.persistentRect);
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.1)";
+                    ctx.fillRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+                    ctx.strokeStyle = "red";
                     ctx.lineWidth = 2;
-                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                    ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
+                    drawResizeHandles(ctx, screenRect);
+                    var coordText = diffPane.persistentRect.width + ":" + diffPane.persistentRect.height + ":" + diffPane.persistentRect.x + ":" + diffPane.persistentRect.y;
+                    drawCoordinateText(ctx, screenRect, coordText);
+                }
+                // Draw during creation (dashed)
+                if (diffPane.isPersistentRectSelecting) {
+                    var rect = Qt.rect(
+                        Math.min(diffPane.persistentRectStart.x, diffPane.persistentRectEnd.x),
+                        Math.min(diffPane.persistentRectStart.y, diffPane.persistentRectEnd.y),
+                        Math.abs(diffPane.persistentRectEnd.x - diffPane.persistentRectStart.x),
+                        Math.abs(diffPane.persistentRectEnd.y - diffPane.persistentRectStart.y)
+                    );
+                    var screenRect2 = convertVideoToScreenCoordinates(rect);
+                    ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
+                    ctx.fillRect(screenRect2.x, screenRect2.y, screenRect2.width, screenRect2.height);
+                    ctx.strokeStyle = "red";
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.strokeRect(screenRect2.x, screenRect2.y, screenRect2.width, screenRect2.height);
+                    ctx.setLineDash([]);
+                    var coordText2 = rect.width + ":" + rect.height + ":" + rect.x + ":" + rect.y;
+                    drawCoordinateText(ctx, screenRect2, coordText2);
                 }
             }
         }
@@ -458,5 +676,161 @@ Item {
                 }
             }
         }
+    }
+
+    function removePersistentRect() {
+        hasPersistentRect = false;
+        persistentRect = Qt.rect(0, 0, 0, 0);
+        isPersistentRectSelecting = false;
+        persistentRectCanvas.requestPaint();
+    }
+
+    // Convert video pixel coordinates to screen coordinates
+    function convertVideoToScreenCoordinates(videoRect) {
+        var meta = diffVideoWindow.getFrameMeta();
+        if (!meta || !meta.yWidth || !meta.yHeight)
+            return Qt.rect(0, 0, 0, 0);
+        var screenRect = pixelValuesCanvas.getVideoRect();
+        var normalizedX = videoRect.x / meta.yWidth;
+        var normalizedY = videoRect.y / meta.yHeight;
+        var normalizedWidth = videoRect.width / meta.yWidth;
+        var normalizedHeight = videoRect.height / meta.yHeight;
+        if (diffVideoWindow.sharedView) {
+            normalizedX = (normalizedX - diffVideoWindow.sharedView.centerX) * diffVideoWindow.sharedView.zoom + 0.5;
+            normalizedY = (normalizedY - diffVideoWindow.sharedView.centerY) * diffVideoWindow.sharedView.zoom + 0.5;
+            normalizedWidth *= diffVideoWindow.sharedView.zoom;
+            normalizedHeight *= diffVideoWindow.sharedView.zoom;
+        }
+        return Qt.rect(
+            screenRect.x + normalizedX * screenRect.width,
+            screenRect.y + normalizedY * screenRect.height,
+            normalizedWidth * screenRect.width,
+            normalizedHeight * screenRect.height
+        );
+    }
+
+    // Convert screen coordinates to video pixel coordinates
+    function convertScreenToPixelCoordinates(screenPoint) {
+        var meta = diffVideoWindow.getFrameMeta();
+        if (!meta || !meta.yWidth || !meta.yHeight)
+            return Qt.point(0, 0);
+        var videoRect = pixelValuesCanvas.getVideoRect();
+        var normalizedX = (screenPoint.x - videoRect.x) / videoRect.width;
+        var normalizedY = (screenPoint.y - videoRect.y) / videoRect.height;
+        if (diffVideoWindow.sharedView) {
+            normalizedX = (normalizedX - 0.5) / diffVideoWindow.sharedView.zoom + diffVideoWindow.sharedView.centerX;
+            normalizedY = (normalizedY - 0.5) / diffVideoWindow.sharedView.zoom + diffVideoWindow.sharedView.centerY;
+        }
+        var pixelX = Math.round(normalizedX * meta.yWidth);
+        var pixelY = Math.round(normalizedY * meta.yHeight);
+        return Qt.point(pixelX, pixelY);
+    }
+
+    function drawCoordinateText(ctx, screenRect, coordText) {
+        try {
+            ctx.font = "12px monospace";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            var textX = screenRect.x + 5;
+            var textY = screenRect.y + 5;
+            var textWidth = ctx.measureText(coordText).width;
+            var textHeight = 14;
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(textX - 2, textY - 2, textWidth + 4, textHeight + 4);
+            ctx.fillStyle = "white";
+            ctx.fillText(coordText, textX, textY);
+        } catch (error) {
+            console.log("QML: drawCoordinateText error:", error);
+        }
+    }
+
+    function drawResizeHandles(ctx, screenRect) {
+        try {
+            var handleSize = 6;
+            var handleColor = "red";
+            var handleBorderColor = "red";
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x + screenRect.width/2 - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x + screenRect.width/2 - handleSize/2, screenRect.y - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x + screenRect.width/2 - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x + screenRect.width/2 - handleSize/2, screenRect.y + screenRect.height - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
+            ctx.fillStyle = handleColor;
+            ctx.fillRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
+            ctx.strokeStyle = handleBorderColor;
+            ctx.lineWidth = 1;
+            ctx.strokeRect(screenRect.x + screenRect.width - handleSize/2, screenRect.y + screenRect.height/2 - handleSize/2, handleSize, handleSize);
+        } catch (error) {
+            console.log("QML: drawResizeHandles error:", error);
+        }
+    }
+
+    function isPointInScreenRect(point, rect) {
+        return point.x >= rect.x && point.x <= rect.x + rect.width &&
+               point.y >= rect.y && point.y <= rect.y + rect.height;
+    }
+
+    function getResizeHandleAtPoint(point, rect) {
+        var handleSize = 8;
+        var x = point.x;
+        var y = point.y;
+        var left = rect.x;
+        var right = rect.x + rect.width;
+        var top = rect.y;
+        var bottom = rect.y + rect.height;
+        if (x >= left - handleSize && x <= left + handleSize && y >= top - handleSize && y <= top + handleSize) {
+            return "nw";
+        }
+        if (x >= right - handleSize && x <= right + handleSize && y >= top - handleSize && y <= top + handleSize) {
+            return "ne";
+        }
+        if (x >= left - handleSize && x <= left + handleSize && y >= bottom - handleSize && y <= bottom + handleSize) {
+            return "sw";
+        }
+        if (x >= right - handleSize && x <= right + handleSize && y >= bottom - handleSize && y <= bottom + handleSize) {
+            return "se";
+        }
+        if (x >= left - handleSize && x <= left + handleSize && y >= top && y <= bottom) {
+            return "w";
+        }
+        if (x >= right - handleSize && x <= right + handleSize && y >= top && y <= bottom) {
+            return "e";
+        }
+        if (y >= top - handleSize && y <= top + handleSize && x >= left && x <= right) {
+            return "n";
+        }
+        if (y >= bottom - handleSize && y <= bottom + handleSize && x >= left && x <= right) {
+            return "s";
+        }
+        return "";
     }
 }
