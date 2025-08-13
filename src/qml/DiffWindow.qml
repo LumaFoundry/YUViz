@@ -384,7 +384,12 @@ Window {
             }
 
             onPressed: function (mouse) {
-                if (diffWindow && diffWindow.isCtrlPressed) {
+                // Determine Ctrl state from the actual event to avoid stale global state
+                var ctrlDown = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                if (diffWindow) {
+                    diffWindow.isCtrlPressed = ctrlDown;
+                }
+                if (diffWindow && ctrlDown) {
                     // Start creating new persistent rectangle
                     diffWindow.isPersistentRectSelecting = true;
                     // Convert screen coordinates to video pixel coordinates for start point
@@ -419,6 +424,10 @@ Window {
             }
 
             onPositionChanged: function (mouse) {
+                // Keep local Ctrl state in sync when not actively selecting/dragging/resizing
+                if (diffWindow && !diffWindow.isPersistentRectSelecting && !diffWindow.isDraggingPersistentRect && !diffWindow.isResizingRect) {
+                    diffWindow.isCtrlPressed = (mouse.modifiers & Qt.ControlModifier) !== 0;
+                }
                 if (diffWindow && diffWindow.isPersistentRectSelecting) {
                     // Convert current mouse position to video pixel coordinates
                     var currentVideoPos = diffWindow.convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
@@ -536,6 +545,10 @@ Window {
                     diffWindow.resizeHandle = "";
                     diffWindow.resizeStartPoint = Qt.point(0, 0);
                     diffWindow.resizeStartRect = Qt.rect(0, 0, 0, 0);
+                }
+                // After mouse release, update Ctrl state from event to ensure cursor resets properly on Windows
+                if (diffWindow) {
+                    diffWindow.isCtrlPressed = (mouse.modifiers & Qt.ControlModifier) !== 0;
                 }
             }
 
