@@ -308,6 +308,10 @@ VideoWindow {
 
         onPressed: function (mouse) {
             if (mainWindow.isCtrlPressed) {
+                // If an existing persistent rectangle is present, clear it before starting a new selection
+                if (hasPersistentRect) {
+                    removePersistentRect();
+                }
                 // Start creating new persistent rectangle
                 isPersistentRectSelecting = true;
                 // Convert screen coordinates to video pixel coordinates for start point
@@ -449,6 +453,10 @@ VideoWindow {
                 // Clear creation state
                 persistentRectStart = Qt.point(0, 0);
                 persistentRectEnd = Qt.point(0, 0);
+                // Ensure any dashed selection is cleared if rectangle wasn't created
+                if (!hasPersistentRect) {
+                    persistentRectCanvas.requestPaint();
+                }
             } else if (isDraggingPersistentRect) {
                 // End dragging the persistent rectangle
                 isDraggingPersistentRect = false;

@@ -390,6 +390,10 @@ Window {
                     diffWindow.isCtrlPressed = ctrlDown;
                 }
                 if (diffWindow && ctrlDown) {
+                    // If an existing persistent rectangle is present, clear it before starting a new selection
+                    if (diffWindow.hasPersistentRect) {
+                        diffWindow.removePersistentRect();
+                    }
                     // Start creating new persistent rectangle
                     diffWindow.isPersistentRectSelecting = true;
                     // Convert screen coordinates to video pixel coordinates for start point
@@ -535,6 +539,10 @@ Window {
                     // Clear creation state
                     diffWindow.persistentRectStart = Qt.point(0, 0);
                     diffWindow.persistentRectEnd = Qt.point(0, 0);
+                    // Ensure any dashed selection is cleared if rectangle wasn't created
+                    if (!diffWindow.hasPersistentRect) {
+                        persistentRectCanvas.requestPaint();
+                    }
                 } else if (diffWindow && diffWindow.isDraggingPersistentRect) {
                     // End dragging the persistent rectangle
                     diffWindow.isDraggingPersistentRect = false;
