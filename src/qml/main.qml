@@ -517,6 +517,29 @@ ApplicationWindow {
                     spacing: 10
 
                     Button {
+                        id: stepBackwardButton
+                        text: "←"
+                        Layout.preferredWidth: Theme.iconSize
+                        Layout.preferredHeight: Theme.iconSize
+                        font.pixelSize: Theme.fontSizeNormal
+                        background: Rectangle { color: "#5d383838" }
+                        contentItem: Text {
+                            text: stepBackwardButton.text
+                            font.pixelSize: stepBackwardButton.font.pixelSize
+                            color: Theme.iconColor
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.centerIn: parent
+                        }
+                        onClicked: {
+                            if (videoController) videoController.stepBackward();
+                            keyHandler.forceActiveFocus();
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Step Backward (Left Arrow)"
+                    }
+
+                    Button {
                         id: playPauseButton
                         text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
                         Layout.preferredWidth: Theme.iconSize
@@ -539,34 +562,27 @@ ApplicationWindow {
                             keyHandler.focus = true; //Do not change, Windows requires
                         }
                     }
-
-                    // Direction switch
-                    RowLayout {
-                        spacing: 6
-
-                        Text {
-                            text: "Direction:"
-                            color: "white"
-                            font.pixelSize: Theme.fontSizeSmall
-                        }
-
-                        Switch {
-                            id: directionSwitch
-                            checked: videoController ? videoController.isForward : true
-                            scale: 0.8
-                            onToggled: {
-                                videoController.toggleDirection();
-                                keyHandler.forceActiveFocus();
-                            }
-                        }
-
-                        Text {
-                            text: directionSwitch.checked ? "▶ Forward" : "◀ Reverse"
-                            color: "white"
+                    Button {
+                        id: stepForwardButton
+                        text: "→"
+                        Layout.preferredWidth: Theme.iconSize
+                        Layout.preferredHeight: Theme.iconSize
+                        font.pixelSize: Theme.fontSizeNormal
+                        background: Rectangle { color: "#5d383838" }
+                        contentItem: Text {
+                            text: stepForwardButton.text
+                            font.pixelSize: stepForwardButton.font.pixelSize
+                            color: Theme.iconColor
+                            horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
-                            Layout.preferredWidth: 80
-                            font.pixelSize: Theme.fontSizeSmall
+                            anchors.centerIn: parent
                         }
+                        onClicked: {
+                            if (videoController) videoController.stepForward();
+                            keyHandler.forceActiveFocus();
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: "Step Forward (Right Arrow)"
                     }
 
                     // Speed selector combobox
@@ -715,6 +731,46 @@ ApplicationWindow {
                             diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
                             keyHandler.forceActiveFocus();
                         }
+                    }
+
+                    // Jump To Frame button (mirrors 'J' key behavior)
+                    Button {
+                        text: "Jump To"
+                        Layout.preferredWidth: Theme.buttonWidth
+                        Layout.preferredHeight: Theme.buttonHeight
+                        font.pixelSize: Theme.fontSizeSmall
+                        enabled: videoWindowContainer.children.length > 0 && videoController
+                        onClicked: {
+                            jumpPopup.open();
+                            keyHandler.forceActiveFocus();
+                        }
+                    }
+
+                    Button {
+                        id: directionToggleButton
+                        text: videoController && videoController.isForward ? "⏵⏵" : "⏴⏴"
+                        Layout.preferredWidth: Theme.iconSize
+                        Layout.preferredHeight: Theme.iconSize
+                        font.pixelSize: playPauseButton.font.pixelSize
+                        background: Rectangle { color: "#5d383838" }
+                        contentItem: Text {
+                            text: directionToggleButton.text
+                            font.pixelSize: directionToggleButton.font.pixelSize
+                            color: Theme.iconColor
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            anchors.centerIn: parent
+                        }
+                        Accessible.name: "Playback Direction"
+                        Accessible.description: videoController && videoController.isForward ? "Forward" : "Reverse"
+                        onClicked: {
+                            if (videoController) {
+                                videoController.toggleDirection();
+                                keyHandler.forceActiveFocus();
+                            }
+                        }
+                        ToolTip.visible: hovered
+                        ToolTip.text: videoController && videoController.isForward ? "Forward (click to switch to reverse)" : "Reverse (click to switch to forward)"
                     }
 
                     // Fullscreen toggle
