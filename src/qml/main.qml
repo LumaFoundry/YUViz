@@ -363,10 +363,6 @@ ApplicationWindow {
                 onTriggered: commandsDialog.visible = true
             }
             Action {
-                text: "Keyboard Shortcuts"
-                onTriggered: shortcutsDialog.open()
-            }
-            Action {
                 text: "About"
                 onTriggered: {
                     if (Qt.platform.os === "osx") {
