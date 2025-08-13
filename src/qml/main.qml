@@ -287,11 +287,7 @@ ApplicationWindow {
                 event.accepted = true;
             }
 
-            if (event.key === Qt.Key_O) {
-                console.log("O key pressed, toggling global OSD state");
-                mainWindow.toggleGlobalOsdState();
-                event.accepted = true;
-            }
+            // 'O' key shortcut for OSD now handled via Menu Action shortcut to avoid double triggering here.
 
             if (event.key === Qt.Key_J) {
                 jumpPopup.open();
@@ -347,6 +343,15 @@ ApplicationWindow {
             Action {
                 text: "Exit"
                 onTriggered: Qt.quit()
+            }
+        }
+        // Newly added View menu with OSD toggle
+        Menu {
+            title: "View"
+            Action {
+                text: "OSD"
+                shortcut: "O" // Displays 'O' on the right side (mac-style) and triggers the action
+                onTriggered: mainWindow.toggleGlobalOsdState()
             }
         }
         Menu {
