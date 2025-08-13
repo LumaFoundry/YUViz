@@ -975,7 +975,7 @@ Window {
     function drawCoordinateText(ctx, screenRect, coordText) {
         try {
             // Set font
-            ctx.font = "12px monospace";
+            ctx.font = "12px" + Theme.fontFamily;
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             

@@ -611,7 +611,7 @@ Item {
                     var maxWidth = 0;
 
                     // temporarily set font to calculate text width
-                    ctx.font = Math.floor(fontSize) + "px sans-serif";
+                    ctx.font = Math.floor(fontSize) + "px " + Theme.fontFamily;
 
                     for (var i = 0; i < lines.length; i++) {
                         var textWidth = ctx.measureText(lines[i]).width;
@@ -642,7 +642,7 @@ Item {
                     }
 
                     // restore original font
-                    ctx.font = "12px monospace";
+                    ctx.font = "12px" + Theme.fontFamily;
                 } catch (error) {
                     console.log("QML: drawPixelValue error:", error);
                 }
@@ -664,7 +664,7 @@ Item {
                 id: osdText
                 anchors.centerIn: parent
                 color: "white"
-                font.family: "sans-serif"
+                font.family: Theme.fontFamily
                 font.pixelSize: 12
                 text: {
                     var s = diffPane.psnrInfo;
@@ -728,7 +728,7 @@ Item {
 
     function drawCoordinateText(ctx, screenRect, coordText) {
         try {
-            ctx.font = "12px monospace";
+            ctx.font = "12px" + Theme.fontFamily;
             ctx.textAlign = "left";
             ctx.textBaseline = "top";
             var textX = screenRect.x + 5;
