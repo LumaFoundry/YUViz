@@ -1,6 +1,8 @@
 #include "videoLoader.h"
 #include <QDebug>
+#include <QFile>
 #include <QQmlContext>
+#include <QUrl>
 #include "utils/videoFormatUtils.h"
 
 VideoLoader::VideoLoader(QQmlApplicationEngine* engine,
@@ -20,12 +22,15 @@ void VideoLoader::loadVideo(
     // Apply global software decoding setting if not explicitly overridden
     bool effectiveForceSoftware = forceSoftware || m_globalForceSoftwareDecoding;
 
-    QString path;
-
-    if (filePath.startsWith("file://")) {
-        path = QUrl(filePath).toLocalFile();
-    } else {
-        path = filePath;
+    QString path = filePath;
+    // Robust normalization for various inputs (URL, local path, Windows-specific forms)
+    QUrl inUrl = QUrl::fromUserInput(filePath);
+    if (inUrl.isLocalFile()) {
+        path = inUrl.toLocalFile();
+    }
+    // Windows fix: handle paths like "/C:/..."
+    if (path.size() > 2 && path[0] == '/' && path[2] == ':') {
+        path.remove(0, 1);
     }
 
     if (!QFile::exists(path)) {
