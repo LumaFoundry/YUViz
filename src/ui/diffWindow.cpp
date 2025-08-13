@@ -131,8 +131,9 @@ void DiffWindow::setDiffMethod(int method) {
 }
 
 QVariant DiffWindow::getDiffValue(int x, int y) const {
-    if (!m_renderer)
+    if (!m_renderer || !m_frameQueue1 || !m_frameQueue2) {
         return QVariant();
+    }
 
     // Get the two frames from renderer
     uint64_t pts1 = m_renderer->getCurrentPts1();
@@ -141,24 +142,29 @@ QVariant DiffWindow::getDiffValue(int x, int y) const {
     FrameData* frame2 = m_frameQueue2->getHeadFrame(pts2);
     auto meta = m_renderer->getFrameMeta();
 
-    if (!frame1 || !frame2 || !meta)
+    if (!frame1 || !frame2 || !meta) {
         ErrorReporter::instance().report("Invalid frame data provided to DiffWindow::getDiffValue", LogLevel::Error);
-    return QVariant();
+        return QVariant();
+    }
 
-    int yW = meta->yWidth(), yH = meta->yHeight();
-    if (x < 0 || y < 0 || x >= yW || y >= yH)
+    int yW = meta->yWidth();
+    int yH = meta->yHeight();
+    if (x < 0 || y < 0 || x >= yW || y >= yH) {
         ErrorReporter::instance().report("Invalid coordinates provided to DiffWindow::getDiffValue", LogLevel::Error);
-    return QVariant();
+        return QVariant();
+    }
 
     // Check if frame pointers are valid
     uint8_t* y1Ptr = frame1->yPtr();
     uint8_t* y2Ptr = frame2->yPtr();
-    if (!y1Ptr || !y2Ptr)
+    if (!y1Ptr || !y2Ptr) {
         ErrorReporter::instance().report("Invalid frame data provided to DiffWindow::getDiffValue", LogLevel::Error);
-    return QVariant();
+        return QVariant();
+    }
 
     // Get Y values from both frames with bounds checking
-    int y1Val = 0, y2Val = 0;
+    int y1Val = 0;
+    int y2Val = 0;
     try {
         y1Val = y1Ptr[y * yW + x];
         y2Val = y2Ptr[y * yW + x];
