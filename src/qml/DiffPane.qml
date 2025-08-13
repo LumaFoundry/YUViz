@@ -3,116 +3,42 @@ import QtQuick.Controls.Basic 6.0
 import DiffWindow 1.0
 import QtQuick.Layouts 1.15
 
-Window {
-    id: diffWindow
-    width: 500
-    height: 400
-    visible: false
-    title: "Diff Result"
-    flags: Qt.Window
-    color: "black"
-
-    property point dragPos
-    property int leftVideoId: -1
-    property int rightVideoId: -1
-    property int diffVideoId: -1
-    property string psnrInfo: compareController.psnrInfo
+Item {
+    id: diffPane
+    objectName: "diffEmbeddedInstance"
     property alias diffVideoWindow: diffVideoWindow
+    property bool wasPlayingBeforeResize: false
 
-    // Zoom and selection properties
     property bool isSelecting: false
     property point selectionStart: Qt.point(0, 0)
     property point selectionEnd: Qt.point(0, 0)
     property bool isProcessingSelection: false
     property bool isMouseDown: false
-    property bool isZoomed: false
+    property bool isZoomed: diffVideoWindow.sharedView ? diffVideoWindow.sharedView.isZoomed : false
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
     property bool resizing: false
-
-    onWidthChanged: {
-        if (!resizing) {
-            resizing = true;
-            wasPlayingBeforeResize = videoController.isPlaying;
-            if (wasPlayingBeforeResize) {
-                videoController.pause();
-            }
-        }
-        resizeDebounce.restart();
-    }
-
-    onHeightChanged: {
-        if (!resizing) {
-            resizing = true;
-            wasPlayingBeforeResize = videoController.isPlaying;
-            if (wasPlayingBeforeResize) {
-                videoController.pause();
-            }
-        }
-        resizeDebounce.restart();
-    }
-
-    onXChanged: {
-        if (!resizing) {
-            resizing = true;
-            wasPlayingBeforeResize = videoController.isPlaying;
-            if (wasPlayingBeforeResize) {
-                videoController.pause();
-            }
-        }
-        resizeDebounce.restart();
-    }
-
-    onYChanged: {
-        if (!resizing) {
-            resizing = true;
-            wasPlayingBeforeResize = videoController.isPlaying;
-            if (wasPlayingBeforeResize) {
-                videoController.pause();
-            }
-        }
-        resizeDebounce.restart();
-    }
-
-    Timer {
-        id: resizeDebounce
-        interval: 200
-        repeat: false
-        onTriggered: {
-            resizing = false;
-            if (wasPlayingBeforeResize) {
-                videoController.play();
-            }
-        }
-    }
+    property string psnrInfo: compareController.psnrInfo
 
     DiffWindow {
         id: diffVideoWindow
         objectName: "diffWindow"
         anchors.fill: parent
 
-        // Update isZoomed property when sharedView changes
         Connections {
             target: diffVideoWindow.sharedView
             enabled: diffVideoWindow.sharedView !== null
             function onIsZoomedChanged() {
-                if (diffVideoWindow.sharedView) {
-                    diffWindow.isZoomed = diffVideoWindow.sharedView.isZoomed;
-                }
+                diffPane.isZoomed = diffVideoWindow.sharedView.isZoomed;
             }
         }
-
-        // Update isCtrlPressed property when mainWindow changes
         Connections {
             target: mainWindow
             enabled: mainWindow !== null
             function onIsCtrlPressedChanged() {
-                if (mainWindow) {
-                    diffWindow.isCtrlPressed = mainWindow.isCtrlPressed;
-                }
+                diffPane.isCtrlPressed = mainWindow.isCtrlPressed;
             }
         }
 
-        // Configuration menu
         Row {
             anchors.top: parent.top
             anchors.right: parent.right
@@ -157,18 +83,15 @@ Window {
                                 color: "black"
                                 font.pixelSize: 12
                             }
-
                             ComboBox {
                                 id: displayModeSelector
                                 model: ["Grayscale", "Heatmap", "Binary"]
                                 width: 180
                                 currentIndex: diffVideoWindow.displayMode
-
                                 onCurrentIndexChanged: {
                                     diffVideoWindow.displayMode = currentIndex;
                                     keyHandler.forceActiveFocus();
                                 }
-
                                 onActivated: keyHandler.forceActiveFocus()
                             }
 
@@ -177,18 +100,15 @@ Window {
                                 color: "black"
                                 font.pixelSize: 12
                             }
-
                             ComboBox {
                                 id: diffMethodSelector
                                 model: ["Direct Subtraction", "Squared Difference", "Normalized", "Absolute Difference"]
                                 width: 180
                                 currentIndex: diffVideoWindow.diffMethod
-
                                 onCurrentIndexChanged: {
                                     diffVideoWindow.diffMethod = currentIndex;
                                     keyHandler.forceActiveFocus();
                                 }
-
                                 onActivated: keyHandler.forceActiveFocus()
                             }
 
@@ -197,7 +117,6 @@ Window {
                                 color: "black"
                                 font.pixelSize: 12
                             }
-
                             TextField {
                                 id: multiplierInput
                                 width: 180
@@ -208,17 +127,11 @@ Window {
                                     border.color: "black"
                                     border.width: 1
                                 }
-
                                 onEditingFinished: {
-                                    let value = parseFloat(text);
-                                    if (!isNaN(value) && value > 0) {
-                                        diffVideoWindow.diffMultiplier = value;
-                                    } else {
-                                        text = diffVideoWindow.diffMultiplier.toString();
-                                    }
+                                    let v = parseFloat(text);
+                                    text = (!isNaN(v) && v > 0) ? (diffVideoWindow.diffMultiplier = v, text) : diffVideoWindow.diffMultiplier.toString();
                                     keyHandler.forceActiveFocus();
                                 }
-
                                 onAccepted: keyHandler.forceActiveFocus()
                             }
                         }
@@ -227,90 +140,58 @@ Window {
                     MenuSeparator {}
 
                     MenuItem {
-                        visible: mainWindow && !mainWindow.isEmbeddedDiffActive()
-                        text: "Embed Diff Window"
+                        visible: mainWindow && mainWindow.isEmbeddedDiffActive()
+                        text: "Restore second video"
                         onTriggered: {
-                            mainWindow.closingDiffPopupForEmbed = true;
-                            mainWindow.enableEmbeddedDiff();
-                            diffWindow.close();
+                            mainWindow.disableEmbeddedDiffAndRestore();
+                            // keep popup open or closed as you prefer; closing popup here is optional
+                            // diffWindow.close();
                         }
-                    }
-
-                    MenuSeparator {}
-
-                    MenuItem {
-                        text: "Close Diff Window"
-                        onTriggered: diffWindow.close()
                     }
                 }
             }
         }
 
-        // Zoom and pan handlers
         PinchArea {
             anchors.fill: parent
             pinch.target: diffVideoWindow
-
             property real lastPinchScale: 1.0
-
-            onPinchStarted: {
-                lastPinchScale = 1.0;
-            }
-
+            onPinchStarted: lastPinchScale = 1.0
             onPinchUpdated: {
-                let factor = pinch.scale / lastPinchScale;
-                if (factor !== 1.0) {
-                    diffVideoWindow.zoomAt(factor, pinch.center);
-                }
+                let f = pinch.scale / lastPinchScale;
+                if (f !== 1.0)
+                    diffVideoWindow.zoomAt(f, pinch.center);
                 lastPinchScale = pinch.scale;
             }
         }
-
         PointHandler {
             id: pointHandler
             acceptedButtons: Qt.LeftButton
-            // Enable this handler only when zoomed and NOT doing a selection drag
-            enabled: (diffWindow && diffWindow.isZoomed && !diffWindow.isCtrlPressed) || false
-
+            enabled: (diffPane.isZoomed && !diffPane.isCtrlPressed) || false
             property point lastPosition: Qt.point(0, 0)
-
             onActiveChanged: {
-                if (diffWindow) {
-                    diffWindow.isMouseDown = active;
-                }
-                if (active) {
+                diffPane.isMouseDown = active;
+                if (active)
                     lastPosition = point.position;
-                }
             }
-
             onPointChanged: {
                 if (active) {
-                    var currentPosition = point.position;
-                    var delta = Qt.point(currentPosition.x - lastPosition.x, currentPosition.y - lastPosition.y);
-
-                    if (delta.x !== 0 || delta.y !== 0) {
+                    var cur = point.position;
+                    var delta = Qt.point(cur.x - lastPosition.x, cur.y - lastPosition.y);
+                    if (delta.x || delta.y)
                         diffVideoWindow.pan(delta);
-                    }
-
-                    lastPosition = currentPosition;
+                    lastPosition = cur;
                 }
             }
         }
-
         WheelHandler {
             id: wheelHandler
             acceptedModifiers: Qt.ControlModifier
-
             property real lastRotation: wheelHandler.rotation
-
             onRotationChanged: {
-                let delta = wheelHandler.rotation - wheelHandler.lastRotation;
-
-                if (delta !== 0) {
-                    let factor = delta > 0 ? 1.2 : (1.0 / 1.2);
-                    diffVideoWindow.zoomAt(factor, wheelHandler.point.position);
-                }
-
+                let d = wheelHandler.rotation - wheelHandler.lastRotation;
+                if (d)
+                    diffVideoWindow.zoomAt(d > 0 ? 1.2 : 1.0 / 1.2, wheelHandler.point.position);
                 wheelHandler.lastRotation = wheelHandler.rotation;
             }
         }
@@ -318,74 +199,51 @@ Window {
         MouseArea {
             anchors.fill: parent
             acceptedButtons: Qt.LeftButton
-            hoverEnabled: true // Needed for cursor shape changes
-
-            cursorShape: {
-                if (diffWindow && diffWindow.isCtrlPressed)
-                    return Qt.CrossCursor;
-                if (diffWindow && diffWindow.isZoomed) {
-                    return (diffWindow.isMouseDown) ? Qt.ClosedHandCursor : Qt.OpenHandCursor;
-                }
-                return Qt.ArrowCursor;
-            }
-
+            hoverEnabled: true
+            cursorShape: diffPane.isCtrlPressed ? Qt.CrossCursor : diffPane.isZoomed ? (diffPane.isMouseDown ? Qt.ClosedHandCursor : Qt.OpenHandCursor) : Qt.ArrowCursor
             onPressed: function (mouse) {
-                if (diffWindow && diffWindow.isCtrlPressed) {
-                    // Force reset processing state, ensure new selection can start
-                    diffWindow.isProcessingSelection = false;
-                    diffWindow.isSelecting = true;
-                    diffWindow.selectionStart = Qt.point(mouse.x, mouse.y);
-                    diffWindow.selectionEnd = diffWindow.selectionStart;
-                } else {
+                if (diffPane.isCtrlPressed) {
+                    diffPane.isProcessingSelection = false;
+                    diffPane.isSelecting = true;
+                    diffPane.selectionStart = Qt.point(mouse.x, mouse.y);
+                    diffPane.selectionEnd = diffPane.selectionStart;
+                } else
                     mouse.accepted = false;
-                }
             }
-
             onPositionChanged: function (mouse) {
-                if (diffWindow && diffWindow.isSelecting) {
-                    var currentPos = Qt.point(mouse.x, mouse.y);
-                    var deltaX = currentPos.x - diffWindow.selectionStart.x;
-                    var deltaY = currentPos.y - diffWindow.selectionStart.y;
-
-                    if (deltaX === 0 && deltaY === 0)
-                        return;
-                    diffWindow.selectionEnd = Qt.point(diffWindow.selectionStart.x + deltaX, diffWindow.selectionStart.y + deltaY);
-                    selectionCanvas.requestPaint();
+                if (diffPane.isSelecting) {
+                    var cur = Qt.point(mouse.x, mouse.y);
+                    var dx = cur.x - diffPane.selectionStart.x;
+                    var dy = cur.y - diffPane.selectionStart.y;
+                    if (dx || dy) {
+                        diffPane.selectionEnd = Qt.point(diffPane.selectionStart.x + dx, diffPane.selectionStart.y + dy);
+                        selectionCanvas.requestPaint();
+                    }
                 }
             }
-
             onReleased: function (mouse) {
-                if (diffWindow && diffWindow.isSelecting) {
-                    diffWindow.isSelecting = false;
-                    diffWindow.isProcessingSelection = true;
-
-                    // Calculate rectangle area
-                    var rect = Qt.rect(Math.min(diffWindow.selectionStart.x, diffWindow.selectionEnd.x), Math.min(diffWindow.selectionStart.y, diffWindow.selectionEnd.y), Math.abs(diffWindow.selectionEnd.x - diffWindow.selectionStart.x), Math.abs(diffWindow.selectionEnd.y - diffWindow.selectionStart.y));
-
-                    // console.log("Final selection rect:", rect.x, rect.y, rect.width, rect.height);
-
+                if (diffPane.isSelecting) {
+                    diffPane.isSelecting = false;
+                    diffPane.isProcessingSelection = true;
+                    var rect = Qt.rect(Math.min(diffPane.selectionStart.x, diffPane.selectionEnd.x), Math.min(diffPane.selectionStart.y, diffPane.selectionEnd.y), Math.abs(diffPane.selectionEnd.x - diffPane.selectionStart.x), Math.abs(diffPane.selectionEnd.y - diffPane.selectionStart.y));
                     diffVideoWindow.zoomToSelection(rect);
-
-                    // Clear selection state, make rectangle disappear
-                    diffWindow.selectionStart = Qt.point(0, 0);
-                    diffWindow.selectionEnd = Qt.point(0, 0);
+                    diffPane.selectionStart = Qt.point(0, 0);
+                    diffPane.selectionEnd = Qt.point(0, 0);
                     selectionCanvas.requestPaint();
-                    diffWindow.isProcessingSelection = false;
+                    diffPane.isProcessingSelection = false;
                 }
             }
         }
 
-        // Draw selection rectangle
         Canvas {
             id: selectionCanvas
             anchors.fill: parent
             z: 1
-
             onPaint: {
                 var ctx = getContext("2d");
                 ctx.clearRect(0, 0, width, height);
-                if (diffWindow && (diffWindow.isSelecting || (diffWindow.selectionStart.x !== 0 || diffWindow.selectionStart.y !== 0))) {
-                    var rect = Qt.rect(Math.min(diffWindow.selectionStart.x, diffWindow.selectionEnd.x), Math.min(diffWindow.selectionStart.y, diffWindow.selectionEnd.y), Math.abs(diffWindow.selectionEnd.x - diffWindow.selectionStart.x), Math.abs(diffWindow.selectionEnd.y - diffWindow.selectionStart.y));
+                if (diffPane.isSelecting || (diffPane.selectionStart.x || diffPane.selectionStart.y)) {
+                    var rect = Qt.rect(Math.min(diffPane.selectionStart.x, diffPane.selectionEnd.x), Math.min(diffPane.selectionStart.y, diffPane.selectionEnd.y), Math.abs(diffPane.selectionEnd.x - diffPane.selectionStart.x), Math.abs(diffPane.selectionEnd.y - diffPane.selectionStart.y));
                     ctx.fillStyle = "rgba(0, 0, 255, 0.2)";
                     ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
                     ctx.strokeStyle = "blue";
@@ -395,7 +253,6 @@ Window {
             }
         }
 
-        // Pixel difference values canvas
         Canvas {
             id: pixelValuesCanvas
             anchors.fill: parent
@@ -572,7 +429,6 @@ Window {
             }
         }
 
-        // OSD Overlay
         Rectangle {
             visible: diffVideoWindow.osdState > 0
             anchors.top: parent.top
@@ -583,47 +439,22 @@ Window {
             color: "black"
             opacity: 0.8
             radius: 5
-            z: 100 // Ensure it's on top
-
+            z: 100
             Text {
                 id: osdText
                 anchors.centerIn: parent
                 color: "white"
-                font.family: "monospace"
+                font.family: "sans-serif"
                 font.pixelSize: 12
                 text: {
-                    var osdStr = diffWindow.psnrInfo;
-
-                    if (diffVideoWindow.osdState === 1) {
-                        // Basic info: PSNR
-                        return osdStr;
-                    } else if (diffVideoWindow.osdState === 2) {
-                        // Detailed info: Could add later
-                        return osdStr;
-                    }
+                    var s = diffPane.psnrInfo;
+                    if (diffVideoWindow.osdState === 1)
+                        return s;
+                    if (diffVideoWindow.osdState === 2)
+                        return s;
                     return "";
                 }
             }
         }
-    }
-
-    MouseArea {
-        onPressed: function (mouse) {
-            dragPos = Qt.point(mouse.x, mouse.y);
-        }
-        onPositionChanged: function (mouse) {
-            if (mouse.buttons & Qt.LeftButton) {
-                diffWindow.x += mouse.x - dragPos.x;
-                diffWindow.y += mouse.y - dragPos.y;
-            }
-        }
-    }
-
-    function resetSelectionCanvas() {
-        selectionStart = Qt.point(0, 0);
-        selectionEnd = Qt.point(0, 0);
-        isSelecting = false;
-        isProcessingSelection = false;
-        selectionCanvas.requestPaint();
     }
 }

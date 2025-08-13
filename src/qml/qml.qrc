@@ -4,6 +4,7 @@
     <file>ImportPopup.qml</file>
     <file>VideoWindow.qml</file>
     <file>DiffWindow.qml</file>
+    <file>DiffPane.qml</file>
     <file>Theme.qml</file>
     <file>JumpToFramePopup.qml</file>
     <file>CommandsPopup.qml</file>

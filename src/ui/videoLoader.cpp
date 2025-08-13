@@ -117,23 +117,25 @@ void VideoLoader::setupDiffWindow(int leftId, int rightId) {
     if (!root)
         return;
 
-    // Find the created diff window instance
-    QObject* diffInstance = root->findChild<QObject*>("diffPopupInstance");
+    // Prefer embedded diff; fall back to popup
+    QObject* diffInstance = root->findChild<QObject*>("diffEmbeddedInstance");
+    if (!diffInstance)
+        diffInstance = root->findChild<QObject*>("diffPopupInstance");
 
     if (!diffInstance) {
-        qWarning() << "Diff popup instance not found";
+        qWarning() << "[setupDiffWindow] No diff instance (embedded or popup) found";
         return;
     }
 
     QObject* obj = diffInstance->findChild<QObject*>("diffWindow");
     if (!obj) {
-        qWarning() << "Could not find VideoWindow in DiffWindow";
+        qWarning() << "[setupDiffWindow] Could not find DiffWindow in" << diffInstance->objectName();
         return;
     }
 
-    DiffWindow* diffWindow = qobject_cast<DiffWindow*>(obj);
+    auto* diffWindow = qobject_cast<DiffWindow*>(obj);
     if (!diffWindow) {
-        qWarning() << "DiffWindow object is not a VideoWindow";
+        qWarning() << "[setupDiffWindow] diffWindow object is not a DiffWindow";
         return;
     }
 
@@ -146,4 +148,7 @@ void VideoLoader::setupDiffWindow(int leftId, int rightId) {
 
     // Set up metadata and start diff mode
     m_vcPtr->setDiffMode(true, leftId, rightId);
+
+    qDebug() << "[setupDiffWindow] wired to" << diffInstance->objectName() << "leftId=" << leftId
+             << "rightId=" << rightId;
 }

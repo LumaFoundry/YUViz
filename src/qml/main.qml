@@ -64,6 +64,24 @@ ApplicationWindow {
 
     property var diffPopupInstance: null
 
+    property var diffEmbeddedInstance: null
+    property var parkedSecondVideo: null
+    property int leftVideoIdForDiff: -1
+    property int rightVideoIdForDiff: -1
+    property bool closingDiffPopupForEmbed: false
+
+    Item {
+        id: hiddenBin
+        visible: false
+        width: 0
+        height: 0
+    }
+
+    Component {
+        id: diffEmbeddedComponent
+        DiffPane {}
+    }
+
     ImportPopup {
         id: importDialog
         mainWindow: mainWindow
@@ -108,6 +126,13 @@ ApplicationWindow {
             errorDialog.title = title;
             errorDialogText.text = message;
             errorDialog.open();
+        }
+    }
+
+    Connections {
+        target: videoWindowContainer
+        function onColumnsChanged() {
+            _resizeEmbeddedDiff();
         }
     }
 
@@ -177,6 +202,7 @@ ApplicationWindow {
                 videoController.pause();
             }
         }
+        _resizeEmbeddedDiff();
         resizeDebounce.restart();
     }
 
@@ -188,6 +214,7 @@ ApplicationWindow {
                 videoController.pause();
             }
         }
+        _resizeEmbeddedDiff();
         resizeDebounce.restart();
     }
 
@@ -618,9 +645,18 @@ ApplicationWindow {
                             // Cleanup when window closes
                             diffPopupInstance.onVisibleChanged.connect(function () {
                                 if (!diffPopupInstance.visible) {
+                                    // Capture the ids (store them on the instance when you create it)
+                                    const leftId = diffPopupInstance.leftVideoId;
+                                    const rightId = diffPopupInstance.rightVideoId;
+
+                                    if (!mainWindow.closingDiffPopupForEmbed) {
+                                        // Only disable diff mode if we're closing the popup for real
+                                        videoController.setDiffMode(false, leftId, rightId);
+                                    }
+
                                     diffPopupInstance.destroy();
-                                    videoController.setDiffMode(false, leftId, rightId);
                                     diffPopupInstance = null;
+                                    mainWindow.closingDiffPopupForEmbed = false;
                                 }
                             });
                             videoLoader.setupDiffWindow(leftId, rightId);
@@ -816,6 +852,11 @@ ApplicationWindow {
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
+
+        if (diffEmbeddedInstance && (id === rightVideoIdForDiff || id === leftVideoIdForDiff)) {
+            disableEmbeddedDiffAndRestore();
+        }
+
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
             console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
@@ -851,5 +892,74 @@ ApplicationWindow {
         if (diffPopupInstance && diffPopupInstance.diffVideoWindow) {
             diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
         }
+        if (diffEmbeddedInstance && diffEmbeddedInstance.diffVideoWindow) {
+            diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+        }
+    }
+
+    function enableEmbeddedDiff() {
+        const videos = videoWindowContainer.children;
+        if (videos.length < 2)
+            return;
+
+        let left = videos[0];
+        let right = videos[1];
+        if (!left || !right)
+            return;
+
+        // Park the second video outside the grid (keep alive)
+        parkedSecondVideo = right;
+        parkedSecondVideo.visible = false;
+        parkedSecondVideo.parent = hiddenBin;
+
+        // Create embedded diff in freed slot
+        diffEmbeddedInstance = diffEmbeddedComponent.createObject(videoWindowContainer, {});
+        if (!diffEmbeddedInstance)
+            return;
+
+        diffEmbeddedInstance.visible = true;
+
+        // Bind embedded cell size like a normal grid cell
+        diffEmbeddedInstance.width = (videoArea.width / videoWindowContainer.columns);
+        diffEmbeddedInstance.height = (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns));
+
+        if (diffEmbeddedInstance.diffVideoWindow)
+            diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+
+        leftVideoIdForDiff = left.videoId;
+        rightVideoIdForDiff = parkedSecondVideo.videoId;
+
+        // (Re)wire controllers to the embedded diff instance
+        videoLoader.setupDiffWindow(leftVideoIdForDiff, rightVideoIdForDiff);
+        keyHandler.forceActiveFocus();
+    }
+
+    function disableEmbeddedDiffAndRestore() {
+        if (diffEmbeddedInstance) {
+            // stop diff mode for this pair
+            videoController.setDiffMode(false, leftVideoIdForDiff, rightVideoIdForDiff);
+
+            diffEmbeddedInstance.destroy();
+            diffEmbeddedInstance = null;
+        }
+        if (parkedSecondVideo) {
+            parkedSecondVideo.parent = videoWindowContainer;
+            parkedSecondVideo.visible = true;
+            parkedSecondVideo = null;
+        }
+        leftVideoIdForDiff = -1;
+        rightVideoIdForDiff = -1;
+        keyHandler.forceActiveFocus();
+    }
+
+    function isEmbeddedDiffActive() {
+        return diffEmbeddedInstance !== null;
+    }
+
+    function _resizeEmbeddedDiff() {
+        if (!diffEmbeddedInstance)
+            return;
+        diffEmbeddedInstance.width = (videoArea.width / videoWindowContainer.columns);
+        diffEmbeddedInstance.height = (videoArea.height / Math.ceil(mainWindow.videoCount / videoWindowContainer.columns));
     }
 }
