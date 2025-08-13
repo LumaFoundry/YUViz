@@ -21,6 +21,7 @@
 #include "utils/appConfig.h"
 #include "utils/sharedViewProperties.h"
 #include "utils/videoFileInfo.h"
+#include "utils/videoFormatUtils.h"
 
 // These macros are here to prevent editors from complaining
 // To change version and name please go to CMakeLists.txt
@@ -40,17 +41,27 @@ int main(int argc, char* argv[]) {
     qSetMessagePattern("");
 
     QCommandLineParser parser;
+
+    QStringList uncompressedFormats;
+    for (const VideoFormat& format : VideoFormatUtils::getSupportedFormats()) {
+        if (format.type == FormatType::RAW_YUV) {
+            uncompressedFormats << format.identifier;
+        }
+    }
+
     parser.setApplicationDescription("Visual Inspection Tool\n\n"
                                      "Imports up to two videos from the command line.\n"
                                      "For YUV files, specify parameters separated by colons. Resolution is mandatory.\n"
                                      "Format: path/to/file.yuv:resolution[:framerate][:pixelformat]\n"
                                      "  - Resolution (mandatory): widthxheight (e.g., 1920x1080)\n"
                                      "  - Framerate (optional): A number (e.g., 25). Default: 25.\n"
-                                     "  - Pixel Format (optional): 420P, 422P, or 444P. Default: 420P.\n"
+                                     "  - Pixel Format (optional): One of: " +
+                                     uncompressedFormats.join(", ") +
+                                     ". Default: 420P.\n"
                                      "Parameters can be in any order.\n"
                                      "Example: myvideo.yuv:1920x1080:25:444P\n"
                                      "Example: myvideo.yuv:420P:1280x720\n"
-                                     "For other formats (e.g., mp4), just provide the path.");
+                                     "For compressed formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
     parser.addHelpOption();
     parser.addPositionalArgument("files", "Video files to open. Up to 2 are supported.", "[file1] [file2]");
@@ -100,6 +111,12 @@ int main(int argc, char* argv[]) {
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), "Theme", 1, 0, "Theme");
     qmlRegisterType<VideoWindow>("VideoWindow", 1, 0, "VideoWindow");
     qmlRegisterType<DiffWindow>("DiffWindow", 1, 0, "DiffWindow");
+    qmlRegisterSingletonType<VideoFormatUtils>(
+        "VideoFormatUtils", 1, 0, "VideoFormatUtils", [](QQmlEngine* engine, QJSEngine* scriptEngine) -> QObject* {
+            Q_UNUSED(engine)
+            Q_UNUSED(scriptEngine)
+            return new VideoFormatUtils();
+        });
 
     std::shared_ptr<CompareController> compareController = std::make_shared<CompareController>(nullptr);
     std::shared_ptr<VideoController> videoController = std::make_shared<VideoController>(nullptr, compareController);
@@ -142,13 +159,11 @@ int main(int argc, char* argv[]) {
 
             // Default values
             int width = 0, height = 0;
-            double framerate = 0.0;
-            QString yuvFormat = "AV_PIX_FMT_NONE";
+            double framerate = 25.0;
+            QString pixelFormat = VideoFormatUtils::detectFormatFromExtension(filename);
 
-            if (filename.toLower().endsWith(".yuv")) {
-                // Set default values for optional parameters
-                framerate = 25.0;
-                yuvFormat = "420P";
+            if (VideoFormatUtils::getFormatType(pixelFormat) == FormatType::RAW_YUV) {
+                // This is a raw YUV file that needs explicit parameters
 
                 bool resolutionSet = false;
                 bool framerateSet = false;
@@ -242,7 +257,7 @@ int main(int argc, char* argv[]) {
                                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                                 return -1;
                             }
-                            yuvFormat = part.toUpper();
+                            pixelFormat = part.toUpper();
                             formatSet = true;
                         }
                     }
@@ -262,7 +277,12 @@ int main(int argc, char* argv[]) {
                 }
 
                 qDebug() << "Final parameters for" << filename << "- Resolution:" << width << "x" << height
-                         << "FPS:" << framerate << "Format:" << yuvFormat;
+                         << "FPS:" << framerate << "Format:" << pixelFormat;
+            } else {
+                // Compressed format - use detected format and set reasonable defaults
+                width = 1920; // These will be overridden by decoder
+                height = 1080;
+                qDebug() << "Compressed format detected:" << pixelFormat << "for file:" << filename;
             }
 
             QMetaObject::invokeMethod(root,
@@ -272,7 +292,7 @@ int main(int argc, char* argv[]) {
                                       Q_ARG(QVariant, width),
                                       Q_ARG(QVariant, height),
                                       Q_ARG(QVariant, framerate),
-                                      Q_ARG(QVariant, yuvFormat),
+                                      Q_ARG(QVariant, pixelFormat),
                                       Q_ARG(QVariant, forceSoftware));
         }
     }

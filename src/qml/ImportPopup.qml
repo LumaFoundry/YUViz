@@ -3,6 +3,7 @@ import QtQuick.Controls.Basic 6.0
 import QtQuick.Controls 6.2
 import QtQuick.Layouts 6.0
 import QtQuick.Dialogs 6.2
+import VideoFormatUtils 1.0
 
 Popup {
     id: importPopup
@@ -16,13 +17,62 @@ Popup {
 
     property string mode: "new"  // "new" or "add"
     property string selectedFile: ""
-    property bool isYUV: selectedFile.toLowerCase().endsWith(".yuv")
+    property bool isYUV: !VideoFormatUtils.isCompressedFormat(VideoFormatUtils.detectFormatFromExtension(selectedFile))
     property var mainWindow
     signal videoImported(string filePath, int width, int height, double fps, string pixelFormat)
     signal accepted
 
+    // Component to be used as a template for creating the dialog
+    Component {
+        id: fileDialogComponent
+        FileDialog {
+            id: dialog
+            title: "Choose a video file"
+            options: FileDialog.DontUseNativeDialog
+        }
+    }
+
     function openFileDialog() {
-        fileDialog.open();
+        const compressedExtensions = "*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265";
+        const rawExts = VideoFormatUtils.getRawVideoExtensions();
+        const rawWildcards = rawExts.map(ext => "*" + ext).join(" ");
+        const dynamicFilters = [
+            `All Video Files (${rawWildcards} ${compressedExtensions})`,
+            `Raw YUV Files (${rawWildcards})`,
+            `Compressed Video Files (${compressedExtensions})`,
+            "All Files (*)"
+        ];
+
+        var dialog = fileDialogComponent.createObject(importPopup, {
+            "parentWindow": importPopup.mainWindow,
+            "nameFilters": dynamicFilters
+        });
+
+        dialog.accepted.connect(function() {
+            importPopup.selectedFile = dialog.selectedFile.toString().replace("file://", "");
+            const file = importPopup.selectedFile.split('/').pop();
+
+            // Strict match: resolution followed by underscore/dash and FPS
+            const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
+            if (match) {
+                resolutionInput.editText = match[1] + "x" + match[2];
+                fpsInput.text = match[3];
+            } else {
+                // Fallback: just try to extract resolution anywhere
+                const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
+                if (resMatch) {
+                    resolutionInput.editText = resMatch[0];
+                } else {
+                    resolutionInput.editText = "";
+                }
+                fpsInput.text = "";
+            }
+
+            // Auto-select format based on filename
+            autoSelectFormat(file);
+        });
+
+        dialog.open();
     }
 
     background: Rectangle {
@@ -58,41 +108,9 @@ Popup {
                 Layout.fillWidth: true
             }
 
-            FileDialog {
-                id: fileDialog
-                title: "Choose a video file"
-                parentWindow: mainWindow
-                options: FileDialog.DontUseNativeDialog
-                nameFilters: ["All Video Files (*.yuv *.y4m *.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "Raw YUV Files (*.yuv *.y4m)", "Compressed Video Files (*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265)", "All Files (*)"]
-
-                onAccepted: {
-                    importPopup.selectedFile = selectedFile.toString().replace("file://", "");
-                    const file = importPopup.selectedFile.split('/').pop();
-
-                    // Strict match: resolution followed by underscore/dash and FPS
-                    const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
-                    if (match) {
-                        resolutionInput.editText = match[1] + "x" + match[2];
-                        fpsInput.text = match[3];
-                    } else {
-                        // Fallback: just try to extract resolution anywhere
-                        const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
-                        if (resMatch) {
-                            resolutionInput.editText = resMatch[0];
-                        } else {
-                            resolutionInput.editText = "";
-                        }
-                        fpsInput.text = "";
-                    }
-                    
-                    // Auto-select format based on filename
-                    autoSelectFormat(file);
-                }
-            }
-
             Button {
                 text: "Browse"
-                onClicked: fileDialog.open()
+                onClicked: openFileDialog()
             }
         }
 
@@ -140,19 +158,20 @@ Popup {
         ComboBox {
             id: formatInput
             visible: isYUV
-            model: [
-                "420P - YUV420P (Planar)",
-                "422P - YUV422P (Planar)", 
-                "444P - YUV444P (Planar)",
-                "YUYV - YUV422 (Packed)",
-                "UYVY - YUV422 (Packed)",
-                "NV12 - YUV420 (Semi-planar)",
-                "NV21 - YUV420 (Semi-planar)"
-            ]
+            model: {
+                // Filter display names to only show YUV formats
+                var allFormats = VideoFormatUtils.getDisplayNames();
+                var allIds = VideoFormatUtils.getFormatIdentifiers();
+                var yuvFormats = [];
+                for (var i = 0; i < allIds.length; i++) {
+                    if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                        yuvFormats.push(allFormats[i]);
+                    }
+                }
+                return yuvFormats;
+            }
             Layout.fillWidth: true
             currentIndex: 0
-            
-            property var formatValues: ["420P", "422P", "444P", "YUYV", "UYVY", "NV12", "NV21"]
             
             displayText: model[currentIndex]
         }
@@ -171,11 +190,11 @@ Popup {
                 enabled: importPopup.selectedFile !== "" && (!isYUV || (filePathInput.text !== "" && resolutionInput.editText.match(/^\d+x\d+$/) && !isNaN(parseFloat(fpsInput.text))))
                 onClicked: {
                     const res = resolutionInput.editText.split("x");
-                    const filePath = fileDialog.selectedFile;
+                    const filePath = importPopup.selectedFile;
                     let width = isYUV ? parseInt(res[0]) : 1920;
                     let height = isYUV ? parseInt(res[1]) : 1080;
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
-                    let format = isYUV ? formatInput.formatValues[formatInput.currentIndex] : "AV_PIX_FMT_NONE";
+                    let format = isYUV ? getYuvIdentifierByIndex(formatInput.currentIndex) : "COMPRESSED";
                     console.log("Importing video:", filePath, "Width:", width, "Height:", height, "FPS:", fps, "Format:", format);
                     importPopup.videoImported(filePath, width, height, fps, format);
                     importPopup.close();
@@ -185,26 +204,42 @@ Popup {
     }
     }
     
+    function getYuvIdentifierByIndex(index) {
+        // Get YUV format identifier by index
+        var allIds = VideoFormatUtils.getFormatIdentifiers();
+        var yuvIds = [];
+        for (var i = 0; i < allIds.length; i++) {
+            if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                yuvIds.push(allIds[i]);
+            }
+        }
+        return index >= 0 && index < yuvIds.length ? yuvIds[index] : "";
+    }
+    
+    function findYuvFormatIndex(identifier) {
+        // Find index of YUV format identifier
+        var allIds = VideoFormatUtils.getFormatIdentifiers();
+        var yuvIndex = 0;
+        for (var i = 0; i < allIds.length; i++) {
+            if (!VideoFormatUtils.isCompressedFormat(allIds[i])) {
+                if (allIds[i] === identifier) {
+                    return yuvIndex;
+                }
+                yuvIndex++;
+            }
+        }
+        return -1;
+    }
+
     function autoSelectFormat(filename) {
         if (!isYUV) return;
         
-        const lowerFilename = filename.toLowerCase();
+        // Use VideoFormatUtils to detect format from filename
+        const detectedFormat = VideoFormatUtils.detectFormatFromExtension(filename);
+        const formatIndex = findYuvFormatIndex(detectedFormat);
         
-        // Check for specific format indicators in filename
-        if (lowerFilename.includes("420p") || lowerFilename.includes("yuv420p")  || lowerFilename.includes("420")) {
-            formatInput.currentIndex = 0; // 420P
-        } else if (lowerFilename.includes("422p") || lowerFilename.includes("yuv422p") || lowerFilename.includes("422")) {
-            formatInput.currentIndex = 1; // 422P
-        } else if (lowerFilename.includes("444p") || lowerFilename.includes("yuv444p") || lowerFilename.includes("444")) {
-            formatInput.currentIndex = 2; // 444P
-        } else if (lowerFilename.includes("yuyv")) {
-            formatInput.currentIndex = 3; // YUYV
-        } else if (lowerFilename.includes("uyvy")) {
-            formatInput.currentIndex = 4; // UYVY
-        } else if (lowerFilename.includes("nv12")) {
-            formatInput.currentIndex = 5; // NV12
-        } else if (lowerFilename.includes("nv21")) {
-            formatInput.currentIndex = 6; // NV21
+        if (formatIndex >= 0) {
+            formatInput.currentIndex = formatIndex;
         } else {
             // Default to 420P for most common YUV files
             formatInput.currentIndex = 0;
