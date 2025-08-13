@@ -10,6 +10,7 @@ ApplicationWindow {
     property int videoCount: 0
     property var videoWindows: []
     property int globalOsdState: 0
+    property string videoOriginalName: ""
 
     QtObject {
         id: qmlBridge
@@ -129,13 +130,6 @@ ApplicationWindow {
         }
     }
 
-    Connections {
-        target: videoWindowContainer
-        function onColumnsChanged() {
-            _resizeEmbeddedDiff();
-        }
-    }
-
     Component {
         id: diffPopupComponent
         DiffWindow {}
@@ -202,7 +196,6 @@ ApplicationWindow {
                 videoController.pause();
             }
         }
-        _resizeEmbeddedDiff();
         resizeDebounce.restart();
     }
 
@@ -214,7 +207,6 @@ ApplicationWindow {
                 videoController.pause();
             }
         }
-        _resizeEmbeddedDiff();
         resizeDebounce.restart();
     }
 
@@ -894,6 +886,7 @@ ApplicationWindow {
         }
         if (diffEmbeddedInstance && diffEmbeddedInstance.diffVideoWindow) {
             diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+            videoWindowContainer.children[1].osdState = 0;
         }
     }
 
@@ -915,13 +908,24 @@ ApplicationWindow {
         if (!diffEmbeddedInstance)
             return;
 
+        // Hide OSD & title for second video
+        videoWindowContainer.children[1].osdState = 0;
+        videoOriginalName = videoWindowContainer.children[1].videoName;
+        videoWindowContainer.children[1].videoDisplayName = "Difference";
+
         // Overlay fill
         diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
         // Bind width/height to parent (right video window)
         diffEmbeddedInstance.width = right.width; // implicit binding
         diffEmbeddedInstance.height = right.height;
-        right.widthChanged.connect(function () { if (diffEmbeddedInstance) diffEmbeddedInstance.width = right.width; });
-        right.heightChanged.connect(function () { if (diffEmbeddedInstance) diffEmbeddedInstance.height = right.height; });
+        right.widthChanged.connect(function () {
+            if (diffEmbeddedInstance)
+                diffEmbeddedInstance.width = right.width;
+        });
+        right.heightChanged.connect(function () {
+            if (diffEmbeddedInstance)
+                diffEmbeddedInstance.height = right.height;
+        });
         diffEmbeddedInstance.visible = true;
 
         if (diffEmbeddedInstance.diffVideoWindow)
@@ -944,14 +948,15 @@ ApplicationWindow {
         }
         leftVideoIdForDiff = -1;
         rightVideoIdForDiff = -1;
+
+        // Hide OSD & title for second video
+        videoWindowContainer.children[1].osdState = globalOsdState;
+        videoWindowContainer.children[1].videoDisplayName = videoOriginalName;
+
         keyHandler.forceActiveFocus();
     }
 
     function isEmbeddedDiffActive() {
         return diffEmbeddedInstance !== null;
-    }
-
-    function _resizeEmbeddedDiff() {
-    // When overlaying, sizing handled by parent (right video); nothing needed here.
     }
 }
