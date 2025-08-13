@@ -21,6 +21,7 @@ find_package(Qt6 REQUIRED COMPONENTS
         Core
         Gui
         Quick
+        QuickControls2
         Concurrent
         Widgets
         ShaderTools
@@ -129,6 +130,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
         Qt6::Core
         Qt6::Gui
         Qt6::Quick
+        Qt6::QuickControls2
         Qt6::GuiPrivate
         Qt6::Widgets
         Qt6::Concurrent
