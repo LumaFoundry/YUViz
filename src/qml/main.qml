@@ -130,6 +130,47 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: shortcutsDialog
+        title: "Keyboard Shortcuts"
+        modal: true
+        standardButtons: Dialog.Close
+        width: 420
+        height: 520
+        contentItem: Flickable {
+            anchors.fill: parent
+            contentWidth: parent.width
+            contentHeight: shortcutsColumn.implicitHeight
+            clip: true
+            Column {
+                id: shortcutsColumn
+                width: parent.width - 24
+                spacing: 8
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.margins: 12
+                Repeater {
+                    model: [
+                        { k: "Space", d: "Play / Pause" },
+                        { k: "Left Arrow", d: "Step backward 1 frame" },
+                        { k: "Right Arrow", d: "Step forward 1 frame" },
+                        { k: "Ctrl + Drag", d: "Select rectangle (zoom/analysis)" },
+                        { k: "J", d: "Jump to frame" },
+                        { k: "O", d: "Cycle OSD overlay modes" },
+                        { k: "Esc", d: "Exit fullscreen" },
+                        { k: "Ctrl + Mouse Wheel", d: "Zoom in/out" },
+                        { k: "Diff Button", d: "Open/Close diff comparison" }
+                    ]
+                    delegate: Row {
+                        width: parent.width
+                        spacing: 12
+                        Text { text: modelData.k; font.bold: true; color: Theme.textColor; width: 140; wrapMode: Text.NoWrap }
+                        Text { text: modelData.d; color: Theme.textSecondary; wrapMode: Text.WordWrap; width: parent.width - 152 }
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
         id: errorDialog
         title: "Error"
         modal: true
@@ -363,6 +404,10 @@ ApplicationWindow {
             Action {
                 text: "Show all Commands"
                 onTriggered: commandsDialog.visible = true
+            }
+            Action {
+                text: "Keyboard Shortcuts"
+                onTriggered: shortcutsDialog.open()
             }
             Action {
                 text: "About"
@@ -635,7 +680,7 @@ ApplicationWindow {
                         Button {
                             text: "Reset View"
                             Layout.preferredHeight: Theme.buttonHeight
-                            font.pixelSize: Theme.fontSizeMedium
+                            font.pixelSize: Theme.fontSizeSmall
                             onClicked: {
                                 sharedViewProperties.reset();
                                 for (var i = 0; i < videoWindowContainer.children.length; ++i) {
@@ -751,7 +796,7 @@ ApplicationWindow {
                         Button {
                             text: "Jump To"
                             Layout.preferredHeight: Theme.buttonHeight
-                            font.pixelSize: Theme.fontSizeMedium
+                            font.pixelSize: Theme.fontSizeSmall
                             enabled: videoWindowContainer.children.length > 0 && videoController
                             onClicked: {
                                 jumpPopup.open();
@@ -965,14 +1010,7 @@ ApplicationWindow {
         }
     }
 
-    Text {
-        anchors.bottom: parent.bottom
-        anchors.left: parent.left
-        anchors.bottomMargin: 80
-        color: Theme.textColor
-        text: isCtrlPressed ? "Hold Ctrl key and drag mouse to draw rectangle selection area" : "Press Ctrl key to start selection area"
-        font.pixelSize: Theme.fontSizeNormal
-    }
+    // Removed inline Ctrl usage hint in favor of dedicated shortcuts dialog
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
