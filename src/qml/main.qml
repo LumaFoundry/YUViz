@@ -215,6 +215,8 @@ ApplicationWindow {
         onJumpToFrame: function (frameNumber) {
             videoController.jumpToFrame(frameNumber);
         }
+    // Restore key focus whenever the popup is dismissed (Cancel / accepted / any close)
+    onVisibleChanged: if (!visible) { keyHandler.forceActiveFocus(); }
     }
 
     Timer {
@@ -336,6 +338,7 @@ ApplicationWindow {
 
             if (event.key === Qt.Key_J) {
                 jumpPopup.open();
+                keyHandler.forceActiveFocus();
                 event.accepted = true;
             }
         }
