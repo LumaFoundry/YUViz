@@ -42,9 +42,14 @@ VideoWindow {
     Connections {
         target: mainWindow
         function onIsCtrlPressedChanged() {
-            if (mainWindow.isCtrlPressed && hasPersistentRect) {
-                // Clear existing rectangle when Ctrl is pressed
-                removePersistentRect();
+            if (mainWindow.isCtrlPressed) {
+                // Clear own rectangle
+                if (hasPersistentRect) {
+                    removePersistentRect();
+                }
+                // Also ensure all other rectangles cleared globally
+                if (mainWindow.clearAllRectangles)
+                    mainWindow.clearAllRectangles();
             }
         }
     }

@@ -126,8 +126,14 @@ Window {
                 if (mainWindow) {
                     diffWindow.isCtrlPressed = mainWindow.isCtrlPressed;
                     // Clear existing rectangle when Ctrl is pressed
-                    if (mainWindow.isCtrlPressed && diffWindow.hasPersistentRect) {
-                        removePersistentRect();
+                    if (mainWindow.isCtrlPressed) {
+                        // Ensure global single-rectangle policy: clear own rectangle
+                        if (diffWindow.hasPersistentRect) {
+                            removePersistentRect();
+                        }
+                        // Also request main window to clear all rectangles elsewhere
+                        if (mainWindow.clearAllRectangles)
+                            mainWindow.clearAllRectangles();
                     }
                 }
             }

@@ -106,6 +106,10 @@ ApplicationWindow {
             if (diffPopupInstance && diffPopupInstance.removePersistentRect) {
                 diffPopupInstance.removePersistentRect();
             }
+            // Clear rectangle in embedded diff pane if exists
+            if (diffEmbeddedInstance && diffEmbeddedInstance.removePersistentRect) {
+                diffEmbeddedInstance.removePersistentRect();
+            }
         } catch (e) {
             console.log("[mainWindow] clearAllRectangles error:", e);
         }
@@ -306,6 +310,13 @@ ApplicationWindow {
                 mainWindow.visibility = Window.Windowed;
                 event.accepted = true;
             }
+        }
+    }
+
+    // Whenever Ctrl state toggles on, ensure only one rectangle globally
+    onIsCtrlPressedChanged: {
+        if (isCtrlPressed) {
+            clearAllRectangles();
         }
     }
 
