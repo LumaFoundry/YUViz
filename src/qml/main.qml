@@ -527,8 +527,8 @@ ApplicationWindow {
                         Button {
                             id: stepBackwardButton
                             text: "←"
-                            Layout.preferredWidth: Theme.iconSize
-                            Layout.preferredHeight: Theme.iconSize
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
                             background: Rectangle { color: "#2f2f2f" }
@@ -552,8 +552,8 @@ ApplicationWindow {
                         Button {
                             id: playPauseButton
                             text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
-                            Layout.preferredWidth: Theme.iconSize
-                            Layout.preferredHeight: Theme.iconSize
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
                             background: Rectangle { color: "#3a3a3a" }
                             font.bold: true
                             contentItem: Text {
@@ -576,8 +576,8 @@ ApplicationWindow {
                         Button {
                             id: stepForwardButton
                             text: "→"
-                            Layout.preferredWidth: Theme.iconSize
-                            Layout.preferredHeight: Theme.iconSize
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
                             background: Rectangle { color: "#2f2f2f" }
@@ -762,8 +762,8 @@ ApplicationWindow {
                         Button {
                             id: directionToggleButton
                             text: videoController && videoController.isForward ? "⏵⏵" : "⏴⏴"
-                            Layout.preferredWidth: Theme.iconSize
-                            Layout.preferredHeight: Theme.iconSize
+                            Layout.preferredWidth: Theme.buttonHeight
+                            Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: playPauseButton.font.pixelSize
                             font.bold: true
                             background: Rectangle { color: "#3a3a3a" }
@@ -792,8 +792,8 @@ ApplicationWindow {
                     // Fullscreen toggle (styled like seek buttons)
                     Button {
                         id: fullscreenButton
-                        Layout.preferredWidth: Theme.iconSize
-                        Layout.preferredHeight: Theme.iconSize
+                        Layout.preferredWidth: Theme.buttonHeight
+                        Layout.preferredHeight: Theme.buttonHeight
                         // Single diagonal arrow glyph used for both enter/exit fullscreen
                         text: "⤢"
                         font.pixelSize: Theme.fontSizeLarge + 2
