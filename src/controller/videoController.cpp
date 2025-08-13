@@ -487,6 +487,8 @@ void VideoController::toggleDirection() {
 
 void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
+    pause();
+
     m_diffMode = diffMode;
 
     if (id1 < 0 || id1 >= m_frameControllers.size()) {

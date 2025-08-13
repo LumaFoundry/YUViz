@@ -10,6 +10,7 @@ ApplicationWindow {
     property int videoCount: 0
     property var videoWindows: []
     property int globalOsdState: 0
+    property string videoOriginalName: ""
 
     QtObject {
         id: qmlBridge
@@ -63,6 +64,24 @@ ApplicationWindow {
     property string importedFormat: ""
 
     property var diffPopupInstance: null
+
+    property var diffEmbeddedInstance: null
+    property var parkedSecondVideo: null
+    property int leftVideoIdForDiff: -1
+    property int rightVideoIdForDiff: -1
+    property bool closingDiffPopupForEmbed: false
+
+    Item {
+        id: hiddenBin
+        visible: false
+        width: 0
+        height: 0
+    }
+
+    Component {
+        id: diffEmbeddedComponent
+        DiffPane {}
+    }
 
     ImportPopup {
         id: importDialog
@@ -555,6 +574,7 @@ ApplicationWindow {
                     }
 
                     Button {
+                        id: diffButton
                         text: "Diff"
                         Layout.preferredWidth: Theme.buttonWidth
                         Layout.preferredHeight: Theme.buttonHeight
@@ -594,10 +614,14 @@ ApplicationWindow {
                         }
 
                         onClicked: {
+                            videoController.pause();
+
                             // Toggle diff window: if open, close it; if closed, open it
                             if (diffPopupInstance && diffPopupInstance.visible) {
                                 diffPopupInstance.visible = false;
                                 keyHandler.forceActiveFocus();
+
+                                videoController.pause();
                                 return;
                             }
 
@@ -618,9 +642,18 @@ ApplicationWindow {
                             // Cleanup when window closes
                             diffPopupInstance.onVisibleChanged.connect(function () {
                                 if (!diffPopupInstance.visible) {
+                                    // Capture the ids (store them on the instance when you create it)
+                                    const leftId = diffPopupInstance.leftVideoId;
+                                    const rightId = diffPopupInstance.rightVideoId;
+
+                                    if (!mainWindow.closingDiffPopupForEmbed) {
+                                        // Only disable diff mode if we're closing the popup for real
+                                        videoController.setDiffMode(false, leftId, rightId);
+                                    }
+
                                     diffPopupInstance.destroy();
-                                    videoController.setDiffMode(false, leftId, rightId);
                                     diffPopupInstance = null;
+                                    mainWindow.closingDiffPopupForEmbed = false;
                                 }
                             });
                             videoLoader.setupDiffWindow(leftId, rightId);
@@ -816,6 +849,11 @@ ApplicationWindow {
 
     function removeVideoWindowById(id) {
         console.log("[removeVideoWindowById] Called with id:", id);
+
+        if (diffEmbeddedInstance && (id === rightVideoIdForDiff || id === leftVideoIdForDiff)) {
+            disableEmbeddedDiffAndRestore();
+        }
+
         if (diffPopupInstance && (id === diffPopupInstance.leftVideoId || id === diffPopupInstance.rightVideoId)) {
             console.log("[removeVideoWindowById] Removing diff mode for video IDs:", diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
             videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
@@ -851,5 +889,84 @@ ApplicationWindow {
         if (diffPopupInstance && diffPopupInstance.diffVideoWindow) {
             diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
         }
+        if (diffEmbeddedInstance && diffEmbeddedInstance.diffVideoWindow) {
+            diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+            videoWindowContainer.children[1].osdState = 0;
+        }
+    }
+
+    function enableEmbeddedDiff() {
+        videoController.pause();
+        const videos = videoWindowContainer.children;
+        if (videos.length < 2)
+            return;
+
+        let left = videos[0];
+        let right = videos[1];
+        if (!left || !right)
+            return;
+        // Prevent duplicates
+        if (diffEmbeddedInstance)
+            return;
+
+        // Create embedded diff as overlay ON TOP of the right video instead of replacing it
+        diffEmbeddedInstance = diffEmbeddedComponent.createObject(right, {});
+        if (!diffEmbeddedInstance)
+            return;
+
+        // Hide OSD & title for second video
+        videoWindowContainer.children[1].osdState = 0;
+        videoOriginalName = videoWindowContainer.children[1].videoName;
+        videoWindowContainer.children[1].videoDisplayName = "Difference";
+
+        // Disable diff button
+        diffButton.enabled = false;
+
+        // Overlay fill
+        diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
+        // Bind width/height to parent (right video window)
+        diffEmbeddedInstance.width = right.width; // implicit binding
+        diffEmbeddedInstance.height = right.height;
+        right.widthChanged.connect(function () {
+            if (diffEmbeddedInstance)
+                diffEmbeddedInstance.width = right.width;
+        });
+        right.heightChanged.connect(function () {
+            if (diffEmbeddedInstance)
+                diffEmbeddedInstance.height = right.height;
+        });
+        diffEmbeddedInstance.visible = true;
+
+        if (diffEmbeddedInstance.diffVideoWindow)
+            diffEmbeddedInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+
+        leftVideoIdForDiff = left.videoId;
+        rightVideoIdForDiff = right.videoId;
+
+        // Wire controllers to the embedded diff instance
+        videoLoader.setupDiffWindow(leftVideoIdForDiff, rightVideoIdForDiff);
+        keyHandler.forceActiveFocus();
+    }
+
+    function disableEmbeddedDiffAndRestore() {
+        if (diffEmbeddedInstance) {
+            // stop diff mode for this pair
+            videoController.setDiffMode(false, leftVideoIdForDiff, rightVideoIdForDiff);
+            diffEmbeddedInstance.destroy();
+            diffEmbeddedInstance = null;
+        }
+        leftVideoIdForDiff = -1;
+        rightVideoIdForDiff = -1;
+
+        // Restore OSD & title for second video
+        videoWindowContainer.children[1].osdState = globalOsdState;
+        videoWindowContainer.children[1].videoDisplayName = videoOriginalName;
+        diffButton.enabled = true;
+
+        keyHandler.forceActiveFocus();
+    }
+
+    function isEmbeddedDiffActive() {
+        return diffEmbeddedInstance !== null;
     }
 }

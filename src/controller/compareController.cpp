@@ -89,7 +89,7 @@ void CompareController::onRequestRender(int index) {
 }
 
 void CompareController::onCompareRendered() {
-    qDebug() << "CompareController::onCompareRendered";
+    // qDebug() << "CompareController::onCompareRendered";
     if (m_ready1) {
         m_ready1 = false;
     }
@@ -104,7 +104,7 @@ void CompareController::onCompareRendered() {
 
     emit psnrChanged();
 
-    qDebug() << m_psnrInfo;
+    // qDebug() << m_psnrInfo;
 
     // Clear cache to make sure we don't compare stale frames
     if (m_frame1) {

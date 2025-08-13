@@ -6,6 +6,7 @@ import QtQuick.Layouts 1.15
 VideoWindow {
     id: videoWindow
     property int videoId: -1
+    property string videoDisplayName: videoWindow.videoName || ""
     property bool metadataReady: false
     property bool assigned: false
     property bool isSelecting: false
@@ -40,7 +41,7 @@ VideoWindow {
             font.family: "sans-serif"
             font.pixelSize: 14
             font.weight: Font.Bold
-            text: videoWindow.videoName || ""
+            text: videoWindow.videoDisplayName
         }
     }
 
