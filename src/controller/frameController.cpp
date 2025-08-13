@@ -45,14 +45,14 @@ FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, i
     // qDebug() << "Connected VideoDecoder::frameSeeked to FrameController::onFrameSeeked";
 
     // Request & Receive signals for uploading texture to buffer (same-thread communication)
-    connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::DirectConnection);
+    connect(this, &FrameController::requestUpload, m_window, &VideoWindow::uploadFrame, Qt::QueuedConnection);
     // qDebug() << "Connected requestUpload to VideoRenderer::uploadFrame";
 
     connect(m_window->m_renderer,
             &VideoRenderer::batchIsFull,
             this,
             &FrameController::onFrameUploaded,
-            Qt::QueuedConnection);
+            Qt::DirectConnection);
     // qDebug() << "Connected VideoRenderer::batchUploaded to FrameController::onFrameUploaded";
 
     // Request & Receive for uploading to GPU and rendering frames (same-thread communication)
