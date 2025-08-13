@@ -279,6 +279,25 @@ VideoWindow {
         hoverEnabled: true // Needed for cursor shape changes
 
         cursorShape: {
+            // Show resize cursors when hovering over handles
+            if (hasPersistentRect) {
+                var screenRect = convertVideoToScreenCoordinates(persistentRect);
+                var handle = getResizeHandleAtPoint(Qt.point(mouseX, mouseY), screenRect);
+                switch (handle) {
+                case "nw":
+                case "se":
+                    return Qt.SizeFDiagCursor;
+                case "ne":
+                case "sw":
+                    return Qt.SizeBDiagCursor;
+                case "n":
+                case "s":
+                    return Qt.SizeVerCursor;
+                case "w":
+                case "e":
+                    return Qt.SizeHorCursor;
+                }
+            }
             if (mainWindow.isCtrlPressed)
                 return Qt.CrossCursor;
             if (videoWindow.isZoomed) {
@@ -478,9 +497,9 @@ VideoWindow {
         anchors.fill: parent
         z: 3
 
-                    onPaint: {
-                var ctx = getContext("2d");
-                ctx.clearRect(0, 0, width, height);
+        onPaint: {
+            var ctx = getContext("2d");
+            ctx.clearRect(0, 0, width, height);
                 
                 // Draw persistent rectangle if it exists
                 if (videoWindow.hasPersistentRect) {
@@ -513,7 +532,7 @@ VideoWindow {
                     ctx.fillStyle = "rgba(255, 0, 0, 0.2)";
                     ctx.fillRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
                     ctx.strokeStyle = "red";
-                    ctx.lineWidth = 2;
+                ctx.lineWidth = 2;
                     ctx.setLineDash([5, 5]);
                     ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
                     ctx.setLineDash([]);
@@ -522,7 +541,7 @@ VideoWindow {
                     var coordText = rect.width + ":" + rect.height + ":" + rect.x + ":" + rect.y;
                     drawCoordinateText(ctx, screenRect, coordText);
                 }
-            }
+        }
     }
 
     Canvas {
@@ -816,8 +835,8 @@ VideoWindow {
     function drawResizeHandles(ctx, screenRect) {
         try {
             var handleSize = 6;
-            var handleColor = "white";
-            var handleBorderColor = "black";
+            var handleColor = "red";
+            var handleBorderColor = "red";
             
             // Draw corner handles
             // Top-left

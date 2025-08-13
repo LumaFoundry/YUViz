@@ -356,6 +356,25 @@ Window {
             hoverEnabled: true // Needed for cursor shape changes
 
             cursorShape: {
+                // Show resize cursors when hovering over handles
+                if (diffWindow && diffWindow.hasPersistentRect) {
+                    var screenRect = diffWindow.convertVideoToScreenCoordinates(diffWindow.persistentRect);
+                    var handle = diffWindow.getResizeHandleAtPoint(Qt.point(mouseX, mouseY), screenRect);
+                    switch (handle) {
+                    case "nw":
+                    case "se":
+                        return Qt.SizeFDiagCursor;
+                    case "ne":
+                    case "sw":
+                        return Qt.SizeBDiagCursor;
+                    case "n":
+                    case "s":
+                        return Qt.SizeVerCursor;
+                    case "w":
+                    case "e":
+                        return Qt.SizeHorCursor;
+                    }
+                }
                 if (diffWindow && diffWindow.isCtrlPressed)
                     return Qt.CrossCursor;
                 if (diffWindow && diffWindow.isZoomed) {
@@ -957,8 +976,8 @@ Window {
     function drawResizeHandles(ctx, screenRect) {
         try {
             var handleSize = 6;
-            var handleColor = "white";
-            var handleBorderColor = "black";
+            var handleColor = "red";
+            var handleBorderColor = "red";
             
             // Draw corner handles
             // Top-left
