@@ -118,8 +118,6 @@ ApplicationWindow {
 
     CommandsPopup {
         id: commandsDialog
-        anchors.centerIn: parent
-        onAccepted: keyHandler.forceActiveFocus()
     }
 
     AboutPage {
@@ -355,7 +353,7 @@ ApplicationWindow {
             title: "Help"
             Action {
                 text: "Show all Commands"
-                onTriggered: commandsDialog.open()
+                onTriggered: commandsDialog.visible = true
             }
             Action {
                 text: "About"
