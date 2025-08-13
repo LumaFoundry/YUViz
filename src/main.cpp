@@ -4,7 +4,6 @@
 #include <QFile>
 #include <QGuiApplication>
 #include <QIcon>
-#include <QOperatingSystemVersion>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QRegularExpression>
@@ -12,7 +11,6 @@
 #include <QSurface>
 #include <QTimer>
 #include <QWindow>
-#include <QtQuickControls2/QQuickStyle>
 #include <iostream>
 #include <memory>
 #include "controller/compareController.h"
@@ -40,18 +38,6 @@
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
 
-    // Select native platform style when available (must be done before loading QML)
-    {
-        QString desiredStyle;
-#ifdef Q_OS_MACOS
-        desiredStyle = "macOS"; // Qt 6 uses lowercase 'macOS'
-#elif defined(Q_OS_WIN)
-        desiredStyle = "Windows";
-#endif
-        if (!desiredStyle.isEmpty()) {
-            QQuickStyle::setStyle(desiredStyle);
-        }
-    }
     qDebug() << "Application starting with arguments:" << app.arguments();
 
     // Set the application/window icon from resources (supports svg/ico automatically)
