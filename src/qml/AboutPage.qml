@@ -143,11 +143,15 @@ Window {
                 radius: Theme.cornerRadius
 
                 Button {
+                    id: okButton
                     text: "OK"
                     anchors.centerIn: parent
-                    onClicked: aboutDialog.close()
+                    onClicked: {
+                        aboutDialog.close();
+                        keyHandler.forceActiveFocus();
+                    }
                     background: Rectangle {
-                        color: Theme.buttonColor
+                        color: okButton.hovered ? Theme.primaryColor : Theme.buttonColor
                         radius: Theme.cornerRadius
                         border.color: Theme.borderColor
                     }

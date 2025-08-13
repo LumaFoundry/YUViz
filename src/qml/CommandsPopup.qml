@@ -224,11 +224,15 @@ Window {
             Layout.fillWidth: true
 
             Button {
+                id: okButton
                 text: "OK"
                 anchors.centerIn: parent
-                onClicked: commandsDialog.close()
+                onClicked: {
+                    commandsDialog.close();
+                    keyHandler.forceActiveFocus();
+                }
                 background: Rectangle {
-                    color: Theme.buttonColor
+                    color: okButton.hovered ? Theme.primaryColor : Theme.buttonColor
                     radius: Theme.cornerRadius
                     border.color: Theme.borderColor
                 }
