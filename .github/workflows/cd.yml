@@ -54,7 +54,7 @@ jobs:
         mkdir -p release-package
         
         # Copy main executable
-        cp videoplayer.exe release-package/
+        cp YUViz.exe release-package/
         
         # Debug: List available Qt tools
         echo "Available Qt tools:"
@@ -68,7 +68,7 @@ jobs:
         if [ -f "/mingw64/bin/windeployqt6.exe" ]; then
           echo "Found windeployqt6.exe, using it for deployment"
           # Run windeployqt with verbose output and ignore translation warnings
-          /mingw64/bin/windeployqt6.exe --qmldir .. --no-translations --no-compiler-runtime --dir release-package --verbose release-package/videoplayer.exe || {
+          /mingw64/bin/windeployqt6.exe --qmldir .. --no-translations --no-compiler-runtime --dir release-package --verbose release-package/YUViz.exe || {
             echo "windeployqt failed, using manual DLL copying"
             cp /mingw64/bin/Qt6*.dll release-package/ || true
           }
@@ -209,26 +209,26 @@ jobs:
         # Test executable dependencies
         echo "Testing executable dependencies..."
         cd release-package
-        ldd videoplayer.exe 2>/dev/null || echo "ldd not available, checking with objdump"
-        objdump -p videoplayer.exe | grep "DLL Name" | head -10 || echo "objdump not available"
+        ldd YUViz.exe 2>/dev/null || echo "ldd not available, checking with objdump"
+        objdump -p YUViz.exe | grep "DLL Name" | head -10 || echo "objdump not available"
         cd ..
         
         # Create README
         cat > release-package/README.txt << 'EOF'
-        Qt6 VideoPlayer - Windows Release
+        Qt6 YUViz - Windows Release
         
         Usage Instructions:
-        1. Double-click videoplayer.exe to start the program
+        1. Double-click YUViz.exe to start the program
         2. Ensure all DLL files are in the same directory as the executable
         3. Supported video formats: MP4, AVI, MOV, MKV, etc.
         
         Troubleshooting:
         - If you get "missing DLL" errors, ensure all files are extracted to the same folder
         - Install Visual C++ Redistributable if needed: https://aka.ms/vs/17/release/vc_redist.x64.exe
-        - For libxml2-16.dll errors, ensure the file is in the same directory as videoplayer.exe
+        - For libxml2-16.dll errors, ensure the file is in the same directory as YUViz.exe
         - For "Qt platform plugin" errors, ensure the platforms/ folder contains qwindows.dll
         - For "Qt style plugin" errors, ensure the styles/ folder contains qwindowsvistastyle.dll
-        - If the app crashes immediately, try running videoplayer-debug.bat for more information
+        - If the app crashes immediately, try running YUViz-debug.bat for more information
         
         System Requirements:
         - Windows 10 or later
@@ -237,13 +237,13 @@ jobs:
         EOF
         
         # Create debug batch file
-        cat > release-package/videoplayer-debug.bat << 'EOF'
+        cat > release-package/YUViz-debug.bat << 'EOF'
         @echo off
-        echo Starting videoplayer with debug information...
+        echo Starting YUViz with debug information...
         echo Current directory: %CD%
         echo.
         echo Checking for required files:
-        if exist "videoplayer.exe" echo [OK] videoplayer.exe found
+        if exist "YUViz.exe" echo [OK] YUViz.exe found
         if exist "Qt6Core.dll" echo [OK] Qt6Core.dll found
         if exist "Qt6Gui.dll" echo [OK] Qt6Gui.dll found
         if exist "Qt6Widgets.dll" echo [OK] Qt6Widgets.dll found
@@ -267,7 +267,7 @@ jobs:
         echo.
         echo Starting application with debug output...
         set QT_DEBUG_PLUGINS=1
-        videoplayer.exe
+        YUViz.exe
         echo.
         echo Application exited with code: %ERRORLEVEL%
         pause
@@ -295,27 +295,27 @@ jobs:
         echo Testing with Qt debug output:
         set QT_DEBUG_PLUGINS=1
         set QT_QPA_PLATFORM_PLUGIN_PATH=platforms
-        videoplayer.exe --help 2>&1
+        YUViz.exe --help 2>&1
         echo.
         echo Test completed
         pause
         EOF
         
         # Create zip package using PowerShell (built into Windows)
-        powershell -Command "Compress-Archive -Path release-package\* -DestinationPath ..\videoplayer-windows.zip -Force"
+        powershell -Command "Compress-Archive -Path release-package\* -DestinationPath ..\YUViz-windows.zip -Force"
         
     - name: Debug file existence
       shell: msys2 {0}
       run: |
         echo "=== Checking file existence ==="
-        ls -la videoplayer-windows.zip || echo "File not found in current dir"
-        find . -name "videoplayer-windows.zip" -type f || echo "File not found anywhere"
+        ls -la YUViz-windows.zip || echo "File not found in current dir"
+        find . -name "YUViz-windows.zip" -type f || echo "File not found anywhere"
         
     - name: Upload Windows artifact
       uses: actions/upload-artifact@v4
       with:
-        name: videoplayer-windows
-        path: videoplayer-windows.zip
+        name: YUViz-windows
+        path: YUViz-windows.zip
 
   build-macos:
     runs-on: macos-latest
@@ -345,25 +345,25 @@ jobs:
         cd build
         
         # Ensure app bundle exists
-        if [ ! -d "videoplayer.app" ]; then
-          echo "Error: videoplayer.app not found"
+        if [ ! -d "YUViz.app" ]; then
+          echo "Error: YUViz.app not found"
           ls -la
           exit 1
         fi
         
         # Use macdeployqt to handle dependencies
-        $(brew --prefix qt@6)/bin/macdeployqt videoplayer.app
+        $(brew --prefix qt@6)/bin/macdeployqt YUViz.app
         
         # Create DMG or ZIP package
         mkdir -p release-package
-        cp -R videoplayer.app release-package/
+        cp -R YUViz.app release-package/
         
         # Create README
         cat > release-package/README.txt << 'EOF'
-        Qt6 VideoPlayer - macOS Release
+        Qt6 YUViz - macOS Release
         
         Installation Instructions:
-        1. Drag videoplayer.app to Applications folder
+        1. Drag YUViz.app to Applications folder
         2. First run may require permission in "Security & Privacy" settings
         3. Supported video formats: MP4, AVI, MOV, MKV, etc.
         
@@ -371,19 +371,19 @@ jobs:
         EOF
         
         # Create zip package
-        zip -r ../videoplayer-macos.zip release-package/
+        zip -r ../YUViz-macos.zip release-package/
         
     - name: Debug file existence
       run: |
         echo "=== Checking file existence ==="
-        ls -la videoplayer-macos.zip || echo "File not found in current dir"
-        find . -name "videoplayer-macos.zip" -type f || echo "File not found anywhere"
+        ls -la YUViz-macos.zip || echo "File not found in current dir"
+        find . -name "YUViz-macos.zip" -type f || echo "File not found anywhere"
         
     - name: Upload macOS artifact
       uses: actions/upload-artifact@v4
       with:
-        name: videoplayer-macos
-        path: videoplayer-macos.zip
+        name: YUViz-macos
+        path: YUViz-macos.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -425,10 +425,10 @@ jobs:
         mkdir -p release-package
         
         # Copy main executable
-        cp videoplayer release-package/
+        cp YUViz release-package/
         
         # Create launch script
-        cat > release-package/videoplayer.sh << 'EOF'
+        cat > release-package/YUViz.sh << 'EOF'
         #!/bin/bash
         # Get the directory where this script is located
         DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -443,20 +443,20 @@ jobs:
         export QML2_IMPORT_PATH="$DIR/lib/qt6/qml"
         
         # Launch the application
-        "$DIR/videoplayer" "$@"
+        "$DIR/YUViz" "$@"
         EOF
-        chmod +x release-package/videoplayer.sh
+        chmod +x release-package/YUViz.sh
         
         # Create debug script
         cat > release-package/debug-linux.sh << 'EOF'
         #!/bin/bash
-        echo "Qt6 VideoPlayer - Linux Debug Information"
+        echo "Qt6 YUViz - Linux Debug Information"
         echo "=========================================="
         echo
         echo "Current directory: $(pwd)"
         echo
         echo "Checking for required files:"
-        if [ -f "videoplayer" ]; then echo "[OK] videoplayer executable found"; else echo "[MISSING] videoplayer executable"; fi
+        if [ -f "YUViz" ]; then echo "[OK] YUViz executable found"; else echo "[MISSING] YUViz executable"; fi
         if [ -d "lib" ]; then echo "[OK] lib directory found"; else echo "[MISSING] lib directory"; fi
         if [ -d "lib/qt6" ]; then echo "[OK] lib/qt6 directory found"; else echo "[MISSING] lib/qt6 directory"; fi
         if [ -d "lib/qt6/plugins" ]; then echo "[OK] lib/qt6/plugins directory found"; else echo "[MISSING] lib/qt6/plugins directory"; fi
@@ -483,17 +483,17 @@ jobs:
         echo
         echo "Testing application..."
         echo "Running with strace to see system calls..."
-        strace -o /tmp/videoplayer.strace ./videoplayer --help 2>&1
-        echo "strace output saved to /tmp/videoplayer.strace"
+        strace -o /tmp/YUViz.strace ./YUViz --help 2>&1
+        echo "strace output saved to /tmp/YUViz.strace"
         echo
         echo "Checking for core dumps..."
         ls -la /tmp/core* 2>/dev/null || echo "No core dumps found"
         echo
         echo "Testing with gdb for more detailed crash info..."
-        gdb -batch -ex "run --help" -ex "bt" ./videoplayer 2>&1 || echo "gdb not available"
+        gdb -batch -ex "run --help" -ex "bt" ./YUViz 2>&1 || echo "gdb not available"
         
         echo "Testing with valgrind for memory issues..."
-        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./videoplayer --help 2>&1 | head -50 || echo "valgrind not available"
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all ./YUViz --help 2>&1 | head -50 || echo "valgrind not available"
         echo
         echo "Debug completed"
         EOF
@@ -502,13 +502,13 @@ jobs:
         # Create simple test script
         cat > release-package/test-simple.sh << 'EOF'
         #!/bin/bash
-        echo "Simple test for videoplayer..."
+        echo "Simple test for YUViz..."
         export LD_LIBRARY_PATH="$(pwd)/lib:$LD_LIBRARY_PATH"
         export QT_PLUGIN_PATH="$(pwd)/lib/qt6/plugins"
         export QML2_IMPORT_PATH="$(pwd)/lib/qt6/qml"
         
         echo "Testing basic startup..."
-        timeout 5s ./videoplayer --version 2>&1 || echo "Application crashed or timed out"
+        timeout 5s ./YUViz --version 2>&1 || echo "Application crashed or timed out"
         echo "Test completed"
         EOF
         chmod +x release-package/test-simple.sh
@@ -517,7 +517,7 @@ jobs:
         cat > release-package/check-libs.sh << 'EOF'
         #!/bin/bash
         echo "Checking for missing libraries..."
-        ldd ./videoplayer | grep "not found" || echo "All libraries found"
+        ldd ./YUViz | grep "not found" || echo "All libraries found"
         echo
         echo "Checking Qt library versions..."
         for lib in lib/libQt6*.so*; do
@@ -537,10 +537,10 @@ jobs:
         
         # Create a temporary AppDir and extract libraries
         mkdir -p AppDir/usr/bin
-        cp videoplayer AppDir/usr/bin/
+        cp YUViz AppDir/usr/bin/
         
         # Run linuxdeploy to collect dependencies
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --executable AppDir/usr/bin/videoplayer || true
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --executable AppDir/usr/bin/YUViz || true
         
         # Copy collected libraries to our package
         if [ -d "AppDir/usr/lib" ]; then
@@ -629,16 +629,16 @@ jobs:
         
         # Create README
         cat > release-package/README.txt << 'EOF'
-        Qt6 VideoPlayer - Linux Release
+        Qt6 YUViz - Linux Release
         
         Installation Instructions:
         1. Extract the zip file to any directory
-        2. Run: ./videoplayer.sh
-        3. Or make videoplayer executable and run directly: ./videoplayer
+        2. Run: ./YUViz.sh
+        3. Or make YUViz executable and run directly: ./YUViz
         4. Supported video formats: MP4, AVI, MOV, MKV, etc.
         
         Troubleshooting:
-        - If you get "Qt platform plugin" errors, ensure you're running ./videoplayer.sh (not ./videoplayer directly)
+        - If you get "Qt platform plugin" errors, ensure you're running ./YUViz.sh (not ./YUViz directly)
         - For missing library errors, install: sudo apt-get install libavcodec58 libavformat58 libavutil56 libswscale5
         - For X11/display issues, ensure X11 is running or use Wayland
         - For Wayland issues, try: export QT_QPA_PLATFORM=xcb
@@ -651,23 +651,23 @@ jobs:
         - X11 or Wayland display server
         - X11 libraries (libxcb-cursor0, libxcb1, etc.)
         
-        Note: The videoplayer.sh script sets up the correct environment variables for Qt plugins.
+        Note: The YUViz.sh script sets up the correct environment variables for Qt plugins.
         EOF
         
         # Create zip package
-        zip -r ../videoplayer-linux.zip release-package/
+        zip -r ../YUViz-linux.zip release-package/
         
     - name: Debug file existence
       run: |
         echo "=== Checking file existence ==="
-        ls -la videoplayer-linux.zip || echo "File not found in current dir"
-        find . -name "videoplayer-linux.zip" -type f || echo "File not found anywhere"
+        ls -la YUViz-linux.zip || echo "File not found in current dir"
+        find . -name "YUViz-linux.zip" -type f || echo "File not found anywhere"
         
     - name: Upload Linux artifact
       uses: actions/upload-artifact@v4
       with:
-        name: videoplayer-linux
-        path: videoplayer-linux.zip
+        name: YUViz-linux
+        path: YUViz-linux.zip
 
   create-release:
     needs: [build-windows, build-macos, build-linux]
@@ -707,23 +707,23 @@ jobs:
         find artifacts -type f | head -20
         echo "=== Directory listing ==="
         ls -la artifacts/
-        if [ -d "artifacts/videoplayer-windows" ]; then
+        if [ -d "artifacts/YUViz-windows" ]; then
           echo "=== Windows artifacts ==="
-          ls -la artifacts/videoplayer-windows/
+          ls -la artifacts/YUViz-windows/
         fi
-        if [ -d "artifacts/videoplayer-macos" ]; then
+        if [ -d "artifacts/YUViz-macos" ]; then
           echo "=== macOS artifacts ==="
-          ls -la artifacts/videoplayer-macos/
+          ls -la artifacts/YUViz-macos/
         fi
-        if [ -d "artifacts/videoplayer-linux" ]; then
+        if [ -d "artifacts/YUViz-linux" ]; then
           echo "=== Linux artifacts ==="
-          ls -la artifacts/videoplayer-linux/
+          ls -la artifacts/YUViz-linux/
         fi
         
     - name: Check files before release
       run: |
         echo "=== Checking if release files exist ==="
-        for file in artifacts/videoplayer-windows/videoplayer-windows.zip artifacts/videoplayer-macos/videoplayer-macos.zip artifacts/videoplayer-linux/videoplayer-linux.zip; do
+        for file in artifacts/YUViz-windows/YUViz-windows.zip artifacts/YUViz-macos/YUViz-macos.zip artifacts/YUViz-linux/YUViz-linux.zip; do
           if [ -f "$file" ]; then
             echo "✅ $file exists ($(ls -lh "$file" | awk '{print $5}'))"
           else
@@ -737,20 +737,20 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.commit.outputs.release_tag }}
-        name: Qt6 VideoPlayer ${{ steps.commit.outputs.release_tag }}
+        name: Qt6 YUViz ${{ steps.commit.outputs.release_tag }}
         body: |
           Automated build from commit ${{ github.sha }}
           
           **Download links:**
-          - Windows: videoplayer-windows.zip
-          - macOS: videoplayer-macos.zip
-          - Linux: videoplayer-linux.zip
+          - Windows: YUViz-windows.zip
+          - macOS: YUViz-macos.zip
+          - Linux: YUViz-linux.zip
           
           **Changes:**
           ${{ github.event.head_commit.message }}
         draft: false
         prerelease: false
         files: |
-          artifacts/videoplayer-windows/videoplayer-windows.zip
-          artifacts/videoplayer-macos/videoplayer-macos.zip
-          artifacts/videoplayer-linux/videoplayer-linux.zip
+          artifacts/YUViz-windows/YUViz-windows.zip
+          artifacts/YUViz-macos/YUViz-macos.zip
+          artifacts/YUViz-linux/YUViz-linux.zip
