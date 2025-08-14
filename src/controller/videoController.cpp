@@ -553,6 +553,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
         m_compareController->setVideoIds(-1, -1);
         m_compareController->setMetadata(nullptr, nullptr, nullptr, nullptr);
+        m_compareController->setDiffWindow(nullptr);
     }
 }
 

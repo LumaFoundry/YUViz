@@ -191,6 +191,17 @@ ApplicationWindow {
     }
 
     Timer {
+        id: destroyDiffTimer
+        interval: 100 // milliseconds
+        running: false
+        repeat: false
+        onTriggered: {
+            diffEmbeddedInstance.destroy();
+            diffEmbeddedInstance = null;
+        }
+    }
+
+    Timer {
         id: destroyTimer
         interval: 100
         repeat: true
@@ -1084,11 +1095,12 @@ ApplicationWindow {
     }
 
     function disableEmbeddedDiffAndRestore() {
+        videoController.pause();
+
         if (diffEmbeddedInstance) {
             // stop diff mode for this pair
             videoController.setDiffMode(false, leftVideoIdForDiff, rightVideoIdForDiff);
-            diffEmbeddedInstance.destroy();
-            diffEmbeddedInstance = null;
+            destroyDiffTimer.restart();
         }
         leftVideoIdForDiff = -1;
         rightVideoIdForDiff = -1;
