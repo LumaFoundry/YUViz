@@ -676,11 +676,11 @@ ApplicationWindow {
                             Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: Theme.fontSizeSmall
                             enabled: {
-                                const videos = videoWindowContainer.children;
-
-                                if (videos.length < 2) {
+                                // Disable if fewer than 2 videos or an embedded diff is active
+                                if (mainWindow.videoCount < 2 || mainWindow.isEmbeddedDiffActive())
                                     return false;
-                                }
+
+                                const videos = videoWindowContainer.children;
 
                                 const firstVideo = videos[0];
                                 if (!firstVideo || !firstVideo.metadataReady)
@@ -1125,9 +1125,6 @@ ApplicationWindow {
         videoOriginalName = videoWindowContainer.children[1].videoName;
         videoWindowContainer.children[1].videoDisplayName = "Difference";
 
-        // Disable diff button
-        diffButton.enabled = false;
-
         // Overlay fill
         diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
         // Bind width/height to parent (right video window)
@@ -1168,7 +1165,6 @@ ApplicationWindow {
         // Restore OSD & title for second video
         videoWindowContainer.children[1].osdState = globalOsdState;
         videoWindowContainer.children[1].videoDisplayName = videoOriginalName;
-        diffButton.enabled = true;
 
         keyHandler.forceActiveFocus();
     }
