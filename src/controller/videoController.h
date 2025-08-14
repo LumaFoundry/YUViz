@@ -70,6 +70,10 @@ class VideoController : public QObject {
     void onSeekCompleted(int index);
     void onDecoderStalled(int index, bool stalled);
 
+  public:
+    // Calculate the frame number (PTS) for a given timestamp in ms using the primary FC timebase
+    Q_INVOKABLE int frameNumberForTime(double timeMs) const;
+
   signals:
     void playTimer();
     void stopTimer();

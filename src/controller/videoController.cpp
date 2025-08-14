@@ -424,6 +424,38 @@ void VideoController::jumpToFrame(int pts) {
     seekTo(m_currentTimeMs);
 }
 
+int VideoController::frameNumberForTime(double timeMs) const {
+    if (m_frameControllers.empty() || m_totalFrames <= 0 || m_duration <= 0) {
+        return 0;
+    }
+
+    // Clamp to real end similar to seekTo
+    double target = (timeMs >= m_duration) ? m_realEndMs : timeMs;
+
+    // Use the first available FC's timebase to convert ms to PTS
+    // Find the first non-null FC index for a reliable timebase
+    int idx = -1;
+    for (size_t i = 0; i < m_frameControllers.size(); ++i) {
+        if (m_frameControllers[i]) {
+            idx = static_cast<int>(i);
+            break;
+        }
+    }
+    if (idx < 0) {
+        return 0;
+    }
+
+    AVRational timebase = m_timeBases[idx];
+    int64_t pts = llrint((target / 1000.0) / av_q2d(timebase));
+
+    // Clamp PTS to [0, totalFrames-1]
+    if (pts < 0)
+        pts = 0;
+    if (m_totalFrames > 0 && pts > m_totalFrames - 1)
+        pts = m_totalFrames - 1;
+    return static_cast<int>(pts);
+}
+
 qint64 VideoController::duration() const {
     debug("vc", QString("Returning duration %1").arg(m_duration));
     return m_duration;

@@ -59,6 +59,10 @@ ApplicationWindow {
     property bool wasPlayingBeforeResize: false
     property bool resizing: false
 
+    // While dragging the time slider, show a preview frame index without seeking
+    property bool seekPreviewActive: false
+    property int seekPreviewFrame: 0
+
     property string importedFilePath: ""
     property int importedWidth: 0
     property int importedHeight: 0
@@ -881,6 +885,11 @@ ApplicationWindow {
                         onPressedChanged: {
                             if (pressed) {
                                 dragging = true;
+                                // enable preview mode and compute initial preview frame via controller
+                                if (videoController && videoController.duration > 0 && videoController.totalFrames > 0) {
+                                    mainWindow.seekPreviewFrame = videoController.frameNumberForTime(value);
+                                    mainWindow.seekPreviewActive = true;
+                                }
                             } else {
                                 // On release: first seek to current value, then reset dragging state
                                 var finalPosition = value;
@@ -888,7 +897,15 @@ ApplicationWindow {
 
                                 // Now change dragging state and return focus
                                 dragging = false;
+                                mainWindow.seekPreviewActive = false;
                                 keyHandler.forceActiveFocus();
+                            }
+                        }
+
+                        onValueChanged: {
+                            if (dragging && videoController && videoController.duration > 0 && videoController.totalFrames > 0) {
+                                mainWindow.seekPreviewFrame = videoController.frameNumberForTime(value);
+                                mainWindow.seekPreviewActive = true;
                             }
                         }
 
@@ -917,6 +934,50 @@ ApplicationWindow {
                             color: Theme.primaryColor
                             border.color: Theme.borderColor
                             border.width: 1
+
+                            // Live frame number bubble while dragging
+                            Rectangle {
+                                id: seekPreviewBubble
+                                visible: mainWindow.seekPreviewActive && videoController && videoController.totalFrames > 0
+                                anchors.bottom: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottomMargin: 8
+                                color: "black"
+                                opacity: 0.85
+                                radius: 5
+                                z: 10
+                                width: previewText.implicitWidth + 12
+                                height: previewText.implicitHeight + 8
+
+                                Text {
+                                    id: previewText
+                                    anchors.centerIn: parent
+                                    color: "white"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    text: "Frame: " + mainWindow.seekPreviewFrame
+                                }
+
+                                // Small pointer triangle
+                                Canvas {
+                                    anchors.top: parent.bottom
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 10
+                                    height: 6
+                                    onPaint: {
+                                        const ctx = getContext('2d');
+                                        ctx.clearRect(0, 0, width, height);
+                                        ctx.fillStyle = "black";
+                                        ctx.globalAlpha = 0.85;
+                                        ctx.beginPath();
+                                        ctx.moveTo(0, 0);
+                                        ctx.lineTo(width, 0);
+                                        ctx.lineTo(width/2, height);
+                                        ctx.closePath();
+                                        ctx.fill();
+                                    }
+                                }
+                            }
                         }
                     }
 
