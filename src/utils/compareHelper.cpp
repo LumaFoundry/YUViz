@@ -29,7 +29,8 @@ static inline uint64_t sumSquaredDiff(const uint8_t* __restrict p1, const uint8_
         SSD_STEP(0)
         SSD_STEP(1)
         SSD_STEP(2)
-        SSD_STEP(3) SSD_STEP(4) SSD_STEP(5) SSD_STEP(6) SSD_STEP(7)
+        SSD_STEP(3)
+        SSD_STEP(4) SSD_STEP(5) SSD_STEP(6) SSD_STEP(7)
 #undef SSD_STEP
 #define SSD_STEP(k)                                                                                                    \
     {                                                                                                                  \
@@ -83,19 +84,6 @@ static inline uint64_t sumSquaredDiff(const uint8_t* __restrict p1, const uint8_
 }
 
 PSNRResult CompareHelper::getPSNR(FrameData* frame1, FrameData* frame2, FrameMeta* metadata1, FrameMeta* metadata2) {
-    // // Basic validation
-    // if (!frame1 || !frame2 || !metadata1 || !metadata2) {
-    //     ErrorReporter::instance().report("CompareHelper::getPSNR - null argument", LogLevel::Warning);
-    //     return {};
-    // }
-    //
-    // // Ensure same dimensions & format (expecting YUV420P planar)
-    // if (metadata1->yWidth() != metadata2->yWidth() || metadata1->yHeight() != metadata2->yHeight() ||
-    //     metadata1->uvWidth() != metadata2->uvWidth() || metadata1->uvHeight() != metadata2->uvHeight() ||
-    //     metadata1->format() != metadata2->format()) {
-    //     ErrorReporter::instance().report("CompareHelper::getPSNR - incompatible frame metadata", LogLevel::Warning);
-    //     return {};
-    // }
 
     int yW = metadata1->yWidth();
     int yH = metadata1->yHeight();
