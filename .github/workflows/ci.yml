@@ -43,11 +43,11 @@ jobs:
     - name: Verify binary
       run: |
         cd build
-        ls -la videoplayer
-        file videoplayer
-        ldd videoplayer || true
+        ls -la YUViz
+        file YUViz
+        ldd YUViz || true
         # Check if binary is executable
-        ./videoplayer --help || echo "Binary exists but may not be runnable in CI environment"
+        ./YUViz --help || echo "Binary exists but may not be runnable in CI environment"
 
   windows:
     runs-on: windows-latest
@@ -87,10 +87,10 @@ jobs:
       shell: msys2 {0}
       run: |
         cd build
-        ls -la videoplayer.exe
-        file videoplayer.exe
+        ls -la YUViz.exe
+        file YUViz.exe
         # Check if binary is executable
-        ./videoplayer.exe --help || echo "Binary exists but may not be runnable in CI environment"
+        ./YUViz.exe --help || echo "Binary exists but may not be runnable in CI environment"
 
   macos:
     runs-on: macos-latest
@@ -117,8 +117,8 @@ jobs:
     - name: Verify binary
       run: |
         cd build
-        ls -la videoplayer.app/Contents/MacOS/videoplayer
-        file videoplayer.app/Contents/MacOS/videoplayer
-        otool -L videoplayer.app/Contents/MacOS/videoplayer || true
+        ls -la YUViz.app/Contents/MacOS/YUViz
+        file YUViz.app/Contents/MacOS/YUViz
+        otool -L YUViz.app/Contents/MacOS/YUViz || true
         # Check if binary is executable
-        ./videoplayer.app/Contents/MacOS/videoplayer --help || echo "Binary exists but may not be runnable in CI environment" 
+        ./YUViz.app/Contents/MacOS/YUViz --help || echo "Binary exists but may not be runnable in CI environment" 
