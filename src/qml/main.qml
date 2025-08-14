@@ -1055,8 +1055,6 @@ ApplicationWindow {
         if (diffEmbeddedInstance)
             return;
 
-        right.visible = false;
-
         // Create embedded diff as overlay ON TOP of the right video instead of replacing it
         diffEmbeddedInstance = diffEmbeddedComponent.createObject(right, {});
         if (!diffEmbeddedInstance)

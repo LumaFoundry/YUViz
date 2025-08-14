@@ -16,6 +16,8 @@ void CompareController::setDiffWindow(DiffWindow* diffWindow) {
         disconnect(this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame);
         disconnect(this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame);
         disconnect(m_diffWindow->m_renderer, &DiffRenderer::batchIsEmpty, this, &CompareController::onCompareRendered);
+    } else {
+        warning("cc", "diffWindow is not initialized");
     }
 
     m_diffWindow = diffWindow;
@@ -63,6 +65,18 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
         return;
     }
 
+    if (!m_frame1 && m_frame2) {
+        warning("cc", "Frame 0 is not ready, no diff");
+    }
+
+    if (!m_frame2 && m_frame1) {
+        warning("cc", "Frame 1 is not ready, no diff");
+    }
+
+    if (!m_frame1 && !m_frame2) {
+        warning("cc", "Both frames are not ready, no diff");
+    }
+
     if (m_frame1 && m_frame2) {
         AVRational time1 = av_mul_q(AVRational{static_cast<int>(m_frame1->pts()), 1}, m_metadata1->timeBase());
         AVRational time2 = av_mul_q(AVRational{static_cast<int>(m_frame2->pts()), 1}, m_metadata2->timeBase());
@@ -101,6 +115,7 @@ void CompareController::onRequestRender(int index) {
 
 void CompareController::onCompareRendered() {
 
+    debug("cc", "Comparison rendered");
     if (m_ready1) {
         m_ready1 = false;
     }
