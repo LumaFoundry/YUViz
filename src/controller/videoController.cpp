@@ -490,6 +490,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                                          m_frameControllers[id1]->getFrameQueue(),
                                          m_frameControllers[id2]->getFrameQueue());
 
+        debug("vc", QString("Connecting signals to compare controller"));
         // Connect compare controller to FCs (same-thread communication)
         connect(m_frameControllers[id1].get(),
                 &FrameController::requestUpload,
@@ -520,7 +521,10 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
     } else {
 
+        debug("vc", QString("Diff Mode off"));
+
         if (m_frameControllers[id1]) {
+            debug("vc", QString("Disconnecting FC %1 from compare controller").arg(id1));
             // Disconnect when diff mode is disabled
             disconnect(m_frameControllers[id1].get(),
                        &FrameController::requestUpload,
@@ -534,6 +538,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
         }
 
         if (m_frameControllers[id2]) {
+            debug("vc", QString("Disconnecting FC %1 from compare controller").arg(id2));
             // Disconnect when diff mode is disabled
             disconnect(m_frameControllers[id2].get(),
                        &FrameController::requestUpload,
