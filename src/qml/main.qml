@@ -1,5 +1,4 @@
 import QtQuick.Window 6.0
-// Use standard Controls for native styling when QQuickStyle is set
 import QtQuick.Controls.Basic 6.0
 import QtQuick 6.0
 import QtQuick.Layouts 1.15
@@ -59,6 +58,10 @@ ApplicationWindow {
     property bool isCtrlPressed: false
     property bool wasPlayingBeforeResize: false
     property bool resizing: false
+
+    // While dragging the time slider, show a preview frame index without seeking
+    property bool seekPreviewActive: false
+    property int seekPreviewFrame: 0
 
     property string importedFilePath: ""
     property int importedWidth: 0
@@ -172,8 +175,10 @@ ApplicationWindow {
         onJumpToFrame: function (frameNumber) {
             videoController.jumpToFrame(frameNumber);
         }
-    // Restore key focus whenever the popup is dismissed (Cancel / accepted / any close)
-    onVisibleChanged: if (!visible) { keyHandler.forceActiveFocus(); }
+        // Restore key focus whenever the popup is dismissed (Cancel / accepted / any close)
+        onVisibleChanged: if (!visible) {
+            keyHandler.forceActiveFocus();
+        }
     }
 
     Timer {
@@ -185,6 +190,17 @@ ApplicationWindow {
             if (wasPlayingBeforeResize) {
                 videoController.play();
             }
+        }
+    }
+
+    Timer {
+        id: destroyDiffTimer
+        interval: 100 // milliseconds
+        running: false
+        repeat: false
+        onTriggered: {
+            diffEmbeddedInstance.destroy();
+            diffEmbeddedInstance = null;
         }
     }
 
@@ -529,7 +545,9 @@ ApplicationWindow {
                             Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
-                            background: Rectangle { color: "#2f2f2f" }
+                            background: Rectangle {
+                                color: "#2f2f2f"
+                            }
                             contentItem: Text {
                                 text: stepBackwardButton.text
                                 font.pixelSize: stepBackwardButton.font.pixelSize
@@ -540,7 +558,8 @@ ApplicationWindow {
                                 anchors.centerIn: parent
                             }
                             onClicked: {
-                                if (videoController) videoController.stepBackward();
+                                if (videoController)
+                                    videoController.stepBackward();
                                 keyHandler.forceActiveFocus();
                             }
                             ToolTip.visible: hovered
@@ -552,7 +571,9 @@ ApplicationWindow {
                             text: videoController ? (videoController.isPlaying ? "⏸" : "▶") : "▶"
                             Layout.preferredWidth: Theme.buttonHeight
                             Layout.preferredHeight: Theme.buttonHeight
-                            background: Rectangle { color: "#3a3a3a" }
+                            background: Rectangle {
+                                color: "#3a3a3a"
+                            }
                             font.bold: true
                             contentItem: Text {
                                 text: playPauseButton.text
@@ -578,7 +599,9 @@ ApplicationWindow {
                             Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: Theme.fontSizeNormal
                             font.bold: true
-                            background: Rectangle { color: "#2f2f2f" }
+                            background: Rectangle {
+                                color: "#2f2f2f"
+                            }
                             contentItem: Text {
                                 text: stepForwardButton.text
                                 font.pixelSize: stepForwardButton.font.pixelSize
@@ -589,7 +612,8 @@ ApplicationWindow {
                                 anchors.centerIn: parent
                             }
                             onClicked: {
-                                if (videoController) videoController.stepForward();
+                                if (videoController)
+                                    videoController.stepForward();
                                 keyHandler.forceActiveFocus();
                             }
                             ToolTip.visible: hovered
@@ -646,104 +670,104 @@ ApplicationWindow {
                             }
                         }
 
-                    Button {
-                        id: diffButton
-                        text: "Diff"
-                        Layout.preferredHeight: Theme.buttonHeight
-                        font.pixelSize: Theme.fontSizeSmall
-                        enabled: {
-                            const videos = videoWindowContainer.children;
-
-                            if (videos.length < 2) {
-                                return false;
-                            }
-
-                            const firstVideo = videos[0];
-                            if (!firstVideo || !firstVideo.metadataReady)
-                                return false;
-                            const firstMeta = firstVideo.getFrameMeta();
-                            if (!firstMeta)
-                                return false;
-
-                            // Check all subsequent videos against the first one.
-                            for (let i = 1; i < videos.length; i++) {
-                                const currentVideo = videos[i];
-
-                                if (!currentVideo || !currentVideo.metadataReady)
-                                    return false;
-                                const currentMeta = currentVideo.getFrameMeta();
-                                if (!currentMeta)
+                        Button {
+                            id: diffButton
+                            text: "Diff"
+                            Layout.preferredHeight: Theme.buttonHeight
+                            font.pixelSize: Theme.fontSizeSmall
+                            enabled: {
+                                // Disable if fewer than 2 videos or an embedded diff is active
+                                if (mainWindow.videoCount < 2 || mainWindow.isEmbeddedDiffActive())
                                     return false;
 
-                                // If mismatch, disable the button.
-                                if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {
+                                const videos = videoWindowContainer.children;
+
+                                const firstVideo = videos[0];
+                                if (!firstVideo || !firstVideo.metadataReady)
                                     return false;
-                                }
-                            }
+                                const firstMeta = firstVideo.getFrameMeta();
+                                if (!firstMeta)
+                                    return false;
 
-                            // All videos have the same resolution.
-                            return true;
-                        }
+                                // Check all subsequent videos against the first one.
+                                for (let i = 1; i < videos.length; i++) {
+                                    const currentVideo = videos[i];
 
-                        onClicked: {
-                            videoController.pause();
-                            // Always close rectangles before toggling diff
-                            clearAllRectangles();
+                                    if (!currentVideo || !currentVideo.metadataReady)
+                                        return false;
+                                    const currentMeta = currentVideo.getFrameMeta();
+                                    if (!currentMeta)
+                                        return false;
 
-                            // Toggle diff window: if open, close it; if closed, open it
-                            if (diffPopupInstance && diffPopupInstance.visible) {
-                                // Ensure diff window rectangle is cleared before hide
-                                if (diffPopupInstance.removePersistentRect) {
-                                    diffPopupInstance.removePersistentRect();
-                                }
-                                diffPopupInstance.visible = false;
-                                keyHandler.forceActiveFocus();
-
-                                videoController.pause();
-                                return;
-                            }
-
-                            let leftId = videoWindowContainer.children[0].videoId;
-                            let rightId = videoWindowContainer.children[1].videoId;
-
-                            console.log("[QML] Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
-
-                            // Pass video IDs
-                            diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
-                                leftVideoId: leftId,
-                                rightVideoId: rightId
-                            });
-                            diffPopupInstance.objectName = "diffPopupInstance";
-                            console.log("[QML] Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
-
-                            diffPopupInstance.visible = true;
-                            // Cleanup when window closes
-                            diffPopupInstance.onVisibleChanged.connect(function () {
-                                if (!diffPopupInstance.visible) {
-                                    // Capture the ids (store them on the instance when you create it)
-                                    const leftId = diffPopupInstance.leftVideoId;
-                                    const rightId = diffPopupInstance.rightVideoId;
-
-                                    if (!mainWindow.closingDiffPopupForEmbed) {
-                                        // Only disable diff mode if we're closing the popup for real
-                                        videoController.setDiffMode(false, leftId, rightId);
+                                    // If mismatch, disable the button.
+                                    if (firstMeta.yWidth !== currentMeta.yWidth || firstMeta.yHeight !== currentMeta.yHeight) {
+                                        return false;
                                     }
+                                }
 
-                                    // Clear rectangle before destroy
+                                // All videos have the same resolution.
+                                return true;
+                            }
+
+                            onClicked: {
+                                videoController.pause();
+                                // Always close rectangles before toggling diff
+                                clearAllRectangles();
+
+                                // Toggle diff window: if open, close it; if closed, open it
+                                if (diffPopupInstance && diffPopupInstance.visible) {
+                                    // Ensure diff window rectangle is cleared before hide
                                     if (diffPopupInstance.removePersistentRect) {
                                         diffPopupInstance.removePersistentRect();
                                     }
+                                    diffPopupInstance.visible = false;
+                                    keyHandler.forceActiveFocus();
 
-                                    diffPopupInstance.destroy();
-                                    diffPopupInstance = null;
-                                    mainWindow.closingDiffPopupForEmbed = false;
+                                    videoController.pause();
+                                    return;
                                 }
-                            });
-                            videoLoader.setupDiffWindow(leftId, rightId);
-                            diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
-                            keyHandler.forceActiveFocus();
+
+                                let leftId = videoWindowContainer.children[0].videoId;
+                                let rightId = videoWindowContainer.children[1].videoId;
+
+                                console.log("[QML] Creating diffPopupInstance with leftId:", leftId, "and rightId:", rightId);
+
+                                // Pass video IDs
+                                diffPopupInstance = diffPopupComponent.createObject(mainWindow, {
+                                    leftVideoId: leftId,
+                                    rightVideoId: rightId
+                                });
+                                diffPopupInstance.objectName = "diffPopupInstance";
+                                console.log("[QML] Created diffPopupInstance:", diffPopupInstance, "objectName:", diffPopupInstance.objectName);
+
+                                diffPopupInstance.visible = true;
+                                // Cleanup when window closes
+                                diffPopupInstance.onVisibleChanged.connect(function () {
+                                    if (!diffPopupInstance.visible) {
+                                        // Capture the ids (store them on the instance when you create it)
+                                        const leftId = diffPopupInstance.leftVideoId;
+                                        const rightId = diffPopupInstance.rightVideoId;
+
+                                        if (!mainWindow.closingDiffPopupForEmbed) {
+                                            // Only disable diff mode if we're closing the popup for real
+                                            videoController.setDiffMode(false, leftId, rightId);
+                                        }
+
+                                        // Clear rectangle before destroy
+                                        if (diffPopupInstance.removePersistentRect) {
+                                            diffPopupInstance.removePersistentRect();
+                                        }
+
+                                        diffPopupInstance.destroy();
+                                        diffPopupInstance = null;
+                                        mainWindow.closingDiffPopupForEmbed = false;
+                                    }
+                                });
+                                videoLoader.setupDiffWindow(leftId, rightId);
+                                diffPopupInstance.diffVideoWindow.osdState = mainWindow.globalOsdState;
+                                keyHandler.forceActiveFocus();
+                            }
                         }
-                    }
 
                         // Jump To Frame button (mirrors 'J' key behavior)
                         Button {
@@ -764,7 +788,9 @@ ApplicationWindow {
                             Layout.preferredHeight: Theme.buttonHeight
                             font.pixelSize: playPauseButton.font.pixelSize
                             font.bold: true
-                            background: Rectangle { color: "#3a3a3a" }
+                            background: Rectangle {
+                                color: "#3a3a3a"
+                            }
                             contentItem: Text {
                                 text: directionToggleButton.text
                                 font.pixelSize: directionToggleButton.font.pixelSize
@@ -795,12 +821,14 @@ ApplicationWindow {
                         // Single diagonal arrow glyph used for both enter/exit fullscreen
                         text: "⤢"
                         font.pixelSize: Theme.fontSizeLarge + 2
-                            font.bold: true
-                        background: Rectangle { color: "#2f2f2f" }
+                        font.bold: true
+                        background: Rectangle {
+                            color: "#2f2f2f"
+                        }
                         contentItem: Text {
                             text: fullscreenButton.text
                             font.pixelSize: fullscreenButton.font.pixelSize
-                                font.bold: true
+                            font.bold: true
                             color: Theme.iconColor
                             horizontalAlignment: Text.AlignHCenter
                             verticalAlignment: Text.AlignVCenter
@@ -857,6 +885,11 @@ ApplicationWindow {
                         onPressedChanged: {
                             if (pressed) {
                                 dragging = true;
+                                // enable preview mode and compute initial preview frame via controller
+                                if (videoController && videoController.duration > 0 && videoController.totalFrames > 0) {
+                                    mainWindow.seekPreviewFrame = videoController.frameNumberForTime(value);
+                                    mainWindow.seekPreviewActive = true;
+                                }
                             } else {
                                 // On release: first seek to current value, then reset dragging state
                                 var finalPosition = value;
@@ -864,7 +897,15 @@ ApplicationWindow {
 
                                 // Now change dragging state and return focus
                                 dragging = false;
+                                mainWindow.seekPreviewActive = false;
                                 keyHandler.forceActiveFocus();
+                            }
+                        }
+
+                        onValueChanged: {
+                            if (dragging && videoController && videoController.duration > 0 && videoController.totalFrames > 0) {
+                                mainWindow.seekPreviewFrame = videoController.frameNumberForTime(value);
+                                mainWindow.seekPreviewActive = true;
                             }
                         }
 
@@ -893,6 +934,50 @@ ApplicationWindow {
                             color: Theme.primaryColor
                             border.color: Theme.borderColor
                             border.width: 1
+
+                            // Live frame number bubble while dragging
+                            Rectangle {
+                                id: seekPreviewBubble
+                                visible: mainWindow.seekPreviewActive && videoController && videoController.totalFrames > 0
+                                anchors.bottom: parent.top
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                anchors.bottomMargin: 8
+                                color: "black"
+                                opacity: 0.85
+                                radius: 5
+                                z: 10
+                                width: previewText.implicitWidth + 12
+                                height: previewText.implicitHeight + 8
+
+                                Text {
+                                    id: previewText
+                                    anchors.centerIn: parent
+                                    color: "white"
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    text: "Frame: " + mainWindow.seekPreviewFrame
+                                }
+
+                                // Small pointer triangle
+                                Canvas {
+                                    anchors.top: parent.bottom
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    width: 10
+                                    height: 6
+                                    onPaint: {
+                                        const ctx = getContext('2d');
+                                        ctx.clearRect(0, 0, width, height);
+                                        ctx.fillStyle = "black";
+                                        ctx.globalAlpha = 0.85;
+                                        ctx.beginPath();
+                                        ctx.moveTo(0, 0);
+                                        ctx.lineTo(width, 0);
+                                        ctx.lineTo(width/2, height);
+                                        ctx.closePath();
+                                        ctx.fill();
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -1016,6 +1101,8 @@ ApplicationWindow {
 
     function enableEmbeddedDiff() {
         videoController.pause();
+
+        videoController.setDiffMode(false, diffPopupInstance.leftVideoId, diffPopupInstance.rightVideoId);
         const videos = videoWindowContainer.children;
         if (videos.length < 2)
             return;
@@ -1037,9 +1124,6 @@ ApplicationWindow {
         videoWindowContainer.children[1].osdState = 0;
         videoOriginalName = videoWindowContainer.children[1].videoName;
         videoWindowContainer.children[1].videoDisplayName = "Difference";
-
-        // Disable diff button
-        diffButton.enabled = false;
 
         // Overlay fill
         diffEmbeddedInstance.z = 100; // ensure on top of underlying video content
@@ -1068,11 +1152,12 @@ ApplicationWindow {
     }
 
     function disableEmbeddedDiffAndRestore() {
+        videoController.pause();
+
         if (diffEmbeddedInstance) {
             // stop diff mode for this pair
             videoController.setDiffMode(false, leftVideoIdForDiff, rightVideoIdForDiff);
-            diffEmbeddedInstance.destroy();
-            diffEmbeddedInstance = null;
+            destroyDiffTimer.restart();
         }
         leftVideoIdForDiff = -1;
         rightVideoIdForDiff = -1;
@@ -1080,7 +1165,6 @@ ApplicationWindow {
         // Restore OSD & title for second video
         videoWindowContainer.children[1].osdState = globalOsdState;
         videoWindowContainer.children[1].videoDisplayName = videoOriginalName;
-        diffButton.enabled = true;
 
         keyHandler.forceActiveFocus();
     }

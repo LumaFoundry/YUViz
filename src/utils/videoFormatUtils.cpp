@@ -12,7 +12,6 @@ void VideoFormatUtils::initializeFormats() {
 
     s_formats.clear();
 
-    // Raw YUV formats - require explicit pixel format specification
     s_formats.append({"420P", "420P - YUV420P (Planar)", AV_PIX_FMT_YUV420P, FormatType::RAW_YUV});
     s_formats.append({"422P", "422P - YUV422P (Planar)", AV_PIX_FMT_YUV422P, FormatType::RAW_YUV});
     s_formats.append({"444P", "444P - YUV444P (Planar)", AV_PIX_FMT_YUV444P, FormatType::RAW_YUV});
@@ -20,11 +19,8 @@ void VideoFormatUtils::initializeFormats() {
     s_formats.append({"UYVY", "UYVY - YUV422 (Packed)", AV_PIX_FMT_UYVY422, FormatType::RAW_YUV});
     s_formats.append({"NV12", "NV12 - YUV420 (Semi-planar)", AV_PIX_FMT_NV12, FormatType::RAW_YUV});
     s_formats.append({"NV21", "NV21 - YUV420 (Semi-planar)", AV_PIX_FMT_NV21, FormatType::RAW_YUV});
-
-    // Compressed formats - handled by FFmpeg decoder
     s_formats.append({"COMPRESSED", "Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
 
-    // Initialize the list of raw extensions
     s_rawVideoExtensions = {".yuv", ".y4m", ".raw", ".nv12", ".nv21", ".yuyv", ".uyvy"};
 
     s_initialized = true;
@@ -149,7 +145,6 @@ QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
     }
 
     if (isRaw) {
-        // Check for specific format indicators in filename
         if (lowerFilename.contains("420p")) {
             return "420P";
         } else if (lowerFilename.contains("422p")) {
@@ -165,11 +160,9 @@ QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
         } else if (lowerFilename.contains("nv21")) {
             return "NV21";
         } else {
-            // Default to 420P for YUV files without specific format indicators
             return "420P";
         }
     }
 
-    // For everything else, let FFmpeg figure it out.
     return "COMPRESSED";
 }

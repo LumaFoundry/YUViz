@@ -242,7 +242,7 @@ Popup {
         if (formatIndex >= 0) {
             formatInput.currentIndex = formatIndex;
         } else {
-            // Default to 420P for most common YUV files
+            // Default to the first YUV format in the list (index 0).
             formatInput.currentIndex = 0;
         }        
     }

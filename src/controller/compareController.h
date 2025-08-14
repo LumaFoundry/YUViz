@@ -20,9 +20,9 @@ class CompareController : public QObject {
                      std::shared_ptr<FrameMeta> meta2,
                      std::shared_ptr<FrameQueue> queue1,
                      std::shared_ptr<FrameQueue> queue2);
-    void setDiffWindow(DiffWindow* diffWindow) { m_diffWindow = diffWindow; }
+    void setDiffWindow(DiffWindow* diffWindow);
     PSNRResult getPSNRResult() const { return m_psnrResult; }
-    double getPSNR() const { return m_psnr; } // For backward compatibility
+    double getPSNR() const { return m_psnr; }
     QString psnrInfo() const { return m_psnrInfo; }
 
   signals:
@@ -46,6 +46,8 @@ class CompareController : public QObject {
 
     std::shared_ptr<FrameMeta> m_metadata1 = nullptr;
     std::shared_ptr<FrameMeta> m_metadata2 = nullptr;
+
+    bool m_diffed = false;
 
     bool m_ready1 = false;
     bool m_ready2 = false;

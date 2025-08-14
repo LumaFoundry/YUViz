@@ -59,13 +59,10 @@ void VideoDecoder::setForceSoftwareDecoding(bool force) {
  * @brief Opens a video file for decoding and initializes FrameMeta object.
  */
 void VideoDecoder::openFile() {
-    // Close any previously opened file
     closeFile();
 
-    // For raw YUV files, we need to specify the input format
     const AVInputFormat* inputFormat = nullptr;
 
-    // Check if this is likely a raw YUV file based on file extension
     QString qFileName = QString::fromStdString(m_fileName);
     QString formatIdentifier = VideoFormatUtils::detectFormatFromExtension(qFileName);
 
@@ -317,15 +314,13 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             debug("vd", QString("loadCompressedFrame returned pts: %1").arg(temp_pts));
         }
 
-        // Check if we've reached EOF (indicated by -1 PTS)
+        // EOF
         if (temp_pts == -1) {
             debug("vd", "Reached EOF, marking last frame as end frame");
             if (currentFrameIndex > 0) {
-                // For compressed video, check if we have a valid total frame count
                 int totalFrames = getTotalFrames();
                 int64_t lastFramePts = currentFrameIndex - 1;
 
-                // If we have a total frame count and we're near it, use that as the last frame
                 if (totalFrames > 0 && lastFramePts < totalFrames - 1) {
                     lastFramePts = totalFrames - 1;
                 }
@@ -341,7 +336,6 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             break;
         }
 
-        // Also check if we're at the last frame for compressed videos
         if (!isRawYUV) {
             int totalFrames = getTotalFrames();
             if (totalFrames > 0 && temp_pts >= totalFrames - 1) {
@@ -512,16 +506,13 @@ int64_t VideoDecoder::loadCompressedFrame() {
     int ret;
     int64_t normalized_pts = -1;
     bool eof_reached = false;
-    // Set the target pixel format for output
     AVPixelFormat dstFormat = AV_PIX_FMT_YUV420P;
-    // Read frames until we get a video frame
+
     while ((ret = av_read_frame(formatContext, tempPacket)) >= 0 || !eof_reached) {
         if (ret < 0) {
-            // EOF reached, send NULL packet to flush decoder
             eof_reached = true;
             ret = avcodec_send_packet(codecContext, nullptr);
         } else if (tempPacket->stream_index == videoStreamIndex) {
-            // Send packet to decoder
             ret = avcodec_send_packet(codecContext, tempPacket);
             if (ret < 0) {
                 ErrorReporter::instance().report("Failed to send packet to decoder", LogLevel::Error);
@@ -533,9 +524,7 @@ int64_t VideoDecoder::loadCompressedFrame() {
             continue;
         }
 
-        // Try to receive a frame from the decoder
         while (true) {
-            // Allocate a temporary frame for decoding
             AVFrame* tempFrame = av_frame_alloc();
             if (!tempFrame) {
                 ErrorReporter::instance().report("Could not allocate temporary frame", LogLevel::Error);
@@ -550,7 +539,6 @@ int64_t VideoDecoder::loadCompressedFrame() {
             if (ret == 0) {
                 int64_t raw_pts = tempFrame->pts;
 
-                // Normalize PTS to frame number
                 normalized_pts = raw_pts;
                 if (m_needsTimebaseConversion && raw_pts != AV_NOPTS_VALUE) {
                     AVStream* videoStream = formatContext->streams[videoStreamIndex];
@@ -832,7 +820,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
                 uint8_t* uLine = uPtr + y * uvWidth;
                 uint8_t* vLine = vPtr + y * uvWidth;
 
-                // Process 16 pixels at a time for better cache locality and reduced loop overhead
                 int x = 0;
                 for (; x <= width - 16; x += 16) {
                     const uint8_t* src = srcLine + x * 2;
@@ -959,7 +946,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
                 uint8_t* uLine = uPtr + y * uvWidth;
                 uint8_t* vLine = vPtr + y * uvWidth;
 
-                // Process 16 UV pairs at a time for better cache locality and reduced loop overhead
                 int x = 0;
                 for (; x <= uvWidth - 16; x += 16) {
                     const uint8_t* src = uvLine + x * 2;
@@ -1043,7 +1029,6 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
                 uint8_t* uLine = uPtr + y * uvWidth;
                 uint8_t* vLine = vPtr + y * uvWidth;
 
-                // Process 16 VU pairs at a time for better cache locality and reduced loop overhead
                 int x = 0;
                 for (; x <= uvWidth - 16; x += 16) {
                     const uint8_t* src = vuLine + x * 2;
@@ -1217,8 +1202,6 @@ void VideoDecoder::seekTo(int64_t targetPts) {
 }
 
 void VideoDecoder::seekToYUV(int64_t targetPts) {
-    // Special handling for YUV files
-    // Get file size for validation
     QFileInfo info(QString::fromStdString(m_fileName));
     int64_t fileSize = info.size();
 
@@ -1258,7 +1241,6 @@ void VideoDecoder::seekToYUV(int64_t targetPts) {
     // Now seek to the calculated position
     ret = avio_seek(formatContext->pb, bytePosition, SEEK_SET);
     if (ret < 0) {
-        // Try alternative seek method if direct seek fails
         debug("vd", "Direct seek failed, trying alternative method");
 
         // Try seeking from current position

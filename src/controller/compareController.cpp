@@ -10,6 +10,19 @@ void CompareController::setVideoIds(int id1, int id2) {
     m_index2 = id2;
 }
 
+void CompareController::setDiffWindow(DiffWindow* diffWindow) {
+
+    if (m_diffWindow) {
+        disconnect(this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame);
+        disconnect(this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame);
+        disconnect(m_diffWindow->m_renderer, &DiffRenderer::batchIsEmpty, this, &CompareController::onCompareRendered);
+    } else {
+        warning("cc", "diffWindow is not initialized");
+    }
+
+    m_diffWindow = diffWindow;
+}
+
 void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
                                     std::shared_ptr<FrameMeta> meta2,
                                     std::shared_ptr<FrameQueue> queue1,
@@ -21,11 +34,11 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
         m_metadata1->yHeight() == m_metadata2->yHeight()) {
 
         if (m_diffWindow) {
-            m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
+            m_diffWindow->initialize(m_metadata1, queue1, queue2);
             connect(
                 this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame, Qt::DirectConnection);
             connect(
-                this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame, Qt::DirectConnection);
+                this, &CompareController::requestRender, m_diffWindow, &DiffWindow::renderFrame, Qt::QueuedConnection);
             connect(m_diffWindow->m_renderer,
                     &DiffRenderer::batchIsEmpty,
                     this,
@@ -52,15 +65,32 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
         return;
     }
 
+    if (!m_frame1 && m_frame2) {
+        warning("cc", "Frame 0 is not ready, no diff");
+    }
+
+    if (!m_frame2 && m_frame1) {
+        warning("cc", "Frame 1 is not ready, no diff");
+    }
+
+    if (!m_frame1 && !m_frame2) {
+        warning("cc", "Both frames are not ready, no diff");
+    }
+
     if (m_frame1 && m_frame2) {
         AVRational time1 = av_mul_q(AVRational{static_cast<int>(m_frame1->pts()), 1}, m_metadata1->timeBase());
         AVRational time2 = av_mul_q(AVRational{static_cast<int>(m_frame2->pts()), 1}, m_metadata2->timeBase());
 
+        debug("cc", QString("Comparing frames at time1: %1, time2: %2").arg(m_frame1->pts()).arg(m_frame2->pts()));
+
         if (av_cmp_q(time1, time2) == 0) {
-            debug("cc", "Received same time frames, diffing");
+            debug("cc", QString("Received same time frames, diffing at pts: %1").arg(m_frame1->pts()));
             m_psnrResult =
                 m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
-            m_psnr = m_psnrResult.average; // Keep backward compatibility
+            m_psnr = m_psnrResult.average;
+
+            m_diffed = true;
+
             emit requestUpload(m_frame1.get(), m_frame2.get());
         } else {
             debug("cc", "Received different time frames, skipping");
@@ -78,12 +108,13 @@ void CompareController::onRequestRender(int index) {
     }
 
     if (m_ready1 && m_ready2) {
-        // Emit signal to render frames
         emit requestRender();
     }
 }
 
 void CompareController::onCompareRendered() {
+
+    debug("cc", "Comparison rendered");
     if (m_ready1) {
         m_ready1 = false;
     }
@@ -99,10 +130,14 @@ void CompareController::onCompareRendered() {
     emit psnrChanged();
 
     // Clear cache to make sure we don't compare stale frames
-    if (m_frame1) {
+    if (m_frame1 && m_diffed) {
         m_frame1.reset();
     }
-    if (m_frame2) {
+    if (m_frame2 && m_diffed) {
         m_frame2.reset();
+    }
+
+    if (!m_frame1 && !m_frame2) {
+        m_diffed = false;
     }
 }

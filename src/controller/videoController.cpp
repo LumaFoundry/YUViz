@@ -424,6 +424,38 @@ void VideoController::jumpToFrame(int pts) {
     seekTo(m_currentTimeMs);
 }
 
+int VideoController::frameNumberForTime(double timeMs) const {
+    if (m_frameControllers.empty() || m_totalFrames <= 0 || m_duration <= 0) {
+        return 0;
+    }
+
+    // Clamp to real end similar to seekTo
+    double target = (timeMs >= m_duration) ? m_realEndMs : timeMs;
+
+    // Use the first available FC's timebase to convert ms to PTS
+    // Find the first non-null FC index for a reliable timebase
+    int idx = -1;
+    for (size_t i = 0; i < m_frameControllers.size(); ++i) {
+        if (m_frameControllers[i]) {
+            idx = static_cast<int>(i);
+            break;
+        }
+    }
+    if (idx < 0) {
+        return 0;
+    }
+
+    AVRational timebase = m_timeBases[idx];
+    int64_t pts = llrint((target / 1000.0) / av_q2d(timebase));
+
+    // Clamp PTS to [0, totalFrames-1]
+    if (pts < 0)
+        pts = 0;
+    if (m_totalFrames > 0 && pts > m_totalFrames - 1)
+        pts = m_totalFrames - 1;
+    return static_cast<int>(pts);
+}
+
 qint64 VideoController::duration() const {
     debug("vc", QString("Returning duration %1").arg(m_duration));
     return m_duration;
@@ -440,12 +472,10 @@ void VideoController::setSpeed(float speed) {
     // Convert float to AVRational
     AVRational speedRational;
 
-    // Simple and effective approach
     speedRational.num = speed * 1000;
     speedRational.den = 1000;
 
     debug("vc", QString("emitting speed %1/%2 to timer").arg(speedRational.num).arg(speedRational.den));
-    // Pass it to the timer
     emit setSpeedTimer(speedRational);
 }
 
@@ -490,6 +520,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
                                          m_frameControllers[id1]->getFrameQueue(),
                                          m_frameControllers[id2]->getFrameQueue());
 
+        debug("vc", QString("Connecting signals to compare controller"));
         // Connect compare controller to FCs (same-thread communication)
         connect(m_frameControllers[id1].get(),
                 &FrameController::requestUpload,
@@ -520,7 +551,10 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
     } else {
 
+        debug("vc", QString("Diff Mode off"));
+
         if (m_frameControllers[id1]) {
+            debug("vc", QString("Disconnecting FC %1 from compare controller").arg(id1));
             // Disconnect when diff mode is disabled
             disconnect(m_frameControllers[id1].get(),
                        &FrameController::requestUpload,
@@ -534,6 +568,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
         }
 
         if (m_frameControllers[id2]) {
+            debug("vc", QString("Disconnecting FC %1 from compare controller").arg(id2));
             // Disconnect when diff mode is disabled
             disconnect(m_frameControllers[id2].get(),
                        &FrameController::requestUpload,
@@ -548,6 +583,7 @@ void VideoController::setDiffMode(bool diffMode, int id1, int id2) {
 
         m_compareController->setVideoIds(-1, -1);
         m_compareController->setMetadata(nullptr, nullptr, nullptr, nullptr);
+        m_compareController->setDiffWindow(nullptr);
     }
 }
 

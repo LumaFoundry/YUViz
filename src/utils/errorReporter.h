@@ -19,7 +19,7 @@ class ErrorReporter : public QObject {
     Q_OBJECT
 
   public:
-    // Singleton instance - IMPORTANT: Only instantiate in main!
+    // Singleton instance - IMPORTANT: Don't instantiate!
     static ErrorReporter& instance();
 
     void report(const QString& msg, LogLevel level = LogLevel::Warning);

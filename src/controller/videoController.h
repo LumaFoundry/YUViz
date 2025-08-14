@@ -50,8 +50,6 @@ class VideoController : public QObject {
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
 
-    // void createDiffWindow();
-
   public slots:
     void onReady(int index);
     void onFCStartOfVideo(int index);
@@ -71,6 +69,10 @@ class VideoController : public QObject {
     void setDiffMode(bool diffMode, int id1, int id2);
     void onSeekCompleted(int index);
     void onDecoderStalled(int index, bool stalled);
+
+  public:
+    // Calculate the frame number (PTS) for a given timestamp in ms using the primary FC timebase
+    Q_INVOKABLE int frameNumberForTime(double timeMs) const;
 
   signals:
     void playTimer();
