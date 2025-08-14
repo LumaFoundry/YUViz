@@ -84,7 +84,7 @@ AVRational FrameController::getTimeBase() {
         return m_frameMeta->timeBase();
     } else {
         warning("fc", "FrameMeta is not initialized, returning default time base");
-        return AVRational{1, 1}; // Default to 1000 ms
+        return AVRational{1, 1};
     }
 }
 
@@ -179,11 +179,10 @@ void FrameController::onTimerStep(int64_t pts, int direction) {
     m_direction = direction;
 }
 
-// Handle frame decoding error and increment Tail
+// Handle frame decoding error / prefill logic
 void FrameController::onFrameDecoded(bool success) {
     if (!success) {
         warning("fc", QString("Decoding error for index %1").arg(m_index));
-        // TODO: What to do if decoding fails?
         ErrorReporter::instance().report("Decoding error occurred", LogLevel::Error);
     }
 
@@ -373,7 +372,6 @@ void FrameController::onFrameSeeked(int64_t pts) {
 
 void FrameController::onRenderError() {
     warning("fc", QString("onRenderError for index %1").arg(m_index));
-    // TODO: Handle rendering error
     ErrorReporter::instance().report("Rendering error occurred", LogLevel::Error);
 }
 

@@ -440,12 +440,10 @@ void VideoController::setSpeed(float speed) {
     // Convert float to AVRational
     AVRational speedRational;
 
-    // Simple and effective approach
     speedRational.num = speed * 1000;
     speedRational.den = 1000;
 
     debug("vc", QString("emitting speed %1/%2 to timer").arg(speedRational.num).arg(speedRational.den));
-    // Pass it to the timer
     emit setSpeedTimer(speedRational);
 }
 

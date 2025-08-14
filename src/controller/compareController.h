@@ -22,7 +22,7 @@ class CompareController : public QObject {
                      std::shared_ptr<FrameQueue> queue2);
     void setDiffWindow(DiffWindow* diffWindow);
     PSNRResult getPSNRResult() const { return m_psnrResult; }
-    double getPSNR() const { return m_psnr; } // For backward compatibility
+    double getPSNR() const { return m_psnr; }
     QString psnrInfo() const { return m_psnrInfo; }
 
   signals:

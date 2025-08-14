@@ -50,8 +50,6 @@ class VideoController : public QObject {
     void addVideo(VideoFileInfo videoFileInfo);
     void setUpTimer();
 
-    // void createDiffWindow();
-
   public slots:
     void onReady(int index);
     void onFCStartOfVideo(int index);

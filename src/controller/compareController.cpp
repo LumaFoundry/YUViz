@@ -34,7 +34,7 @@ void CompareController::setMetadata(std::shared_ptr<FrameMeta> meta1,
         m_metadata1->yHeight() == m_metadata2->yHeight()) {
 
         if (m_diffWindow) {
-            m_diffWindow->initialize(m_metadata1, queue1, queue2); // optional if already done in QML
+            m_diffWindow->initialize(m_metadata1, queue1, queue2);
             connect(
                 this, &CompareController::requestUpload, m_diffWindow, &DiffWindow::uploadFrame, Qt::DirectConnection);
             connect(
@@ -87,7 +87,7 @@ void CompareController::onReceiveFrame(FrameData* frame, int index) {
             debug("cc", QString("Received same time frames, diffing at pts: %1").arg(m_frame1->pts()));
             m_psnrResult =
                 m_compareHelper->getPSNR(m_frame1.get(), m_frame2.get(), m_metadata1.get(), m_metadata2.get());
-            m_psnr = m_psnrResult.average; // Keep backward compatibility
+            m_psnr = m_psnrResult.average;
 
             m_diffed = true;
 
@@ -108,7 +108,6 @@ void CompareController::onRequestRender(int index) {
     }
 
     if (m_ready1 && m_ready2) {
-        // Emit signal to render frames
         emit requestRender();
     }
 }
