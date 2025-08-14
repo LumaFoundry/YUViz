@@ -10,7 +10,7 @@ Window {
     title: "About"
     modality: Qt.ApplicationModal
     flags: Qt.Dialog
-    width: 450
+    width: 300
     height: 200
 
     color: Theme.surfaceColor
@@ -68,12 +68,15 @@ Window {
                 Column {
                     width: parent.width
                     spacing: Theme.spacingNormal
+                    anchors.horizontalCenter: parent.horizontalCenter
 
                     Text {
                         text: APP_NAME
+                        width: parent.width
                         font.bold: true
                         font.pixelSize: Theme.fontSizeNormal
                         color: Theme.textColor
+                        horizontalAlignment: Text.AlignHCenter
                     }
 
                     Column {
@@ -82,6 +85,7 @@ Window {
 
                         Row {
                             width: parent.width
+                            anchors.horizontalCenter: parent.horizontalCenter
 
                             Text {
                                 text: "Version:"
@@ -89,16 +93,19 @@ Window {
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.accentColor
                                 width: 120
+                                horizontalAlignment: Text.AlignHCenter
                             }
                             Text {
                                 text: typeof APP_VERSION !== 'undefined' && APP_VERSION !== "" ? APP_VERSION : "DEV"
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textColor
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
 
                         Row {
                             width: parent.width
+                            anchors.horizontalCenter: parent.horizontalCenter
 
                             Text {
                                 text: "Built:"
@@ -106,15 +113,18 @@ Window {
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.accentColor
                                 width: 120
+                                horizontalAlignment: Text.AlignHCenter
                             }
                             Text {
                                 text: BUILD_DATE
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.textColor
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
                         Row {
                             width: parent.width
+                            anchors.horizontalCenter: parent.horizontalCenter
 
                             Text {
                                 text: "Source:"
@@ -122,6 +132,7 @@ Window {
                                 font.pixelSize: Theme.fontSizeSmall
                                 color: Theme.accentColor
                                 width: 120
+                                horizontalAlignment: Text.AlignHCenter
                             }
                             Text {
                                 text: "<a href='https://github.com/LokiW-03/qt6-videoplayer'>GitHub Repository</a>"
@@ -129,6 +140,7 @@ Window {
                                 color: Theme.accentColor
                                 textFormat: Text.RichText
                                 onLinkActivated: Qt.openUrlExternally(link)
+                                horizontalAlignment: Text.AlignHCenter
                             }
                         }
                     }
