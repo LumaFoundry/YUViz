@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(qt6_videoplayer LANGUAGES CXX)
+project(YUViz LANGUAGES CXX)
 
 set(TARGET_NAME YUViz)
 set(APP_DISPLAY_NAME "YUViz")

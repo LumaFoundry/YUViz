@@ -1,11 +1,11 @@
 # A YUV Inspection Tool based on Qt6
 
-![Build](https://github.com/LokiW-03/qt6-videoplayer/workflows/CI%20-%20Build/badge.svg)
-![CD](https://github.com/LokiW-03/qt6-videoplayer/actions/workflows/cd.yml/badge.svg)
-[![Latest Artifacts](https://img.shields.io/badge/Download-Latest%20Build-blue?style=flat-square&logo=github)](https://github.com/LokiW-03/qt6-videoplayer/actions/workflows/cd.yml)
+![Build](https://github.com/LokiW-03/YUViz/workflows/CI%20-%20Build/badge.svg)
+![CD](https://github.com/LokiW-03/YUViz/actions/workflows/cd.yml/badge.svg)
+[![Latest Artifacts](https://img.shields.io/badge/Download-Latest%20Build-blue?style=flat-square&logo=github)](https://github.com/LokiW-03/YUViz/actions/workflows/cd.yml)
 
 ## Description
-A lightweight video inspection tool for YUV format files.
+A lightweight video frame inspection tool for YUV and compressed videos.
 
 ## Requirements
 - CMake 3.16+
@@ -66,8 +66,8 @@ A lightweight video inspection tool for YUV format files.
 2. Clone and build
 
     ```bash
-    git clone https://github.com/LokiW-03/qt6-videoplayer.git
-    cd qt6-videoplayer
+    git clone https://github.com/LokiW-03/YUViz.git
+    cd YUViz
     mkdir build && cd build
     ```
 
