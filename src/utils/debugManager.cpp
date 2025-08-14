@@ -7,7 +7,6 @@ DebugManager& DebugManager::instance() {
 }
 
 void DebugManager::initialize(const QString& debugFilters) {
-    // Enable debug mode
     m_debugEnabled = true;
 
     if (debugFilters == "max") {
@@ -15,7 +14,6 @@ void DebugManager::initialize(const QString& debugFilters) {
         return;
     }
 
-    // If "min", only min components will be enabled
     if (debugFilters == "min") {
         return;
     }
@@ -26,11 +24,9 @@ void DebugManager::initialize(const QString& debugFilters) {
         if (trimmedFilter.isEmpty())
             continue;
 
-        // Directly use the input name
         m_enabledComponents.insert(trimmedFilter);
     }
 
-    // Print enabled components
     if (!m_enabledComponents.isEmpty()) {
         qDebug() << "[DebugManager] Enabled debug components:" << m_enabledComponents.values();
     }
@@ -42,7 +38,7 @@ bool DebugManager::isEnabled(const QString& component) const {
 
     // Check if component is marked as min
     if (m_minComponents.contains(component)) {
-        return m_debugEnabled; // Only print if debug is enabled
+        return m_debugEnabled;
     }
 
     return m_enabledComponents.contains(component);

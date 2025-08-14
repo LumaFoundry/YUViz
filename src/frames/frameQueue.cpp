@@ -21,8 +21,6 @@ FrameQueue::FrameQueue(std::shared_ptr<FrameMeta> meta, int queueSize) :
 
 FrameQueue::~FrameQueue() = default;
 
-// Prevent renderer / decoder from modifying pointers when the other is accessing
-
 int FrameQueue::getEmpty(int direction) {
     int64_t tailVal = tail.load(std::memory_order_acquire);
     int64_t headVal = head.load(std::memory_order_acquire);
@@ -49,9 +47,7 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
     debug("fq", QString("Tail: %1").arg(tail.load(std::memory_order_acquire)));
     FrameData* target = &m_queue[pts % m_queueSize];
 
-    // Check if target is loaded in queue
     if (target->pts() == pts) {
-        // Update head if frame is in queue
         head.store(pts, std::memory_order_release);
         return target;
     }

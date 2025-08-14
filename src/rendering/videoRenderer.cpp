@@ -65,7 +65,7 @@ void VideoRenderer::initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp) {
     m_pip->setCullMode(QRhiGraphicsPipeline::None);
     m_pip->setTargetBlends({QRhiGraphicsPipeline::TargetBlend()});
     m_pip->setTopology(QRhiGraphicsPipeline::TriangleStrip);
-    m_pip->setSampleCount(1); // single-sample target
+    m_pip->setSampleCount(1);
     m_pip->setDepthTest(false);
     m_pip->setDepthWrite(false);
     m_pip->setRenderPassDescriptor(rp);
@@ -119,7 +119,6 @@ void VideoRenderer::setColorParams(AVColorSpace space, AVColorRange range) {
 
 void VideoRenderer::setComponentDisplayMode(int mode) {
     m_componentDisplayMode = mode;
-    // Update the uniform buffer with the new display mode
     struct ColorParams {
         int colorSpace, colorRange, componentDisplayMode, padding;
     };
@@ -235,16 +234,13 @@ void VideoRenderer::renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QR
         float offsetY = 0.0f;
 
         if (m_zoom != 1.0f) {
-            // Apply zoom factor
             scaleX *= m_zoom;
             scaleY *= m_zoom;
 
-            // Calculate offset to center the zoomed region
             offsetX = -(m_centerX - 0.5f) * 2.0f * scaleX;
             offsetY = (m_centerY - 0.5f) * 2.0f * scaleY;
         }
 
-        // Struct matching the shader's std140 layout.
         struct ResizeParams {
             float scaleX, scaleY;
             float offsetX, offsetY;
