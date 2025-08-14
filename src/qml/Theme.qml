@@ -20,7 +20,6 @@ QtObject {
     property color accentPressedColor: "#3e8fcd"   // Pressed accent color
 
     // Device-scale factor (defaults to 1.0, scales on high DPI)
-    // readonly property real scaleFactor: Screen.logicalPixelDensity / 96
     readonly property real scaleFactor: 1.0
     readonly property real iconScaleFactor: Screen.logicalPixelDensity / 96
 

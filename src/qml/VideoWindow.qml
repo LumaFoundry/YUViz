@@ -16,7 +16,7 @@ VideoWindow {
     
     // Persistent rectangle state (stored in video pixel coordinates)
     property bool hasPersistentRect: false
-    property rect persistentRect: Qt.rect(0, 0, 0, 0) // Stored in video pixel coordinates
+    property rect persistentRect: Qt.rect(0, 0, 0, 0)
     property bool isPersistentRectSelecting: false
     property point persistentRectStart: Qt.point(0, 0)
     property point persistentRectEnd: Qt.point(0, 0)

@@ -27,7 +27,7 @@ Window {
     
     // Persistent rectangle state (stored in video pixel coordinates)
     property bool hasPersistentRect: false
-    property rect persistentRect: Qt.rect(0, 0, 0, 0) // Stored in video pixel coordinates
+    property rect persistentRect: Qt.rect(0, 0, 0, 0)
     property bool isPersistentRectSelecting: false
     property point persistentRectStart: Qt.point(0, 0)
     property point persistentRectEnd: Qt.point(0, 0)
@@ -150,8 +150,6 @@ Window {
                 }
             }
         }
-
-
 
         // Configuration menu
         Row {
@@ -450,8 +448,6 @@ Window {
                         Math.abs(currentVideoPos.y - diffWindow.persistentRectStart.y)
                     );
                     
-                    // No clamping while creating
-                    
                     diffWindow.persistentRectEnd = Qt.point(rect.x + rect.width, rect.y + rect.height);
                     persistentRectCanvas.requestPaint();
                 } else if (diffWindow && diffWindow.isDraggingPersistentRect) {
@@ -459,8 +455,6 @@ Window {
                     var currentVideoPos = diffWindow.convertScreenToPixelCoordinates(Qt.point(mouse.x, mouse.y));
                     var newX = currentVideoPos.x - diffWindow.dragStartOffset.x;
                     var newY = currentVideoPos.y - diffWindow.dragStartOffset.y;
-                    
-                    // No clamping when dragging
                     
                     // Update rectangle position
                     diffWindow.persistentRect.x = newX;
@@ -513,8 +507,6 @@ Window {
                             break;
                     }
                     
-                    // No clamping when resizing
-                    
                     // Update rectangle
                     diffWindow.persistentRect = newRect;
                     persistentRectCanvas.requestPaint();
@@ -532,8 +524,6 @@ Window {
                         Math.abs(diffWindow.persistentRectEnd.x - diffWindow.persistentRectStart.x),
                         Math.abs(diffWindow.persistentRectEnd.y - diffWindow.persistentRectStart.y)
                     );
-                    
-                    // No clamping on finalize
                     
                     // Only create rectangle if it has meaningful size
                     if (rect.width > 5 && rect.height > 5) {

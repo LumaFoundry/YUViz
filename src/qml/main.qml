@@ -1,5 +1,4 @@
 import QtQuick.Window 6.0
-// Use standard Controls for native styling when QQuickStyle is set
 import QtQuick.Controls.Basic 6.0
 import QtQuick 6.0
 import QtQuick.Layouts 1.15
