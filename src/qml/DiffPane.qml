@@ -9,11 +9,6 @@ Item {
     property alias diffVideoWindow: diffVideoWindow
     property bool wasPlayingBeforeResize: false
 
-    // Legacy transient selection (unused after persistent rectangle logic migrated)
-    property bool isSelecting: false
-    property point selectionStart: Qt.point(0, 0)
-    property point selectionEnd: Qt.point(0, 0)
-    property bool isProcessingSelection: false
     property bool isMouseDown: false
     property bool isZoomed: diffVideoWindow.sharedView ? diffVideoWindow.sharedView.isZoomed : false
     property bool isCtrlPressed: mainWindow ? mainWindow.isCtrlPressed : false
