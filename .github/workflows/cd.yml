@@ -31,15 +31,22 @@ jobs:
           mingw-w64-x86_64-qt6-base
           mingw-w64-x86_64-qt6-declarative
           mingw-w64-x86_64-qt6-shadertools
+          mingw-w64-x86_64-qt6-tools
+          mingw-w64-x86_64-qt6
+          mingw-w64-x86_64-qt6-imageformats
           mingw-w64-x86_64-ffmpeg
           mingw-w64-x86_64-pkgconf
           
     - name: Configure with CMake
       shell: msys2 {0}
       run: |
-        mkdir build
+        mkdir -p build
         cd build
-        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        if command -v qt-cmake >/dev/null 2>&1; then
+          qt-cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release
+        else
+          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/mingw64
+        fi
         
     - name: Build
       shell: msys2 {0}
@@ -51,258 +58,132 @@ jobs:
       shell: msys2 {0}
       run: |
         cd build
-        mkdir -p release-package
-        
-        # Copy main executable
-        cp YUViz.exe release-package/
-        
-        # Debug: List available Qt tools
-        echo "Available Qt tools:"
-        find /mingw64 -name "*deployqt*" -type f 2>/dev/null || echo "No deployqt found"
-        find /mingw64 -name "qt-cmake*" -type f 2>/dev/null || echo "No qt-cmake found"
-        echo "Available DLLs in /mingw64/bin:"
-        ls -la /mingw64/bin/Qt6*.dll 2>/dev/null || echo "No Qt6 DLLs found"
-        
-        # Collect Qt and other dependency DLLs
-        # Find Qt installation path - use windeployqt6.exe directly
-        if [ -f "/mingw64/bin/windeployqt6.exe" ]; then
-          echo "Found windeployqt6.exe, using it for deployment"
-          # Run windeployqt with verbose output and ignore translation warnings
-          /mingw64/bin/windeployqt6.exe --qmldir .. --no-translations --no-compiler-runtime --dir release-package --verbose release-package/YUViz.exe || {
-            echo "windeployqt failed, using manual DLL copying"
-            cp /mingw64/bin/Qt6*.dll release-package/ || true
+        set -euo pipefail
+        set -x
+        pkgdir=release-package
+        mkdir -p "$pkgdir"
+
+        # 1) Use windeployqt6 to collect Qt runtime and plugins
+        if [ -x "/mingw64/bin/windeployqt6.exe" ]; then
+          /mingw64/bin/windeployqt6.exe \
+            --release \
+            --qmldir ../src/qml \
+            --dir "$pkgdir" \
+            ./YUViz.exe || {
+              echo "windeployqt6 failed, fallback to manual copy of Qt6*.dll"
+              shopt -s nullglob
+              qt_dlls=(/mingw64/bin/Qt6*.dll)
+              echo "Qt6 DLLs to copy: ${#qt_dlls[@]}"
+              for f in "${qt_dlls[@]}"; do
+                cp -u "$f" "$pkgdir/" || true
+              done
+              echo "Copied ${#qt_dlls[@]} Qt6 DLLs"
           }
         else
-          echo "windeployqt6.exe not found, using manual DLL copying"
-          # Manual Qt DLL copying as fallback
-          cp /mingw64/bin/Qt6*.dll release-package/ || true
+          echo "windeployqt6.exe not found, fallback to manual copy of Qt6*.dll"
+          shopt -s nullglob
+          qt_dlls=(/mingw64/bin/Qt6*.dll)
+          echo "Qt6 DLLs to copy: ${#qt_dlls[@]}"
+          for f in "${qt_dlls[@]}"; do
+            cp -u "$f" "$pkgdir/" || true
+          done
+          echo "Copied ${#qt_dlls[@]} Qt6 DLLs"
         fi
-        
-        # Verify that essential Qt DLLs are present
-        echo "Verifying essential Qt DLLs..."
-        ls -la release-package/Qt6Core.dll release-package/Qt6Gui.dll release-package/Qt6Widgets.dll release-package/Qt6Quick.dll release-package/Qt6Qml.dll 2>/dev/null || {
-          echo "Essential Qt DLLs missing, copying manually..."
-          cp /mingw64/bin/Qt6Core.dll /mingw64/bin/Qt6Gui.dll /mingw64/bin/Qt6Widgets.dll /mingw64/bin/Qt6Quick.dll /mingw64/bin/Qt6Qml.dll /mingw64/bin/Qt6Network.dll /mingw64/bin/Qt6Concurrent.dll /mingw64/bin/Qt6ShaderTools.dll /mingw64/bin/Qt6OpenGL.dll /mingw64/bin/Qt6OpenGLWidgets.dll release-package/ 2>/dev/null || true
-        }
-        
-        # Manually copy potentially missing FFmpeg DLLs
-        echo "Copying FFmpeg libraries..."
-        # Copy all FFmpeg libraries
+
+        # 2) Copy main executable into package directory (after deployment)
+        cp -u ./YUViz.exe "$pkgdir/"
+
+        # 2.1) Always copy essential QML modules (Controls/Layouts) into package qml dir
+        qt_qml_dir=""
+        if [ -d "/mingw64/share/qt6/qml" ]; then
+          qt_qml_dir="/mingw64/share/qt6/qml"
+        elif [ -d "/mingw64/lib/qt6/qml" ]; then
+          qt_qml_dir="/mingw64/lib/qt6/qml"
+        fi
+        echo "Qt QML dir resolved to: ${qt_qml_dir:-<not found>}"
+        mkdir -p "$pkgdir/qml"
+        if [ -n "$qt_qml_dir" ]; then
+          for m in \
+            QtQml \
+            QtQuick \
+            QtQuick.2 \
+            QtQuick/Window \
+            QtQuick/Controls \
+            QtQuick/Controls/Basic \
+            QtQuick/Layouts \
+            QtQuick/Dialogs \
+            QtQuick/Dialogs/quickimpl \
+            Qt/labs/folderlistmodel \
+            Qt/labs/settings; do
+            if [ -d "$qt_qml_dir/$m" ]; then
+              dest="$pkgdir/qml/$m"
+              mkdir -p "$dest"
+              cp -r "$qt_qml_dir/$m"/* "$dest/" 2>/dev/null || true
+            fi
+          done
+        else
+          echo "Warning: Qt QML dir not found; skipping QML module copy"
+        fi
+
+        # 3) Copy FFmpeg DLLs (common components)
         for lib in avcodec avformat avutil swscale swresample avfilter; do
-          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
+          find /mingw64/bin -name "${lib}*.dll" -exec cp -u {} "$pkgdir/" \; 2>/dev/null || true
         done
-        
-        # Verify FFmpeg libraries
-        echo "Verifying FFmpeg libraries..."
-        ls -la release-package/avcodec*.dll release-package/avformat*.dll release-package/avutil*.dll 2>/dev/null || {
-          echo "Essential FFmpeg DLLs missing, copying manually..."
-          cp /mingw64/bin/avcodec*.dll /mingw64/bin/avformat*.dll /mingw64/bin/avutil*.dll /mingw64/bin/swscale*.dll /mingw64/bin/swresample*.dll /mingw64/bin/avfilter*.dll release-package/ 2>/dev/null || true
+        echo "FFmpeg DLLs present: $(ls -1 "$pkgdir"/avcodec*.dll 2>/dev/null | wc -l) avcodec, $(ls -1 "$pkgdir"/avformat*.dll 2>/dev/null | wc -l) avformat"
+
+        # 4) Copy MinGW runtime and common base deps (cover nanosleep symbol source)
+        for dll in \
+          libwinpthread-1.dll \
+          libstdc++-6.dll \
+          libgcc_s_seh-1.dll \
+          libssp-0.dll \
+          libiconv-2.dll \
+          libbz2-1.dll \
+          liblzma-5.dll \
+          zlib1.dll \
+          libzstd-1.dll \
+          libxml2-2.dll; do
+          [ -f "/mingw64/bin/$dll" ] && cp -u "/mingw64/bin/$dll" "$pkgdir/" || true
+        done
+        echo "Runtime/base DLLs copied."
+
+        # 5) Optional: EGL/OpenGL related
+        find /mingw64/bin -name "libEGL*.dll"   -exec cp -u {} "$pkgdir/" \; 2>/dev/null || true
+        find /mingw64/bin -name "libGLESv2*.dll" -exec cp -u {} "$pkgdir/" \; 2>/dev/null || true
+
+        # 6) Two passes of ldd to copy direct deps from /mingw64
+        copy_missing_deps() {
+          for f in "$pkgdir"/YUViz.exe "$pkgdir"/*.dll; do
+            [ -f "$f" ] || continue
+            ldd "$f" 2>/dev/null | awk '/=>/ {print $3} /^\t.*\.dll/ {print $1}' | sed '/not found/d' | tr -d '\r' | while read -r p; do
+              [ -n "$p" ] || continue
+              if [ -f "$p" ] && echo "$p" | grep -q "/mingw64/"; then
+                cp -u "$p" "$pkgdir/" || true
+              else
+                base="$(basename "$p")"
+                [ -f "/mingw64/bin/$base" ] && cp -u "/mingw64/bin/$base" "$pkgdir/" || true
+              fi
+            done || true
+          done
         }
-        
-        # Copy MinGW runtime libraries
-        echo "Copying MinGW runtime libraries..."
-        find /mingw64/bin -name "libgcc_s_seh-1.dll" -exec cp {} release-package/ \; || true
-        find /mingw64/bin -name "libwinpthread-1.dll" -exec cp {} release-package/ \; || true
-        find /mingw64/bin -name "libstdc++-6.dll" -exec cp {} release-package/ \; || true
-        
-        # Copy additional required libraries
-        echo "Copying additional required libraries..."
-        for lib in libxml2 libiconv liblzma libbz2 libzstd libz; do
-          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
-        done
-        
-        # Copy specific libraries that might be missing
-        echo "Copying specific libraries..."
-        for lib in libxml2-2 libiconv-2 liblzma-5 libbz2-1 libzstd-1 zlib1; do
-          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
-        done
-        
-        # Copy additional system libraries that might be needed
-        echo "Copying additional system libraries..."
-        for lib in libwinpthread libgcc_s libstdc++; do
-          find /mingw64/bin -name "${lib}*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No ${lib} DLLs found"
-        done
-        
-        # Copy OpenGL libraries
-        echo "Copying OpenGL libraries..."
-        find /mingw64/bin -name "libGL*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No OpenGL DLLs found"
-        find /mingw64/bin -name "libEGL*.dll" -exec cp {} release-package/ \; 2>/dev/null || echo "No EGL DLLs found"
-        
-        # Copy additional Qt libraries that might be missing
-        echo "Copying additional Qt libraries..."
-        find /mingw64/bin -name "Qt6*.dll" -exec cp {} release-package/ \; || true
-        
-        # Copy Qt platform plugins
-        echo "Copying Qt platform plugins..."
-        mkdir -p release-package/platforms
-        find /mingw64 -name "qwindows.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qwindows.dll not found"
-        find /mingw64 -name "qminimal.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qminimal.dll not found"
-        find /mingw64 -name "qoffscreen.dll" -exec cp {} release-package/platforms/ \; 2>/dev/null || echo "qoffscreen.dll not found"
-        
-        # Copy Qt style plugins
-        echo "Copying Qt style plugins..."
-        mkdir -p release-package/styles
-        find /mingw64 -name "qwindowsvistastyle.dll" -exec cp {} release-package/styles/ \; 2>/dev/null || echo "qwindowsvistastyle.dll not found"
-        
-        # Copy Qt image format plugins
-        echo "Copying Qt image format plugins..."
-        mkdir -p release-package/imageformats
-        find /mingw64 -name "qjpeg.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qjpeg.dll not found"
-        find /mingw64 -name "qpng.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qpng.dll not found"
-        find /mingw64 -name "qgif.dll" -exec cp {} release-package/imageformats/ \; 2>/dev/null || echo "qgif.dll not found"
-        
-        # Copy Qt multimedia plugins
-        echo "Copying Qt multimedia plugins..."
-        mkdir -p release-package/mediaservice
-        find /mingw64 -name "qwindowsmediaplayer.dll" -exec cp {} release-package/mediaservice/ \; 2>/dev/null || echo "qwindowsmediaplayer.dll not found"
-        find /mingw64 -name "qffmpegmediaplayer.dll" -exec cp {} release-package/mediaservice/ \; 2>/dev/null || echo "qffmpegmediaplayer.dll not found"
-        
-        # Copy Qt QML plugins
-        echo "Copying Qt QML plugins..."
-        mkdir -p release-package/qml
-        find /mingw64 -name "QtQml" -type d -exec cp -r {} release-package/qml/ \; 2>/dev/null || echo "QtQml directory not found"
-        find /mingw64 -name "QtQuick" -type d -exec cp -r {} release-package/qml/ \; 2>/dev/null || echo "QtQuick directory not found"
-        
-        # Copy Qt QML modules
-        echo "Copying Qt QML modules..."
-        mkdir -p release-package/qml/QtQml
-        mkdir -p release-package/qml/QtQuick
-        mkdir -p release-package/qml/QtQuick.2
-        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQml/ \; 2>/dev/null || echo "QtQml qmldir not found"
-        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQuick/ \; 2>/dev/null || echo "QtQuick qmldir not found"
-        find /mingw64 -name "qmldir" -exec cp {} release-package/qml/QtQuick.2/ \; 2>/dev/null || echo "QtQuick.2 qmldir not found"
-        
-        # Copy Qt audio plugins
-        echo "Copying Qt audio plugins..."
-        mkdir -p release-package/audio
-        find /mingw64 -name "qtaudio_*.dll" -exec cp {} release-package/audio/ \; 2>/dev/null || echo "qtaudio plugins not found"
-        
-        # Copy Qt video plugins
-        echo "Copying Qt video plugins..."
-        mkdir -p release-package/video
-        find /mingw64 -name "qtvideo_*.dll" -exec cp {} release-package/video/ \; 2>/dev/null || echo "qtvideo plugins not found"
-        
-        # Final verification
-        echo "Final verification of package contents..."
-        echo "Qt libraries:"
-        ls -la release-package/Qt6*.dll 2>/dev/null | wc -l || echo "0"
-        echo "FFmpeg libraries:"
-        ls -la release-package/av*.dll release-package/sw*.dll 2>/dev/null | wc -l || echo "0"
-        echo "Runtime libraries:"
-        ls -la release-package/lib*.dll 2>/dev/null | wc -l || echo "0"
-        echo "XML libraries:"
-        ls -la release-package/libxml*.dll 2>/dev/null | wc -l || echo "0"
-        echo "Iconv libraries:"
-        ls -la release-package/libiconv*.dll 2>/dev/null | wc -l || echo "0"
-        echo "Qt plugins:"
-        echo "  Platforms:"
-        ls -la release-package/platforms/ 2>/dev/null | wc -l || echo "0"
-        echo "  Styles:"
-        ls -la release-package/styles/ 2>/dev/null | wc -l || echo "0"
-        echo "  Image formats:"
-        ls -la release-package/imageformats/ 2>/dev/null | wc -l || echo "0"
-        echo "  Media services:"
-        ls -la release-package/mediaservice/ 2>/dev/null | wc -l || echo "0"
-        echo "Total files in package:"
-        ls -la release-package/ | wc -l || echo "0"
-        
-        # Test executable dependencies
-        echo "Testing executable dependencies..."
-        cd release-package
-        ldd YUViz.exe 2>/dev/null || echo "ldd not available, checking with objdump"
-        objdump -p YUViz.exe | grep "DLL Name" | head -10 || echo "objdump not available"
-        cd ..
-        
-        # Create README
-        cat > release-package/README.txt << 'EOF'
-        Qt6 YUViz - Windows Release
-        
-        Usage Instructions:
-        1. Double-click YUViz.exe to start the program
-        2. Ensure all DLL files are in the same directory as the executable
-        3. Supported video formats: MP4, AVI, MOV, MKV, etc.
-        
-        Troubleshooting:
-        - If you get "missing DLL" errors, ensure all files are extracted to the same folder
-        - Install Visual C++ Redistributable if needed: https://aka.ms/vs/17/release/vc_redist.x64.exe
-        - For libxml2-16.dll errors, ensure the file is in the same directory as YUViz.exe
-        - For "Qt platform plugin" errors, ensure the platforms/ folder contains qwindows.dll
-        - For "Qt style plugin" errors, ensure the styles/ folder contains qwindowsvistastyle.dll
-        - If the app crashes immediately, try running YUViz-debug.bat for more information
-        
-        System Requirements:
-        - Windows 10 or later
-        - x64 architecture
-        - Visual C++ Redistributable 2015-2022 (if not included)
+        copy_missing_deps
+        copy_missing_deps
+        echo "After ldd passes, total files in package: $(ls -1 "$pkgdir" | wc -l)"
+
+        # 7) Ensure platform plugin exists
+        mkdir -p "$pkgdir/platforms"
+        find /mingw64 -name "qwindows.dll" -exec cp -u {} "$pkgdir/platforms/" \; 2>/dev/null || true
+
+        # 7.1) Write qt.conf to point QML imports to local qml folder and plugins to app dir
+        cat > "$pkgdir/qt.conf" << 'EOF'
+        [Paths]
+        Prefix=.
+        Qml2Imports=./qml
+        Plugins=.
         EOF
-        
-        # Create debug batch file
-        cat > release-package/YUViz-debug.bat << 'EOF'
-        @echo off
-        echo Starting YUViz with debug information...
-        echo Current directory: %CD%
-        echo.
-        echo Checking for required files:
-        if exist "YUViz.exe" echo [OK] YUViz.exe found
-        if exist "Qt6Core.dll" echo [OK] Qt6Core.dll found
-        if exist "Qt6Gui.dll" echo [OK] Qt6Gui.dll found
-        if exist "Qt6Widgets.dll" echo [OK] Qt6Widgets.dll found
-        if exist "Qt6Quick.dll" echo [OK] Qt6Quick.dll found
-        if exist "Qt6Qml.dll" echo [OK] Qt6Qml.dll found
-        if exist "platforms\qwindows.dll" echo [OK] qwindows.dll found
-        echo.
-        echo Checking for optional files:
-        if exist "libxml2-2.dll" echo [OK] libxml2-2.dll found
-        if exist "libiconv-2.dll" echo [OK] libiconv-2.dll found
-        echo.
-        echo Checking for plugin directories:
-        if exist "platforms" echo [OK] platforms directory found
-        if exist "styles" echo [OK] styles directory found
-        if exist "imageformats" echo [OK] imageformats directory found
-        if exist "mediaservice" echo [OK] mediaservice directory found
-        if exist "qml" echo [OK] qml directory found
-        echo.
-        echo Listing files in current directory:
-        dir /b
-        echo.
-        echo Starting application with debug output...
-        set QT_DEBUG_PLUGINS=1
-        YUViz.exe
-        echo.
-        echo Application exited with code: %ERRORLEVEL%
-        pause
-        EOF
-        
-        # Create a simple test batch file
-        cat > release-package/test-qt.bat << 'EOF'
-        @echo off
-        echo Testing Qt installation...
-        echo.
-        echo Checking Qt version:
-        if exist "Qt6Core.dll" (
-            echo Qt6Core.dll exists
-        ) else (
-            echo Qt6Core.dll missing
-        )
-        echo.
-        echo Checking platform plugins:
-        if exist "platforms\qwindows.dll" (
-            echo qwindows.dll exists
-        ) else (
-            echo qwindows.dll missing
-        )
-        echo.
-        echo Testing with Qt debug output:
-        set QT_DEBUG_PLUGINS=1
-        set QT_QPA_PLATFORM_PLUGIN_PATH=platforms
-        YUViz.exe --help 2>&1
-        echo.
-        echo Test completed
-        pause
-        EOF
-        
-        # Create zip package using PowerShell (built into Windows)
-        powershell -Command "Compress-Archive -Path release-package\* -DestinationPath ..\YUViz-windows.zip -Force"
+
+        # 8) Package to zip
+        powershell -Command "Compress-Archive -Path '${pkgdir}\\*' -DestinationPath '..\\YUViz-windows.zip' -Force"
         
     - name: Debug file existence
       shell: msys2 {0}
