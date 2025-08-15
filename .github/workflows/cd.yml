@@ -64,6 +64,12 @@ jobs:
         mkdir -p "$pkgdir"
 
         # 1) Use windeployqt6 to collect Qt runtime and plugins
+
+        # Ensure windeployqt6 can find helper tools (qmlimportscanner, etc.)
+        for t in qmlimportscanner qmlcachegen qmltyperegistrar; do
+          [ -f "/mingw64/lib/qt6/bin/${t}.exe" ] && cp -u "/mingw64/lib/qt6/bin/${t}.exe" /mingw64/bin/
+        done
+
         if [ -x "/mingw64/bin/windeployqt6.exe" ]; then
           /mingw64/bin/windeployqt6.exe \
             --release \
