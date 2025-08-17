@@ -45,6 +45,11 @@ int FrameQueue::getEmpty(int direction) {
 // IMPORTANT: Must not call decoder when seeking / stepping
 FrameData* FrameQueue::getHeadFrame(int64_t pts) {
     debug("fq", QString("Tail: %1").arg(tail.load(std::memory_order_acquire)));
+
+    if (pts < 0) {
+        return nullptr;
+    }
+
     FrameData* target = &m_queue[pts % m_queueSize];
 
     if (target->pts() == pts) {
@@ -57,6 +62,11 @@ FrameData* FrameQueue::getHeadFrame(int64_t pts) {
 
 FrameData* FrameQueue::getTailFrame(int64_t pts) {
     debug("fq", QString("Tail index: %1").arg(pts % m_queueSize));
+
+    if (pts < 0) {
+        return nullptr;
+    }
+
     return &m_queue[pts % m_queueSize];
 }
 

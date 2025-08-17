@@ -111,8 +111,8 @@ qt6_add_shaders(${TARGET_NAME} "shaders"
         FILES ${SHADER_FILES}
 )
 
-# enable_testing()
-# add_subdirectory(test)
+enable_testing()
+add_subdirectory(test)
 
 target_include_directories(${TARGET_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src

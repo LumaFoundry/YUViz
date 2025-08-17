@@ -7,9 +7,9 @@
 #include <iostream>
 #include <string>
 
-#include "frameQueue.h"
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
+#include "frames/frameQueue.h"
 #include "utils/errorReporter.h"
 #include "utils/y4mParser.h"
 

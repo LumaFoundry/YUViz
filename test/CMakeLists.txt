@@ -1,7 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
-project(qt6_videoplayer_test LANGUAGES CXX)
+project(YUViz_test LANGUAGES CXX)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_NO_SYSTEM_FROM_IMPORTED ON)
+
+# Enable coverage flags for GCC/Clang
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    set(COVERAGE_COMPILE_FLAGS "-O0 -g --coverage")
+    set(COVERAGE_LINK_FLAGS "--coverage")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILE_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${COVERAGE_LINK_FLAGS}")
+endif()
 
 find_package(Qt6 REQUIRED COMPONENTS
   Core
@@ -43,22 +51,27 @@ endif()
 
 
 set(SRC_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/frames/frameMeta.cpp
     ${CMAKE_SOURCE_DIR}/src/frames/frameData.cpp
+    ${CMAKE_SOURCE_DIR}/src/frames/frameMeta.cpp
     ${CMAKE_SOURCE_DIR}/src/frames/frameQueue.cpp
-    ${CMAKE_SOURCE_DIR}/src/controller/frameController.cpp
-    ${CMAKE_SOURCE_DIR}/src/controller/videoController.cpp
-    ${CMAKE_SOURCE_DIR}/src/decoder/videoDecoder.cpp
-    ${CMAKE_SOURCE_DIR}/src/rendering/videoRenderer.cpp
-    ${CMAKE_SOURCE_DIR}/src/utils/errorReporter.cpp
-    ${CMAKE_SOURCE_DIR}/src/ui/videoWindow.cpp
-
+    ${CMAKE_SOURCE_DIR}/src/utils/debugManager.cpp
+    ${CMAKE_SOURCE_DIR}/src/controller/compareController.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/diffWindow.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/sharedViewProperties.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/ErrorReporter.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/compareHelper.cpp
+    ${CMAKE_SOURCE_DIR}/src/rendering/DiffRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/rendering/DiffRenderNode.cpp
 )
+
 
 set(TEST_SOURCES
     frames/test_framequeue.cpp
-    controller/test_framecontroller.cpp
-    # frames/test_framedata.cpp
+    utils/test_debugmanager.cpp
+    # controller/test_framecontroller.cpp
+    frames/test_framedata.cpp
+    frames/test_framemeta.cpp
+    controller/test_comparecontroller.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
@@ -68,16 +81,22 @@ foreach(test_file ${TEST_SOURCES})
         ${test_name}
         ${test_file}
         ${SRC_SOURCES}
-        ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_decoder.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
+        # ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_decoder.h
+        # ${CMAKE_CURRENT_SOURCE_DIR}/mock/mock_renderer.h
     )
+
+    # Add coverage flags to test targets
+    if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(${test_name} PRIVATE -O0 -g --coverage)
+        target_link_options(${test_name} PRIVATE --coverage)
+    endif()
 
     file(GLOB_RECURSE SHADER_FILES
         "${CMAKE_SOURCE_DIR}/src/shaders/*.vert"
         "${CMAKE_SOURCE_DIR}/src/shaders/*.frag"
     )
 
-    qt6_add_shaders(${test_name} videoplayer_shaders
+    qt6_add_shaders(${test_name} "shaders"
         PREFIX "/shaders"
         BASE "${CMAKE_SOURCE_DIR}/src/shaders"
         FILES ${SHADER_FILES}
