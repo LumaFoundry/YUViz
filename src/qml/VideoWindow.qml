@@ -528,7 +528,7 @@ VideoWindow {
                     drawResizeHandles(ctx, screenRect);
                     
                     // Draw coordinate text
-                    var coordText = persistentRect.width + ":" + persistentRect.height + ":" + persistentRect.x + ":" + persistentRect.y;
+                    var coordText = "W" + persistentRect.width + ":" + "H" + persistentRect.height + ":" + "X" + persistentRect.x + ":" + "Y" + persistentRect.y;
                     drawCoordinateText(ctx, screenRect, coordText);
                 }
                 
@@ -551,7 +551,7 @@ VideoWindow {
                     ctx.setLineDash([]);
                     
                     // Draw coordinate text during creation
-                    var coordText = rect.width + ":" + rect.height + ":" + rect.x + ":" + rect.y;
+                    var coordText = "W" + rect.width + ":" + "H" + rect.height + ":" + "X" + rect.x + ":" + "Y" + rect.y;
                     drawCoordinateText(ctx, screenRect, coordText);
                 }
         }

@@ -443,7 +443,7 @@ Item {
                     ctx.lineWidth = 2;
                     ctx.strokeRect(screenRect.x, screenRect.y, screenRect.width, screenRect.height);
                     drawResizeHandles(ctx, screenRect);
-                    var coordText = diffPane.persistentRect.width + ":" + diffPane.persistentRect.height + ":" + diffPane.persistentRect.x + ":" + diffPane.persistentRect.y;
+                    var coordText = "W" + diffPane.persistentRect.width + ":" + "H" + diffPane.persistentRect.height + ":" + "X" + diffPane.persistentRect.x + ":" + "Y" + diffPane.persistentRect.y;
                     drawCoordinateText(ctx, screenRect, coordText);
                 }
                 // Draw during creation (dashed)
@@ -462,7 +462,7 @@ Item {
                     ctx.setLineDash([5, 5]);
                     ctx.strokeRect(screenRect2.x, screenRect2.y, screenRect2.width, screenRect2.height);
                     ctx.setLineDash([]);
-                    var coordText2 = rect.width + ":" + rect.height + ":" + rect.x + ":" + rect.y;
+                    var coordText2 = "W" + rect.width + ":" + "H" + rect.height + ":" + "X" + rect.x + ":" + "Y" + rect.y;
                     drawCoordinateText(ctx, screenRect2, coordText2);
                 }
             }
