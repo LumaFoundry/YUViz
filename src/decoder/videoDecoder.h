@@ -11,6 +11,7 @@
 #include "frames/frameData.h"
 #include "frames/frameMeta.h"
 #include "utils/errorReporter.h"
+#include "utils/y4mParser.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -69,6 +70,10 @@ class VideoDecoder : public QObject {
     int yuvTotalFrames = -1;
     bool m_forceSoftwareDecoding = false;
 
+    // Y4M format related
+    Y4MInfo m_y4mInfo;
+    bool m_isY4M = false;
+
     AVBufferRef* hw_device_ctx = nullptr;
     AVPixelFormat hw_pix_fmt = AV_PIX_FMT_NONE;
 
@@ -80,7 +85,9 @@ class VideoDecoder : public QObject {
     int calculateFrameSize(AVPixelFormat pixFmt, int width, int height);
     bool initializeHardwareDecoder(AVHWDeviceType deviceType, AVPixelFormat pixFmt);
     int64_t loadYUVFrame();
+    int64_t loadY4MFrame();
     void copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& retFlag);
+    void copyY4MFrame(const QByteArray& frameData, FrameData* outputFrame);
     int64_t loadCompressedFrame();
 
     bool m_hitEndFrame = false;
@@ -89,5 +96,6 @@ class VideoDecoder : public QObject {
 
     void seekTo(int64_t targetPts);
     void seekToYUV(int64_t targetPts);
+    void seekToY4M(int64_t targetPts);
     void seekToCompressed(int64_t targetPts);
 };

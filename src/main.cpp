@@ -69,6 +69,7 @@ int main(int argc, char* argv[]) {
                                      "Parameters can be in any order.\n"
                                      "Example: myvideo.yuv:1920x1080:25:444P\n"
                                      "Example: myvideo.yuv:420P:1280x720\n"
+                                     "For Y4M files, just provide the path (parameters read from header).\n"
                                      "For compressed formats (e.g., mp4), just provide the path.");
     parser.addVersionOption();
     parser.addHelpOption();

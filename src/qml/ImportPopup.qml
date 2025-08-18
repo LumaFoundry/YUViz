@@ -35,10 +35,13 @@ Popup {
     function openFileDialog() {
         const compressedExtensions = "*.mp4 *.mkv *.avi *.mov *.webm *.hevc *.av1 *.264 *.265";
         const rawExts = VideoFormatUtils.getRawVideoExtensions();
+        const allSupportedExts = VideoFormatUtils.getAllSupportedExtensions();
         const rawWildcards = rawExts.map(ext => "*" + ext).join(" ");
+        const allSupportedWildcards = allSupportedExts.map(ext => "*" + ext).join(" ");
         const dynamicFilters = [
-            `All Video Files (${rawWildcards} ${compressedExtensions})`,
+            `All Video Files (${allSupportedWildcards} ${compressedExtensions})`,
             `Raw YUV Files (${rawWildcards})`,
+            `Y4M Files (*.y4m)`,
             `Compressed Video Files (${compressedExtensions})`,
             "All Files (*)"
         ];
