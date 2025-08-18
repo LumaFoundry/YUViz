@@ -1,4 +1,5 @@
 #include "videoDecoder.h"
+#include <QFile>
 #include <chrono>
 #include <thread>
 #include "utils/debugManager.h"
@@ -66,9 +67,64 @@ void VideoDecoder::openFile() {
     QString qFileName = QString::fromStdString(m_fileName);
     QString formatIdentifier = VideoFormatUtils::detectFormatFromExtension(qFileName);
 
-    if (VideoFormatUtils::getFormatType(formatIdentifier) == FormatType::RAW_YUV) {
+    // Check if it's Y4M format
+    if (VideoFormatUtils::getFormatType(formatIdentifier) == FormatType::Y4M) {
+        m_isY4M = true;
+        m_y4mInfo = Y4MParser::parseHeader(qFileName);
+
+        if (!m_y4mInfo.isValid) {
+            ErrorReporter::instance().report("Y4M file header parsing failed", LogLevel::Error);
+            return;
+        }
+
+        // Set decoder parameters from Y4M header information
+        setDimensions(m_y4mInfo.width, m_y4mInfo.height);
+        setFramerate(m_y4mInfo.frameRate);
+        setFormat(m_y4mInfo.pixelFormat);
+
+        debug("vd",
+              QString("Detected Y4M file, resolution: %1x%2, frame rate: %3, pixel format: %4")
+                  .arg(m_y4mInfo.width)
+                  .arg(m_y4mInfo.height)
+                  .arg(m_y4mInfo.frameRate)
+                  .arg(av_get_pix_fmt_name(m_y4mInfo.pixelFormat)));
+
+        // Y4M files use special processing, no need to open through FFmpeg
+        // Set metadata directly and return
+        const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(m_y4mInfo.pixelFormat);
+        int uvWidth = AV_CEIL_RSHIFT(m_y4mInfo.width, pixDesc->log2_chroma_w);
+        int uvHeight = AV_CEIL_RSHIFT(m_y4mInfo.height, pixDesc->log2_chroma_h);
+
+        metadata.setYWidth(m_y4mInfo.width);
+        metadata.setYHeight(m_y4mInfo.height);
+        metadata.setUVWidth(uvWidth);
+        metadata.setUVHeight(uvHeight);
+        metadata.setPixelFormat(m_y4mInfo.pixelFormat);
+        metadata.setTimeBase({1, static_cast<int>(m_y4mInfo.frameRate)});
+        metadata.setSampleAspectRatio({1, 1});
+        metadata.setColorRange(AVCOL_RANGE_UNSPECIFIED);
+        metadata.setColorSpace(AVCOL_SPC_UNSPECIFIED);
+        metadata.setFilename(m_fileName);
+        metadata.setCodecName("Y4M");
+
+        int totalFrames = Y4MParser::calculateTotalFrames(qFileName, m_y4mInfo);
+        metadata.setTotalFrames(totalFrames);
+        yuvTotalFrames = totalFrames;
+
+        // Calculate duration for Y4M files: total_frames / frame_rate * 1000 (convert to ms)
+        int64_t durationMs = static_cast<int64_t>((totalFrames / m_y4mInfo.frameRate) * 1000.0);
+        metadata.setDuration(durationMs);
+
+        debug("vd", QString("Y4M file total frames: %1, duration: %2 ms").arg(totalFrames).arg(durationMs));
+
+        currentFrameIndex = 0;
+        return;
+    } else if (VideoFormatUtils::getFormatType(formatIdentifier) == FormatType::RAW_YUV) {
+        m_isY4M = false;
         inputFormat = av_find_input_format("rawvideo");
         debug("vd", "Detected raw YUV file, using rawvideo input format");
+    } else {
+        m_isY4M = false;
     }
 
     // av_dict_set(&input_options, "framerate", std::to_string(m_framerate).c_str(), 0);
@@ -268,12 +324,16 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
         return;
     }
 
-    if (!formatContext || !codecContext) {
+    // Y4M files have special processing logic
+    if (m_isY4M) {
+        // Y4M file processing logic
+    } else if (!formatContext || !codecContext) {
         ErrorReporter::instance().report("VideoDecoder not properly initialized", LogLevel::Error);
         emit framesLoaded(false);
+        return;
     }
 
-    bool isRawYUV = isYUV(codecContext->codec_id);
+    bool isRawYUV = !m_isY4M && isYUV(codecContext->codec_id);
     int64_t maxpts = -1;
     int64_t minpts = INT64_MAX;
 
@@ -307,7 +367,9 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
 
     for (int i = 0; i < num_frames; ++i) {
         int64_t temp_pts;
-        if (isRawYUV) {
+        if (m_isY4M) {
+            temp_pts = loadY4MFrame();
+        } else if (isRawYUV) {
             temp_pts = loadYUVFrame();
         } else {
             temp_pts = loadCompressedFrame();
@@ -336,7 +398,7 @@ void VideoDecoder::loadFrames(int num_frames, int direction = 1) {
             break;
         }
 
-        if (!isRawYUV) {
+        if (!isRawYUV && !m_isY4M) {
             int totalFrames = getTotalFrames();
             if (totalFrames > 0 && temp_pts >= totalFrames - 1) {
                 FrameData* endFrame = m_frameQueue->getTailFrame(temp_pts);
@@ -1126,7 +1188,7 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
 
     frameData->setPts(currentFrameIndex);
 
-    if (isYUV(codecContext->codec_id)) {
+    if (!m_isY4M && codecContext && isYUV(codecContext->codec_id)) {
         if (currentFrameIndex == yuvTotalFrames - 1) {
             debug("vd", QString("%1 is end frame").arg(currentFrameIndex));
             frameData->setEndFrame(true);
@@ -1141,7 +1203,11 @@ void VideoDecoder::copyFrame(AVPacket*& tempPacket, FrameData* frameData, int& r
 }
 
 int VideoDecoder::getTotalFrames() {
-    if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
+    if (m_isY4M && yuvTotalFrames > 0) {
+        return yuvTotalFrames;
+    }
+
+    if (!m_isY4M && codecContext && isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
         return yuvTotalFrames;
     }
 
@@ -1159,6 +1225,11 @@ int VideoDecoder::getTotalFrames() {
 }
 
 int64_t VideoDecoder::getDurationMs() {
+    // Handle Y4M files specially since they bypass FFmpeg
+    if (m_isY4M && m_y4mInfo.isValid && yuvTotalFrames > 0) {
+        return static_cast<int64_t>((yuvTotalFrames / m_y4mInfo.frameRate) * 1000.0);
+    }
+
     if (!formatContext || videoStreamIndex < 0) {
         return -1;
     }
@@ -1184,17 +1255,17 @@ int64_t VideoDecoder::getDurationMs() {
 }
 
 void VideoDecoder::seekTo(int64_t targetPts) {
-    if (!formatContext || !codecContext || videoStreamIndex < 0) {
-        ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
-        return;
-    }
-
     if (targetPts < 0) {
         warning("vd", QString("internal seek asked for negative pts: %1").arg(targetPts));
         targetPts = 0;
     }
 
-    if (isYUV(codecContext->codec_id)) {
+    if (m_isY4M) {
+        seekToY4M(targetPts);
+    } else if (!formatContext || !codecContext || videoStreamIndex < 0) {
+        ErrorReporter::instance().report("VideoDecoder not properly initialized for seeking", LogLevel::Error);
+        return;
+    } else if (isYUV(codecContext->codec_id)) {
         seekToYUV(targetPts);
     } else {
         seekToCompressed(targetPts);
@@ -1346,8 +1417,8 @@ void VideoDecoder::seekToCompressed(int64_t targetPts) {
 void VideoDecoder::seek(int64_t targetPts, int loadCount) {
     debug("vd", QString("seek called with targetPts: %1").arg(targetPts));
 
-    // For YUV files, check against total frames
-    if (isYUV(codecContext->codec_id) && yuvTotalFrames > 0) {
+    // For Y4M and YUV files, check against total frames
+    if ((m_isY4M || (codecContext && isYUV(codecContext->codec_id))) && yuvTotalFrames > 0) {
         if (targetPts >= yuvTotalFrames) {
             warning("vd",
                     QString("seek - Target PTS %1 exceeds total frames %2, adjusting to last frame")
@@ -1371,4 +1442,137 @@ void VideoDecoder::seek(int64_t targetPts, int loadCount) {
     }
 
     emit frameSeeked(targetPts);
+}
+
+int64_t VideoDecoder::loadY4MFrame() {
+    if (!m_isY4M || !m_y4mInfo.isValid) {
+        ErrorReporter::instance().report("Y4M format not properly initialized", LogLevel::Error);
+        return -1;
+    }
+
+    QFile file(QString::fromStdString(m_fileName));
+    if (!file.open(QIODevice::ReadOnly)) {
+        ErrorReporter::instance().report("Cannot open Y4M file for reading", LogLevel::Error);
+        return -1;
+    }
+
+    // Calculate current frame position in file
+    int frameDataSize = Y4MParser::calculateFrameSize(m_y4mInfo);
+    int totalFrameSize = 6 + frameDataSize; // "FRAME\n" + frame data
+    int64_t framePosition = m_y4mInfo.headerSize + currentFrameIndex * totalFrameSize;
+
+    // Check if beyond file end
+    if (framePosition >= file.size()) {
+        file.close();
+        return -1; // EOF
+    }
+
+    // Seek to frame position
+    if (!file.seek(framePosition)) {
+        ErrorReporter::instance().report("Cannot seek to frame position in Y4M file", LogLevel::Error);
+        file.close();
+        return -1;
+    }
+
+    // Read "FRAME\n" prefix
+    QByteArray frameHeader = file.read(6);
+    if (frameHeader != "FRAME\n") {
+        ErrorReporter::instance().report("Invalid Y4M frame header", LogLevel::Error);
+        file.close();
+        return -1;
+    }
+
+    // Read frame data
+    QByteArray frameData = file.read(frameDataSize);
+    if (frameData.size() != frameDataSize) {
+        ErrorReporter::instance().report("Incomplete Y4M frame data", LogLevel::Error);
+        file.close();
+        return -1;
+    }
+
+    file.close();
+
+    // Copy frame data to FrameData structure
+    int64_t pts = currentFrameIndex;
+    FrameData* outputFrame = m_frameQueue->getTailFrame(pts);
+    if (!outputFrame) {
+        ErrorReporter::instance().report("Cannot get frame from queue", LogLevel::Error);
+        return -1;
+    }
+
+    copyY4MFrame(frameData, outputFrame);
+
+    outputFrame->setPts(pts);
+
+    // Check if this is the last frame
+    if (currentFrameIndex == yuvTotalFrames - 1) {
+        outputFrame->setEndFrame(true);
+        debug("vd", QString("Y4M frame %1 is end frame").arg(currentFrameIndex));
+        m_hitEndFrame = true;
+    } else {
+        outputFrame->setEndFrame(false);
+    }
+
+    currentFrameIndex++;
+
+    debug("vd", QString("Y4M loaded frame %1").arg(pts));
+    return pts;
+}
+
+void VideoDecoder::copyY4MFrame(const QByteArray& frameData, FrameData* outputFrame) {
+    if (!outputFrame || frameData.isEmpty()) {
+        return;
+    }
+
+    const uint8_t* srcData = reinterpret_cast<const uint8_t*>(frameData.constData());
+    uint8_t* yPtr = outputFrame->yPtr();
+    uint8_t* uPtr = outputFrame->uPtr();
+    uint8_t* vPtr = outputFrame->vPtr();
+
+    if (!yPtr || !uPtr || !vPtr) {
+        ErrorReporter::instance().report("Invalid frame data pointers", LogLevel::Error);
+        return;
+    }
+
+    int width = m_y4mInfo.width;
+    int height = m_y4mInfo.height;
+
+    // Copy data based on pixel format
+    const AVPixFmtDescriptor* pixDesc = av_pix_fmt_desc_get(m_y4mInfo.pixelFormat);
+    if (!pixDesc) {
+        ErrorReporter::instance().report("Invalid pixel format descriptor", LogLevel::Error);
+        return;
+    }
+
+    int uvWidth = AV_CEIL_RSHIFT(width, pixDesc->log2_chroma_w);
+    int uvHeight = AV_CEIL_RSHIFT(height, pixDesc->log2_chroma_h);
+
+    // Y plane
+    int ySize = width * height;
+    memcpy(yPtr, srcData, ySize);
+
+    // U and V planes
+    int uvSize = uvWidth * uvHeight;
+    memcpy(uPtr, srcData + ySize, uvSize);
+    memcpy(vPtr, srcData + ySize + uvSize, uvSize);
+
+    debug("vd", QString("Y4M frame copied - Y size: %1, UV size: %2").arg(ySize).arg(uvSize));
+}
+
+void VideoDecoder::seekToY4M(int64_t targetPts) {
+    if (!m_isY4M || !m_y4mInfo.isValid) {
+        ErrorReporter::instance().report("Y4M format not properly initialized for seeking", LogLevel::Error);
+        return;
+    }
+
+    if (targetPts < 0) {
+        targetPts = 0;
+    }
+
+    if (targetPts >= yuvTotalFrames) {
+        targetPts = yuvTotalFrames - 1;
+    }
+
+    currentFrameIndex = targetPts;
+    debug("vd", QString("Y4M seeked to frame %1").arg(targetPts));
 }

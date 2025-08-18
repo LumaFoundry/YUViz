@@ -11,6 +11,7 @@ extern "C" {
 
 enum class FormatType {
     RAW_YUV,
+    Y4M,
     COMPRESSED
 };
 
@@ -35,7 +36,8 @@ class VideoFormatUtils : public QObject {
     Q_INVOKABLE static bool isCompressedFormat(const QString& formatString);
     static FormatType getFormatType(const QString& formatString);
     Q_INVOKABLE static QString detectFormatFromExtension(const QString& filename);
-    Q_INVOKABLE static QStringList getRawVideoExtensions(); // Don't make it a const and reference, qml breaks
+    Q_INVOKABLE static QStringList getRawVideoExtensions();     // Don't make it a const and reference, qml breaks
+    Q_INVOKABLE static QStringList getAllSupportedExtensions(); // All non-compressed extensions including Y4M
 
   private:
     static QList<VideoFormat> s_formats;
