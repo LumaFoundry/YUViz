@@ -609,7 +609,7 @@ Window {
                     diffWindow.drawResizeHandles(ctx, screenRect);
                     
                     // Draw coordinate text
-                    var coordText = diffWindow.persistentRect.width + ":" + diffWindow.persistentRect.height + ":" + diffWindow.persistentRect.x + ":" + diffWindow.persistentRect.y;
+                    var coordText = "W" + diffWindow.persistentRect.width + ":" + "H" + diffWindow.persistentRect.height + ":" + "X" + diffWindow.persistentRect.x + ":" + "Y" + diffWindow.persistentRect.y;
                     diffWindow.drawCoordinateText(ctx, screenRect, coordText);
                 }
                 
@@ -632,7 +632,7 @@ Window {
                     ctx.setLineDash([]);
                     
                     // Draw coordinate text during creation
-                    var coordText = rect.width + ":" + rect.height + ":" + rect.x + ":" + rect.y;
+                    var coordText = "W" + rect.width + ":" + "H" + rect.height + ":" + "X" + rect.x + ":" + "Y" + rect.y;
                     diffWindow.drawCoordinateText(ctx, screenRect, coordText);
                 }
             }
