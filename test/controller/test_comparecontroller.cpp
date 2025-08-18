@@ -133,17 +133,23 @@ void CompareControllerTest::testOnCompareRendered() {
     auto meta2 = std::make_shared<FrameMeta>();
     meta1->setYWidth(2);
     meta1->setYHeight(2);
+    meta1->setUVWidth(1);
+    meta1->setUVHeight(1);
     meta2->setYWidth(2);
     meta2->setYHeight(2);
-    controller.setMetadata(
-        meta1, meta2, std::make_shared<FrameQueue>(meta1, 1), std::make_shared<FrameQueue>(meta2, 1));
-    auto buffer = std::make_shared<std::vector<uint8_t>>(16);
-    FrameData frame1(2, 2, buffer, 0);
-    FrameData frame2(2, 2, buffer, 8);
-    frame1.setPts(1);
-    frame2.setPts(1);
-    controller.onReceiveFrame(&frame1, 1);
-    controller.onReceiveFrame(&frame2, 2);
+    meta2->setUVWidth(1);
+    meta2->setUVHeight(1);
+
+    auto FQ1 = std::make_shared<FrameQueue>(meta1, 1);
+    auto FQ2 = std::make_shared<FrameQueue>(meta2, 1);
+
+    controller.setMetadata(meta1, meta2, FQ1, FQ2);
+    FrameData* frame1 = FQ1->getTailFrame(0);
+    FrameData* frame2 = FQ2->getTailFrame(0);
+    frame1->setPts(1);
+    frame2->setPts(1);
+    controller.onReceiveFrame(frame1, 1);
+    controller.onReceiveFrame(frame2, 2);
     controller.onRequestRender(1);
     controller.onRequestRender(2);
     controller.onCompareRendered();
