@@ -111,7 +111,11 @@ void VideoDecoder::openFile() {
         metadata.setTotalFrames(totalFrames);
         yuvTotalFrames = totalFrames;
 
-        debug("vd", QString("Y4M file total frames: %1").arg(totalFrames));
+        // Calculate duration for Y4M files: total_frames / frame_rate * 1000 (convert to ms)
+        int64_t durationMs = static_cast<int64_t>((totalFrames / m_y4mInfo.frameRate) * 1000.0);
+        metadata.setDuration(durationMs);
+
+        debug("vd", QString("Y4M file total frames: %1, duration: %2 ms").arg(totalFrames).arg(durationMs));
 
         currentFrameIndex = 0;
         return;
@@ -1221,6 +1225,11 @@ int VideoDecoder::getTotalFrames() {
 }
 
 int64_t VideoDecoder::getDurationMs() {
+    // Handle Y4M files specially since they bypass FFmpeg
+    if (m_isY4M && m_y4mInfo.isValid && yuvTotalFrames > 0) {
+        return static_cast<int64_t>((yuvTotalFrames / m_y4mInfo.frameRate) * 1000.0);
+    }
+
     if (!formatContext || videoStreamIndex < 0) {
         return -1;
     }
