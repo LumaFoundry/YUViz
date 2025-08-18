@@ -72,6 +72,7 @@ set(TEST_SOURCES
     frames/test_framedata.cpp
     frames/test_framemeta.cpp
     controller/test_comparecontroller.cpp
+    utils/test_comparehelper.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
