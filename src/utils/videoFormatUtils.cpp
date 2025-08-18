@@ -19,9 +19,10 @@ void VideoFormatUtils::initializeFormats() {
     s_formats.append({"UYVY", "UYVY - YUV422 (Packed)", AV_PIX_FMT_UYVY422, FormatType::RAW_YUV});
     s_formats.append({"NV12", "NV12 - YUV420 (Semi-planar)", AV_PIX_FMT_NV12, FormatType::RAW_YUV});
     s_formats.append({"NV21", "NV21 - YUV420 (Semi-planar)", AV_PIX_FMT_NV21, FormatType::RAW_YUV});
+    s_formats.append({"Y4M", "Y4M - YUV4MPEG2 with header", AV_PIX_FMT_NONE, FormatType::Y4M});
     s_formats.append({"COMPRESSED", "Compressed Video", AV_PIX_FMT_NONE, FormatType::COMPRESSED});
 
-    s_rawVideoExtensions = {".yuv", ".y4m", ".raw", ".nv12", ".nv21", ".yuyv", ".uyvy"};
+    s_rawVideoExtensions = {".yuv", ".raw", ".nv12", ".nv21", ".yuyv", ".uyvy"};
 
     s_initialized = true;
 }
@@ -29,6 +30,15 @@ void VideoFormatUtils::initializeFormats() {
 QStringList VideoFormatUtils::getRawVideoExtensions() {
     initializeFormats();
     return s_rawVideoExtensions;
+}
+
+QStringList VideoFormatUtils::getAllSupportedExtensions() {
+    initializeFormats();
+
+    QStringList allExtensions = s_rawVideoExtensions;
+    allExtensions.append(".y4m"); // Add Y4M extension
+
+    return allExtensions;
 }
 
 const QList<VideoFormat>& VideoFormatUtils::getSupportedFormats() {
@@ -112,7 +122,8 @@ bool VideoFormatUtils::isCompressedFormat(const QString& formatString) {
 
     for (const VideoFormat& format : s_formats) {
         if (format.identifier.compare(formatString, Qt::CaseInsensitive) == 0) {
-            return format.type == FormatType::COMPRESSED;
+            // Treat Y4M format as compressed for GUI purposes (no manual parameter input needed)
+            return format.type == FormatType::COMPRESSED || format.type == FormatType::Y4M;
         }
     }
 
@@ -135,6 +146,11 @@ QString VideoFormatUtils::detectFormatFromExtension(const QString& filename) {
     initializeFormats();
 
     QString lowerFilename = filename.toLower();
+
+    // First check if it's a Y4M file
+    if (lowerFilename.endsWith(".y4m")) {
+        return "Y4M";
+    }
 
     bool isRaw = false;
     for (const QString& ext : s_rawVideoExtensions) {
