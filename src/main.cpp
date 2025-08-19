@@ -11,6 +11,7 @@
 #include <QSurface>
 #include <QTimer>
 #include <QWindow>
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include "controller/compareController.h"
@@ -37,6 +38,12 @@
 #endif
 
 int main(int argc, char* argv[]) {
+    // Force OpenGL backend on macOS to avoid Metal issues
+    // This ensures consistent behavior whether launched from CLI or app bundle
+#ifdef Q_OS_MACOS
+    setenv("QSG_RHI_BACKEND", "opengl", 1);
+#endif
+
     QGuiApplication app(argc, argv);
 
     // Set the application/window icon from resources (supports svg/ico automatically)
