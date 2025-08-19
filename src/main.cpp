@@ -187,10 +187,18 @@ int main(int argc, char* argv[]) {
                 filename = winMatch.captured(0);
                 if (winMatch.lastCapturedIndex() >= 2 && !winMatch.captured(2).isEmpty()) {
                     paramParts = winMatch.captured(2).split(':');
-                    // Remove the parameters part from filename
-                    int paramStart = filename.lastIndexOf(':');
-                    if (paramStart > 0) {
-                        filename = filename.left(paramStart);
+                    // Remove the parameters part from filename by finding the file extension
+                    // and removing everything after the first colon following it
+                    QRegularExpression extRegex(
+                        R"(\.(?:yuv|raw|nv12|nv21|yuyv|uyvy|y4m|mp4|mkv|avi|mov|webm|hevc|av1|264|265|wmv|flv|m4v|3gp))",
+                        QRegularExpression::CaseInsensitiveOption);
+                    QRegularExpressionMatch extMatch = extRegex.match(filename);
+                    if (extMatch.hasMatch()) {
+                        int extEnd = extMatch.capturedEnd();
+                        int paramStart = filename.indexOf(':', extEnd);
+                        if (paramStart > 0) {
+                            filename = filename.left(paramStart);
+                        }
                     }
                 }
             } else {
@@ -208,9 +216,17 @@ int main(int argc, char* argv[]) {
             if (inUrl.isLocalFile()) {
                 normalizedPath = inUrl.toLocalFile();
             }
-            // Windows/MSYS fix: handle paths like "/C:/..."
-            if (normalizedPath.size() > 2 && normalizedPath[0] == '/' && normalizedPath[2] == ':') {
-                normalizedPath.remove(0, 1);
+            // Windows/MSYS fix: handle paths like "/C:/..." or "/c/..."
+            if (normalizedPath.size() > 2 && normalizedPath[0] == '/') {
+                // Handle both "/C:/" and "/c/" formats
+                if (normalizedPath[2] == ':') {
+                    // Format: "/C:/path" -> "C:/path"
+                    normalizedPath.remove(0, 1);
+                } else if (normalizedPath[2] == '/' && normalizedPath[1].isLetter()) {
+                    // Format: "/c/path" -> "C:/path"
+                    QString driveLetter = normalizedPath.mid(1, 1).toUpper();
+                    normalizedPath = driveLetter + ":" + normalizedPath.mid(2);
+                }
             }
 
             if (!QFile::exists(normalizedPath)) {
