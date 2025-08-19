@@ -144,7 +144,7 @@ if (APPLE)
             MACOSX_BUNDLE_ICON_FILE icon.icns
             INSTALL_NAME_DIR "@rpath"
             BUILD_WITH_INSTALL_RPATH TRUE
-            INSTALL_RPATH "@executable_path/../Frameworks;/opt/homebrew/opt/qt/lib"
+            INSTALL_RPATH "@executable_path/../Frameworks"
     )
 endif ()
 

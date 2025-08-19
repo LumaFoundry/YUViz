@@ -206,65 +206,143 @@ jobs:
       
     - name: Install dependencies (Homebrew)
       run: |
-        brew install cmake ninja pkg-config
-        brew install qt@6 ffmpeg
-        
+        brew install cmake ninja pkg-config aqtinstall
+        brew install ffmpeg
+
+    - name: Install Qt SDK using aqtinstall
+      run: |
+        aqt install-qt mac desktop 6.9.1 -m qtshadertools -O ${{ runner.temp }}/qt
+
     - name: Configure with CMake
       run: |
         mkdir build
         cd build
-        export Qt6_DIR=$(brew --prefix qt@6)/lib/cmake/Qt6
-        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DQt6_DIR=$Qt6_DIR
+        cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DQt6_DIR=${{ runner.temp }}/qt/6.9.1/macos/lib/cmake/Qt6
         
     - name: Build
       run: |
         cd build
         ninja
-        
-    - name: Create macOS bundle and package
-      run: |
-        cd build
-        
-        # Ensure app bundle exists
-        if [ ! -d "YUViz.app" ]; then
-          echo "Error: YUViz.app not found"
+        if [ ! -f "YUViz.app/Contents/MacOS/YUViz" ]; then
+          echo "Build failed: YUViz.app not found or is incomplete."
           ls -la
           exit 1
         fi
+
+    - name: Manually Bundle All Homebrew Dependencies
+      run: |
+        cd build
+        APP_BUNDLE="YUViz.app"
+        FRAMEWORKS_DIR="${APP_BUNDLE}/Contents/Frameworks"
+        EXECUTABLE_PATH="${APP_BUNDLE}/Contents/MacOS/YUViz"
+
+        echo "--- Manually bundling all Homebrew dependencies ---"
+        mkdir -p "${FRAMEWORKS_DIR}"
         
-        # Use macdeployqt to handle dependencies
-        $(brew --prefix qt@6)/bin/macdeployqt YUViz.app
+        # This function recursively finds ALL non-Qt, non-system dependencies
+        # by looking for both absolute /opt/homebrew paths and relative @rpath links.
+        copy_deps() {
+          local target_file=$1
+          if [ ! -f "$target_file" ]; then return; fi
+
+          # Get all dependency paths, ignoring system libs
+          local all_deps=$(otool -L "$target_file" | grep -v '^\t/usr/lib' | grep -v '^\t/System' | awk '{print $1}')
+          
+          for dep_path in $all_deps; do
+            # Process if it's a homebrew path OR an rpath (which we assume is a homebrew peer)
+            if [[ "$dep_path" == "@rpath/"* ]] || [[ "$dep_path" == "/opt/homebrew/"* ]]; then
+              local dep_name=$(basename "$dep_path")
+
+              # Skip if it's a self-reference or already copied
+              if [[ "$(basename "$target_file")" == "$dep_name" ]] || [[ -f "${FRAMEWORKS_DIR}/${dep_name}" ]]; then
+                continue
+              fi
+
+              # Find the dependency's original location in the Homebrew directory
+              local original_dep=$(find /opt/homebrew/lib -name "$dep_name" -print -quit)
+              if [ -n "$original_dep" ]; then
+                echo "Copying dependency: $dep_name"
+                cp "$original_dep" "${FRAMEWORKS_DIR}/"
+                chmod 755 "${FRAMEWORKS_DIR}/${dep_name}"
+                # Recurse to find dependencies of the newly copied library
+                copy_deps "${FRAMEWORKS_DIR}/${dep_name}"
+              else
+                # This case should not happen for homebrew libs, but is a useful warning
+                echo "Warning: Could not find original location for '$dep_name'"
+              fi
+            fi
+          done
+        }
+
+        # Start the recursive copy with the main executable
+        copy_deps "$EXECUTABLE_PATH"
+        echo "--- Finished copying dependencies. Now fixing paths. ---"
+
+        # Now, fix the paths for all binaries in the bundle
+        find "${FRAMEWORKS_DIR}" -type f -perm +111 -print0 | while IFS= read -r -d $'\0' lib; do
+          # Fix the library's own ID to be relative to @rpath
+          install_name_tool -id "@rpath/$(basename "$lib")" "$lib"
+          # Find all its dependencies and change their paths to be relative to @rpath
+          deps=$(otool -L "$lib" | grep -E '(/opt/homebrew|@rpath)' | awk '{print $1}')
+          for dep in $deps; do
+            dep_name=$(basename "$dep")
+            if [[ -f "${FRAMEWORKS_DIR}/$dep_name" ]]; then
+              install_name_tool -change "$dep" "@rpath/$dep_name" "$lib"
+            fi
+          done
+        done
+
+        # Finally, fix the paths in the main executable itself
+        deps=$(otool -L "$EXECUTABLE_PATH" | grep '/opt/homebrew' | awk '{print $1}')
+        for dep in $deps; do
+          dep_name=$(basename "$dep")
+          install_name_tool -change "$dep" "@rpath/$dep_name" "$EXECUTABLE_PATH"
+        done
+        echo "--- Finished fixing all paths. ---"
         
-        # Create DMG or ZIP package
-        mkdir -p release-package
-        cp -R YUViz.app release-package/
-        
-        # Create README
-        cat > release-package/README.txt << 'EOF'
-        Qt6 YUViz - macOS Release
-        
-        Installation Instructions:
-        1. Drag YUViz.app to Applications folder
-        2. First run may require permission in "Security & Privacy" settings
-        3. Supported video formats: MP4, AVI, MOV, MKV, etc.
-        
-        System Requirements: macOS 10.15 or higher
+    - name: Run macdeployqt to bundle Qt frameworks
+      run: |
+        cd build
+        ${{ runner.temp }}/qt/6.9.1/macos/bin/macdeployqt YUViz.app -no-strip -qmldir=../src/qml
+
+    - name: Ad-hoc Sign the Application Bundle
+      run: |
+        echo "--- Signing the application bundle to allow it to run ---"
+        # Create a basic entitlements file to allow the app to run on modern macOS
+        cat << EOF > entitlements.plist
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>com.apple.security.cs.allow-jit</key>
+            <true/>
+            <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+            <true/>
+            <key>com.apple.security.cs.disable-library-validation</key>
+            <true/>
+        </dict>
+        </plist>
         EOF
         
-        # Create zip package
-        zip -r ../YUViz-macos.zip release-package/
-        
-    - name: Debug file existence
+        # Sign from the inside out: all dylibs and frameworks first
+        find build/YUViz.app -type f \( -name "*.dylib" -o -path "*.framework/Versions/A/*" \) -exec codesign --force --sign - --entitlements entitlements.plist {} \;
+        # Sign the main executable
+        codesign --force --sign - --entitlements entitlements.plist build/YUViz.app/Contents/MacOS/YUViz
+        # Sign the app bundle itself
+        codesign --force --sign - --entitlements entitlements.plist build/YUViz.app
+        # Verify the final signature
+        codesign --verify --deep --strict --verbose=2 build/YUViz.app
+
+    - name: Create macOS Disk Image (DMG)
       run: |
-        echo "=== Checking file existence ==="
-        ls -la YUViz-macos.zip || echo "File not found in current dir"
-        find . -name "YUViz-macos.zip" -type f || echo "File not found anywhere"
-        
-    - name: Upload macOS artifact
+        cd build
+        hdiutil create -volname YUViz -srcfolder YUViz.app -ov -format UDZO ../YUViz-macos.dmg
+
+    - name: Upload macOS Artifact
       uses: actions/upload-artifact@v4
       with:
         name: YUViz-macos
-        path: YUViz-macos.zip
+        path: YUViz-macos.dmg
 
   build-linux:
     runs-on: ubuntu-latest
@@ -555,83 +633,53 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Get commit info
+    - name: Generate release tag
       id: commit
       run: |
-        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        echo "commit_date=$(git log -1 --format=%cd --date=format:'%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+        SHA_SHORT=$(git rev-parse --short HEAD)
+        COMMIT_DATE=$(git log -1 --format=%cd --date=format:'%Y%m%d-%H%M')
         
-        # Determine release tag name
         if [[ "${{ github.ref_name }}" == v* ]]; then
-          # If triggered by a version tag, use it
-          echo "release_tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          RELEASE_TAG="${{ github.ref_name }}"
         else
-          # If triggered by branch, create a timestamp-based tag
-          echo "release_tag=build-${{ steps.commit.outputs.commit_date }}-${{ steps.commit.outputs.sha_short }}" >> $GITHUB_OUTPUT
+          RELEASE_TAG="build-${COMMIT_DATE}-${SHA_SHORT}"
         fi
+        
+        echo "RELEASE_TAG=${RELEASE_TAG}"
+        echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
         
     - name: Download all artifacts
       uses: actions/download-artifact@v4
       with:
         path: artifacts
         
-    - name: Debug artifacts structure
+    - name: Display artifact structure
       run: |
-        echo "=== Artifacts directory structure ==="
-        find artifacts -type f -name "*.zip" | head -20
-        echo "=== All files in artifacts ==="
-        find artifacts -type f | head -20
-        echo "=== Directory listing ==="
-        ls -la artifacts/
-        if [ -d "artifacts/YUViz-windows" ]; then
-          echo "=== Windows artifacts ==="
-          ls -la artifacts/YUViz-windows/
-        fi
-        if [ -d "artifacts/YUViz-macos" ]; then
-          echo "=== macOS artifacts ==="
-          ls -la artifacts/YUViz-macos/
-        fi
-        if [ -d "artifacts/YUViz-linux" ]; then
-          echo "=== Linux artifacts ==="
-          ls -la artifacts/YUViz-linux/
-        fi
-        
-    - name: Check files before release
-      run: |
-        echo "=== Checking if release files exist ==="
-        for file in artifacts/YUViz-windows/YUViz-windows.zip artifacts/YUViz-macos/YUViz-macos.zip artifacts/YUViz-linux/YUViz-linux.zip; do
-          if [ -f "$file" ]; then
-            echo "✅ $file exists ($(ls -lh "$file" | awk '{print $5}'))"
-          else
-            echo "❌ $file does not exist"
-          fi
-        done
+        echo "--- Downloaded Artifacts ---"
+        ls -R artifacts
         
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ steps.commit.outputs.release_tag }}
-        name: Qt6 YUViz ${{ steps.commit.outputs.release_tag }}
+        name: YUViz ${{ steps.commit.outputs.release_tag }}
         body: |
           Automated build from commit ${{ github.sha }}
           
           **Download links:**
           - Windows: YUViz-windows.zip
-          - macOS: YUViz-macos.zip
+          - macOS: YUViz-macos.dmg
           - Linux: YUViz-linux.zip
           
           **Changes:**
           ${{ github.event.head_commit.message }}
-        draft: false
-        prerelease: false
         files: |
           artifacts/YUViz-windows/YUViz-windows.zip
-          artifacts/YUViz-macos/YUViz-macos.zip
+          artifacts/YUViz-macos/YUViz-macos.dmg
           artifacts/YUViz-linux/YUViz-linux.zip
