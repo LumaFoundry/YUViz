@@ -1,7 +1,7 @@
 # A YUV Inspection Tool based on Qt6
 
 ![Build](https://github.com/LokiW-03/YUViz/workflows/CI%20-%20Build/badge.svg)
-![CD](https://github.com/LokiW-03/YUViz/actions/workflows/cd.yml/badge.svg)
+![CD](https://github.com/LokiW-03/YUViz/workflows/CD%20-%20Release/badge.svg)
 [![Latest Artifacts](https://img.shields.io/badge/Download-Latest%20Build-blue?style=flat-square&logo=github)](https://github.com/LokiW-03/YUViz/actions/workflows/cd.yml)
 
 ## Description
