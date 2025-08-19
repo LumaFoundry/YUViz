@@ -171,14 +171,56 @@ int main(int argc, char* argv[]) {
         bool forceSoftware = parser.isSet(softwareOption);
 
         for (const QString& arg : args) {
-            QStringList parts = arg.split(':');
-            QString filename = parts[0];
+            // Smart path parsing to handle Windows/MSYS paths that contain colons
+            QString filename;
+            QStringList paramParts;
 
-            if (!QFile::exists(filename)) {
-                QString errorMsg = QString("File does not exist: %1").arg(filename);
+            // Smart path parsing: detect Windows-style paths (with drive letters) that contain colons
+            // to avoid splitting them incorrectly when they have parameters
+            QRegularExpression winPathRegex(
+                R"(^([a-zA-Z]:|/[a-zA-Z]/).*?\.(?:yuv|raw|nv12|nv21|yuyv|uyvy|y4m|mp4|mkv|avi|mov|webm|hevc|av1|264|265|wmv|flv|m4v|3gp)(?::(.*))?$)",
+                QRegularExpression::CaseInsensitiveOption);
+            QRegularExpressionMatch winMatch = winPathRegex.match(arg);
+
+            if (winMatch.hasMatch()) {
+                // Windows-style path detected (C:\path or /c/path format)
+                filename = winMatch.captured(0);
+                if (winMatch.lastCapturedIndex() >= 2 && !winMatch.captured(2).isEmpty()) {
+                    paramParts = winMatch.captured(2).split(':');
+                    // Remove the parameters part from filename
+                    int paramStart = filename.lastIndexOf(':');
+                    if (paramStart > 0) {
+                        filename = filename.left(paramStart);
+                    }
+                }
+            } else {
+                // Unix-style path or relative path - use traditional colon-based splitting
+                QStringList parts = arg.split(':');
+                filename = parts[0];
+                if (parts.size() > 1) {
+                    paramParts = parts.mid(1);
+                }
+            }
+
+            // Normalize path for various input formats (similar to videoLoader.cpp)
+            QString normalizedPath = filename;
+            QUrl inUrl = QUrl::fromUserInput(filename);
+            if (inUrl.isLocalFile()) {
+                normalizedPath = inUrl.toLocalFile();
+            }
+            // Windows/MSYS fix: handle paths like "/C:/..."
+            if (normalizedPath.size() > 2 && normalizedPath[0] == '/' && normalizedPath[2] == ':') {
+                normalizedPath.remove(0, 1);
+            }
+
+            if (!QFile::exists(normalizedPath)) {
+                QString errorMsg = QString("File does not exist: %1").arg(normalizedPath);
                 ErrorReporter::instance().report(errorMsg, LogLevel::Error);
                 return -1;
             }
+
+            // Use normalized path for further processing
+            filename = normalizedPath;
 
             // Default values
             int width = 0, height = 0;
@@ -216,7 +258,7 @@ int main(int argc, char* argv[]) {
                 formatSet = false;
 
                 // Check for command line parameters
-                const int paramCount = parts.size() - 1;
+                const int paramCount = paramParts.size();
                 if (paramCount > 3) {
                     QString errorMsg = QString("Too many parameters for .yuv file '%1'. Maximum is 3, but got %2.")
                                            .arg(filename)
@@ -227,8 +269,8 @@ int main(int argc, char* argv[]) {
 
                 // Parse parameters in any order
                 // Parse override parameters in any order
-                for (int i = 1; i < parts.size(); ++i) {
-                    const QString& part = parts[i];
+                for (int i = 0; i < paramParts.size(); ++i) {
+                    const QString& part = paramParts[i];
                     if (part.contains('x', Qt::CaseInsensitive)) { // Resolution
                         if (resolutionSet) {
                             QString errorMsg = QString("Duplicate resolution specified for '%1'.").arg(filename);
