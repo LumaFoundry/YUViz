@@ -56,10 +56,19 @@ set(SRC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/frames/frameQueue.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/debugManager.cpp
     ${CMAKE_SOURCE_DIR}/src/controller/compareController.cpp
+    ${CMAKE_SOURCE_DIR}/src/controller/frameController.cpp
+    ${CMAKE_SOURCE_DIR}/src/decoder/VideoDecoder.cpp
+    ${CMAKE_SOURCE_DIR}/src/rendering/VideoRenderer.cpp
+    ${CMAKE_SOURCE_DIR}/src/rendering/VideoRenderNode.cpp
+    ${CMAKE_SOURCE_DIR}/src/ui/videoWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/ui/diffWindow.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/sharedViewProperties.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/ErrorReporter.cpp
     ${CMAKE_SOURCE_DIR}/src/utils/compareHelper.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/videoFormatUtils.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/videoFileInfo.h
+    ${CMAKE_SOURCE_DIR}/src/utils/y4mParser.cpp
+    ${CMAKE_SOURCE_DIR}/src/utils/appConfig.h
     ${CMAKE_SOURCE_DIR}/src/rendering/DiffRenderer.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/DiffRenderNode.cpp
 )
@@ -68,7 +77,7 @@ set(SRC_SOURCES
 set(TEST_SOURCES
     frames/test_framequeue.cpp
     utils/test_debugmanager.cpp
-    # controller/test_framecontroller.cpp
+    controller/test_framecontroller.cpp
     frames/test_framedata.cpp
     frames/test_framemeta.cpp
     controller/test_comparecontroller.cpp

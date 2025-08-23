@@ -22,7 +22,7 @@ class FrameController : public QObject {
     Q_OBJECT
 
   public:
-    FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index);
+    FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index, VideoDecoder* decoder = nullptr);
 
     ~FrameController();
 

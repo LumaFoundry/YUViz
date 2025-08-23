@@ -3,12 +3,16 @@
 #include "utils/appConfig.h"
 #include "utils/debugManager.h"
 
-FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index) :
+FrameController::FrameController(QObject* parent, VideoFileInfo videoFileInfo, int index, VideoDecoder* decoder) :
     QObject(parent),
     m_index(index) {
     debug("fc", QString("Constructor invoked for index %1").arg(m_index));
 
-    m_Decoder = std::make_unique<VideoDecoder>();
+    if (decoder) {
+        m_Decoder.reset(decoder);
+    } else {
+        m_Decoder = std::make_unique<VideoDecoder>();
+    }
     m_Decoder->setFileName(videoFileInfo.filename.toStdString());
     m_Decoder->setDimensions(videoFileInfo.width, videoFileInfo.height);
     m_Decoder->setFramerate(videoFileInfo.framerate);

@@ -34,7 +34,7 @@ class VideoDecoder : public QObject {
     void setFrameQueue(std::shared_ptr<FrameQueue> frameQueue);
     void setForceSoftwareDecoding(bool force);
 
-    void openFile();
+    virtual void openFile();
     virtual FrameMeta getMetaData();
 
     int64_t getDurationMs();
