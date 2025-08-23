@@ -33,14 +33,14 @@ class FrameController : public QObject {
 
     void onSeek(int64_t pts);
 
-    AVRational getTimeBase();
-    std::shared_ptr<FrameMeta> getFrameMeta() const { return m_frameMeta; }
+    virtual AVRational getTimeBase();
+    virtual std::shared_ptr<FrameMeta> getFrameMeta() const { return m_frameMeta; }
     std::shared_ptr<FrameQueue> getFrameQueue() const { return m_frameQueue; }
 
     int m_index; // Index of current FC, for VC orchestration
 
-    int totalFrames();
-    int64_t getDuration();
+    virtual int totalFrames();
+    virtual int64_t getDuration();
 
   public slots:
     // Receive signals from decoder and renderer

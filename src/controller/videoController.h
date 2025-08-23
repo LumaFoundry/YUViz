@@ -32,6 +32,8 @@ class VideoController : public QObject {
     Q_PROPERTY(bool isBuffering READ isBuffering NOTIFY isBufferingChanged)
 
   public:
+    // Test-only: can be set in unit tests
+    static std::function<std::unique_ptr<FrameController>(QObject*, VideoFileInfo, int)> s_testFrameControllerFactory;
     VideoController(QObject* parent,
                     std::shared_ptr<CompareController> compareController,
                     std::vector<VideoFileInfo> videoFiles = {});

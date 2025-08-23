@@ -1,6 +1,12 @@
 #include "videoController.h"
 #include <QTimer>
+#include <functional>
 #include "utils/debugManager.h"
+
+
+// Test-only static factory for FrameController
+std::function<std::unique_ptr<FrameController>(QObject*, VideoFileInfo, int)>
+    VideoController::s_testFrameControllerFactory = nullptr;
 
 VideoController::VideoController(QObject* parent,
                                  std::shared_ptr<CompareController> compareController,
@@ -42,7 +48,12 @@ void VideoController::addVideo(VideoFileInfo videoFile) {
     debug("vc", QString("Setting up FrameController for video: %1 index: %2").arg(videoFile.filename).arg(m_fcIndex));
 
     debug("vc", QString("Decoder opened file: %1").arg(videoFile.filename));
-    auto frameController = std::make_unique<FrameController>(nullptr, videoFile, m_fcIndex);
+    std::unique_ptr<FrameController> frameController;
+    if (s_testFrameControllerFactory) {
+        frameController = s_testFrameControllerFactory(nullptr, videoFile, m_fcIndex);
+    } else {
+        frameController = std::make_unique<FrameController>(nullptr, videoFile, m_fcIndex);
+    }
     debug("vc", QString("Created FrameController for index %1").arg(m_fcIndex));
 
     // Connect each FC's upload signal to VC's slot

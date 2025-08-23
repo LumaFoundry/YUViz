@@ -57,6 +57,8 @@ set(SRC_SOURCES
     ${CMAKE_SOURCE_DIR}/src/utils/debugManager.cpp
     ${CMAKE_SOURCE_DIR}/src/controller/compareController.cpp
     ${CMAKE_SOURCE_DIR}/src/controller/frameController.cpp
+    ${CMAKE_SOURCE_DIR}/src/controller/videoController.cpp
+    ${CMAKE_SOURCE_DIR}/src/controller/timer.cpp
     ${CMAKE_SOURCE_DIR}/src/decoder/VideoDecoder.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/VideoRenderer.cpp
     ${CMAKE_SOURCE_DIR}/src/rendering/VideoRenderNode.cpp
@@ -81,6 +83,7 @@ set(TEST_SOURCES
     frames/test_framedata.cpp
     frames/test_framemeta.cpp
     controller/test_comparecontroller.cpp
+    controller/test_videocontroller.cpp
     utils/test_comparehelper.cpp
     utils/test_sharedviewproperties.cpp
     utils/test_errorreporter.cpp
