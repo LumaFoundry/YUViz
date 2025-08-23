@@ -73,6 +73,8 @@ set(TEST_SOURCES
     frames/test_framemeta.cpp
     controller/test_comparecontroller.cpp
     utils/test_comparehelper.cpp
+    utils/test_sharedviewproperties.cpp
+    utils/test_errorreporter.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
