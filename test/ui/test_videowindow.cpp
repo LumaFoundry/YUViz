@@ -189,6 +189,9 @@ void TestVideoWindow::testZoomAt() {
     vw.setWidth(640);
     vw.setHeight(480);
     vw.zoomAt(2.0, QPointF(100, 100));
+    QVERIFY(!vw.isSelecting());
+    vw.zoomAt(1.0, QPointF(0, 0));
+    QVERIFY(!vw.isSelecting());
 }
 
 void TestVideoWindow::testZoomToSelection() {
@@ -196,7 +199,11 @@ void TestVideoWindow::testZoomToSelection() {
     SharedViewProperties shared;
     vw.setSharedView(&shared);
     QRectF rect(10, 10, 100, 100);
+    vw.setSelectionRect(rect);
+    QVERIFY(vw.hasSelection());
+    QCOMPARE(vw.getSelectionRect(), rect);
     vw.zoomToSelection(rect);
+    QVERIFY(!vw.isSelecting());
 }
 
 void TestVideoWindow::testGetYUV() {

@@ -59,6 +59,13 @@ class DiffWindow : public QQuickItem {
     int diffMethod() const { return m_diffMethod; }
     void setDiffMethod(int method);
 
+    // For test oracles
+    QRectF getSelectionRect() const { return m_selectionRect; }
+    bool hasSelection() const { return m_hasSelection; }
+    QPointF selectionStart() const { return m_selectionStart; }
+    QPointF selectionEnd() const { return m_selectionEnd; }
+    bool isSelecting() const { return m_isSelecting; }
+
   public slots:
     void uploadFrame(FrameData* frame1, FrameData* frame2);
     void renderFrame();

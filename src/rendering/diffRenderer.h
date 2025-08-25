@@ -13,10 +13,10 @@ class DiffRenderer : public QObject {
     ~DiffRenderer();
 
     void initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp);
-    void setDiffConfig(int displayMode, float diffMultiplier, int diffMethod);
-    void uploadFrame(FrameData* frame1, FrameData* frame2);
-    void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
-    void releaseBatch();
+    virtual void setDiffConfig(int displayMode, float diffMultiplier, int diffMethod);
+    virtual void uploadFrame(FrameData* frame1, FrameData* frame2);
+    virtual void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
+    virtual void releaseBatch();
 
   signals:
     void batchIsFull();
@@ -27,14 +27,16 @@ class DiffRenderer : public QObject {
     void setZoomAndOffset(const float zoom, const float centerX, const float centerY);
 
   public:
-    std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
-    uint64_t getCurrentPts1() const { return m_currentPts1; }
-    uint64_t getCurrentPts2() const { return m_currentPts2; }
+    virtual std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
+    virtual uint64_t getCurrentPts1() const { return m_currentPts1; }
+    virtual uint64_t getCurrentPts2() const { return m_currentPts2; }
 
-  private:
+  protected:
     std::shared_ptr<FrameMeta> m_metaPtr;
     uint64_t m_currentPts1 = 0;
     uint64_t m_currentPts2 = 0;
+
+  private:
     QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;
