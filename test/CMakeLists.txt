@@ -88,6 +88,8 @@ set(TEST_SOURCES
     utils/test_comparehelper.cpp
     utils/test_sharedviewproperties.cpp
     utils/test_errorreporter.cpp
+    utils/test_videoformatutils.cpp
+    utils/test_y4mparser.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
