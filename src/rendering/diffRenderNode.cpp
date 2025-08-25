@@ -19,17 +19,34 @@ void DiffRenderNode::prepare() {
     if (m_initialized) {
         return;
     }
+    if (!m_item || !m_item->window()) {
+        return;
+    }
     QRhi* rhi = m_item->window()->rhi();
     if (!rhi) {
         return;
     }
-    QRhiRenderPassDescriptor* rp = renderTarget()->renderPassDescriptor();
+    auto* rt = renderTarget();
+    if (!rt) {
+        return;
+    }
+    QRhiRenderPassDescriptor* rp = rt->renderPassDescriptor();
+    if (!rp) {
+        return;
+    }
     m_renderer->initialize(rhi, rp);
     m_initialized = true;
 }
 
 void DiffRenderNode::render(const RenderState* state) {
+    if (!m_item || !m_item->window()) {
+        return;
+    }
     QRhiCommandBuffer* cb = commandBuffer();
+    auto* rt = renderTarget();
+    if (!cb || !rt) {
+        return;
+    }
     QRectF boundsF = rect();
     QPointF topLeft = m_item->mapToScene(QPointF(0, 0));
     qreal dpr = m_item->window()->devicePixelRatio();
@@ -40,5 +57,5 @@ void DiffRenderNode::render(const RenderState* state) {
     int h = m_item->height() * dpr;
     QRect viewportRect(x, y, w, h);
     cb->setViewport(QRhiViewport(viewportRect.x(), viewportRect.y(), viewportRect.width(), viewportRect.height()));
-    m_renderer->renderFrame(cb, viewportRect, renderTarget());
+    m_renderer->renderFrame(cb, viewportRect, rt);
 }
