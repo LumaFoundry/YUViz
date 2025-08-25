@@ -1,11 +1,18 @@
-# A YUV Inspection Tool based on Qt6
+# YUViz: A Video Inspection Tool <img align="right" src="https://raw.githubusercontent.com/LokiW-03/YUViz/refs/heads/master/src/icons/icon.png" width=150>
 
 ![Build](https://github.com/LokiW-03/YUViz/workflows/CI%20-%20Build/badge.svg)
 ![CD](https://github.com/LokiW-03/YUViz/workflows/CD%20-%20Release/badge.svg)
 [![Latest Artifacts](https://img.shields.io/badge/Download-Latest%20Build-blue?style=flat-square&logo=github)](https://github.com/LokiW-03/YUViz/actions/workflows/cd.yml)
 
 ## Description
-A lightweight video frame inspection tool for YUV and compressed videos.
+YUViz is a fast, lightweight video inspection and frame comparison tool built using Qt6 and FFmeg. Features include:
+* Cross-platform support
+* Support for raw and encoded video formats
+* Ability to change color space / color range
+* Ability to zoom and view pixel values
+* Frame-accurate side-by-side video playback
+* Difference view with PSNR metrics
+* ... and much more
 
 ## Requirements
 - CMake 3.16+
