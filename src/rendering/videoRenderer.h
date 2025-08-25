@@ -13,11 +13,11 @@ class VideoRenderer : public QObject {
     ~VideoRenderer();
 
     void initialize(QRhi* rhi, QRhiRenderPassDescriptor* rp);
-    void setColorParams(AVColorSpace space, AVColorRange range);
+    virtual void setColorParams(AVColorSpace space, AVColorRange range);
     void setComponentDisplayMode(int mode); // 0=RGB, 1=Y only, 2=U only, 3=V only
-    void uploadFrame(FrameData* frame);
-    void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
-    void releaseBatch();
+    virtual void uploadFrame(FrameData* frame);
+    virtual void renderFrame(QRhiCommandBuffer* cb, const QRect& viewport, QRhiRenderTarget* rt);
+    virtual void releaseBatch();
 
   signals:
     void batchIsFull();
@@ -29,11 +29,13 @@ class VideoRenderer : public QObject {
 
   public:
     std::shared_ptr<FrameMeta> getFrameMeta() const { return m_metaPtr; }
-    FrameData* getCurrentFrame() const { return m_currentFrame; }
+    virtual FrameData* getCurrentFrame() const { return m_currentFrame; }
 
-  private:
+  protected:
     std::shared_ptr<FrameMeta> m_metaPtr;
     FrameData* m_currentFrame = nullptr;
+
+  private:
     QRhi* m_rhi = nullptr;
     float m_zoom = 1.0f;
     float m_centerX = 0.5f;

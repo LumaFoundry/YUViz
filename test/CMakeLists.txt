@@ -84,6 +84,7 @@ set(TEST_SOURCES
     frames/test_framemeta.cpp
     controller/test_comparecontroller.cpp
     controller/test_videocontroller.cpp
+    ui/test_videowindow.cpp
     utils/test_comparehelper.cpp
     utils/test_sharedviewproperties.cpp
     utils/test_errorreporter.cpp

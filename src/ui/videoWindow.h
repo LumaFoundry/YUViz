@@ -58,6 +58,13 @@ class VideoWindow : public QQuickItem {
     int componentDisplayMode() const;
     void setComponentDisplayMode(int mode);
 
+    // For test oracles
+    QRectF getSelectionRect() const { return m_selectionRect; }
+    bool hasSelection() const { return m_hasSelection; }
+    QPointF selectionStart() const { return m_selectionStart; }
+    QPointF selectionEnd() const { return m_selectionEnd; }
+    bool isSelecting() const { return m_isSelecting; }
+
   public slots:
     void uploadFrame(FrameData* frame);
     void renderFrame();
