@@ -90,6 +90,10 @@ set(TEST_SOURCES
     utils/test_errorreporter.cpp
     utils/test_videoformatutils.cpp
     utils/test_y4mparser.cpp
+    rendering/test_videorenderer.cpp
+    rendering/test_diffrenderer.cpp
+    rendering/test_videorendernode.cpp
+    rendering/test_diffrendernode.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
