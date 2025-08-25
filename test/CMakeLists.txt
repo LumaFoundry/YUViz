@@ -95,6 +95,7 @@ set(TEST_SOURCES
     rendering/test_diffrenderer.cpp
     rendering/test_videorendernode.cpp
     rendering/test_diffrendernode.cpp
+    decoder/test_videodecoder.cpp
 )
 
 foreach(test_file ${TEST_SOURCES})
