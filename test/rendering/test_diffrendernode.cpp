@@ -58,7 +58,22 @@ class DiffRenderNodeTest : public QObject {
 };
 
 void DiffRenderNodeTest::testSceneGraphInvocation() {
-    QSKIP("Scene graph render path is environment-specific; skipping to keep tests stable");
+    // Drive a minimal real scene graph frame to hit prepare()/render()
+    qputenv("QSG_RENDER_LOOP", QByteArray("basic"));
+    qputenv("QSG_RHI_BACKEND", QByteArray("d3d11"));
+    QQuickWindow window;
+    window.resize(200, 120);
+    window.show();
+    QVERIFY2(QTest::qWaitForWindowExposed(&window, 3000), "Window not exposed");
+
+    TestDiffItem* item = new TestDiffItem(window.contentItem());
+    item->setWidth(160);
+    item->setHeight(90);
+    window.contentItem()->update();
+
+    QSignalSpy swapped(&window, &QQuickWindow::frameSwapped);
+    window.requestUpdate();
+    QVERIFY(QTest::qWaitFor([&] { return swapped.count() >= 1; }, 3000));
 }
 
 void DiffRenderNodeTest::testRectNull() {
