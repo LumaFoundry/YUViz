@@ -4,6 +4,7 @@ import QtQuick 6.0
 import QtQuick.Layouts 1.15
 import Theme 1.0
 import NativeAbout 1.0
+import VideoFormatUtils 1.0
 
 ApplicationWindow {
     id: mainWindow
@@ -999,6 +1000,81 @@ ApplicationWindow {
                         horizontalAlignment: Text.AlignLeft
                     }
                 }
+            }
+        }
+    }
+
+    // Global Drop Area for drag-and-drop file import
+    DropArea {
+        id: globalDropArea
+        anchors.fill: parent
+        // Accept file list drops from OS
+        keys: ["text/uri-list"]
+        onEntered: (drag) => {
+            // Signal to the OS that this target accepts the drag to avoid snap-back
+            try { drag.accepted = true; } catch (e) {}
+        }
+        onDropped: (event) => {
+            try {
+                // Explicitly accept the proposed action so macOS animates the drop into the app
+                if (event && event.acceptProposedAction) event.acceptProposedAction();
+
+                if (!event || !event.urls || event.urls.length === 0)
+                    return;
+
+                // Helper to normalize to string URL
+                function toUrlString(u) {
+                    try {
+                        if (u === null || u === undefined) return "";
+                        // QML may provide QUrl or string
+                        return (typeof u === "string") ? u : (u.toString ? u.toString() : "");
+                    } catch (e) { return ""; }
+                }
+
+                // Determine how many slots are available (max 2 videos)
+                let availableSlots = Math.max(0, 2 - mainWindow.videoCount);
+                if (availableSlots <= 0) {
+                    errorDialog.title = "Cannot Add Video";
+                    errorDialogText.text = "Only two videos can be loaded at once. Close one to add another.";
+                    errorDialog.open();
+                    return;
+                }
+
+                // Process at most availableSlots files
+                let added = 0;
+                for (let i = 0; i < event.urls.length && added < availableSlots; ++i) {
+                    const urlStr = toUrlString(event.urls[i]);
+                    if (!urlStr || urlStr.indexOf("://") === -1)
+                        continue;
+
+                    // Simple filename extraction for detection
+                    const parts = urlStr.split('/');
+                    const filename = parts.length ? parts[parts.length - 1] : urlStr;
+                    const detected = VideoFormatUtils.detectFormatFromExtension(filename);
+
+                    // Always clear rectangles before changing loaded videos
+                    clearAllRectangles();
+
+                    if (VideoFormatUtils.isCompressedFormat(detected)) {
+                        // Compressed: parameters are ignored in C++ when format is COMPRESSED
+                        importVideoFromParams(urlStr, 1920, 1080, 25.0, "COMPRESSED", false);
+                        added++;
+                    } else {
+                        // Raw formats: open Import dialog to confirm resolution and framerate
+                        importDialog.mode = (mainWindow.videoCount > 0) ? "add" : "new";
+                        importDialog.selectedFile = urlStr;
+                        if (importDialog.prefillFromSelectedFile)
+                            importDialog.prefillFromSelectedFile();
+                        importDialog.open();
+                        break; // let user complete details via dialog
+                    }
+                }
+
+                if (added > 0) {
+                    keyHandler.forceActiveFocus();
+                }
+            } catch (e) {
+                console.log("[QML] DropArea error:", e);
             }
         }
     }

@@ -21,6 +21,30 @@ Popup {
     property var mainWindow
     signal videoImported(string filePath, int width, int height, double fps, string pixelFormat)
     signal accepted
+    // Helper to prefill UI from current selectedFile, used by drag-and-drop
+    function prefillFromSelectedFile() {
+        const urlStr = importPopup.selectedFile;
+        if (!urlStr)
+            return;
+        const file = urlStr.split('/').pop();
+
+        // Match resolution + fps like 1920x1080_25 or 1920x1080-25.0
+        const match = file.match(/(\d{3,5})x(\d{3,5})[_-](\d{2,3}(?:\.\d{1,2})?)/);
+        if (match) {
+            resolutionInput.editText = match[1] + "x" + match[2];
+            fpsInput.text = match[3];
+        } else {
+            const resMatch = file.match(/(\d{3,5})x(\d{3,5})/);
+            if (resMatch) {
+                resolutionInput.editText = resMatch[0];
+            } else {
+                resolutionInput.editText = "";
+            }
+            fpsInput.text = "";
+        }
+
+        autoSelectFormat(file);
+    }
 
     // Component to be used as a template for creating the dialog
     Component {
