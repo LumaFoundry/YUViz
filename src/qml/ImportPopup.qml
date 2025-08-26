@@ -225,6 +225,7 @@ Popup {
                     let fps = isYUV ? parseFloat(fpsInput.text) : 25.0;
                     let format = isYUV ? getYuvIdentifierByIndex(formatInput.currentIndex) : "COMPRESSED";
                     importPopup.videoImported(filePath, width, height, fps, format);
+                    importPopup.accepted();
                     importPopup.close();
                 }
             }

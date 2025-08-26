@@ -78,6 +78,9 @@ ApplicationWindow {
     property int rightVideoIdForDiff: -1
     property bool closingDiffPopupForEmbed: false
 
+    // Queue for raw files dropped to be processed via ImportPopup one-by-one
+    property var pendingRawDrops: []
+
     Item {
         id: hiddenBin
         visible: false
@@ -96,6 +99,22 @@ ApplicationWindow {
         anchors.centerIn: parent
         onVideoImported: function (filePath, width, height, fps, format) {
             importVideoFromParams(filePath, width, height, fps, format, false);
+        }
+        // After user accepts, process next pending raw drop if any
+        onAccepted: {
+            if (mainWindow.pendingRawDrops.length > 0) {
+                // Respect two-video limit
+                if (mainWindow.videoCount >= 2) {
+                    mainWindow.pendingRawDrops = [];
+                    return;
+                }
+                const nextUrl = mainWindow.pendingRawDrops.shift();
+                importDialog.mode = (mainWindow.videoCount > 0) ? "add" : "new";
+                importDialog.selectedFile = nextUrl;
+                if (importDialog.prefillFromSelectedFile)
+                    importDialog.prefillFromSelectedFile();
+                importDialog.open();
+            }
         }
     }
 
@@ -1058,7 +1077,9 @@ ApplicationWindow {
 
                 // Process at most availableSlots files
                 let added = 0;
-                for (let i = 0; i < items.length && added < availableSlots; ++i) {
+                // Reset pending queue for this drop
+                mainWindow.pendingRawDrops = [];
+                for (let i = 0; i < items.length; ++i) {
                     const urlStr = toUrlString(items[i]);
                     if (!urlStr)
                         continue;
@@ -1074,16 +1095,30 @@ ApplicationWindow {
 
                     if (VideoFormatUtils.isCompressedFormat(detected)) {
                         // Compressed: parameters are ignored in C++ when format is COMPRESSED
-                        importVideoFromParams(urlStr, 1920, 1080, 25.0, "COMPRESSED", false);
-                        added++;
+                        if (added < availableSlots) {
+                            importVideoFromParams(urlStr, 1920, 1080, 25.0, "COMPRESSED", false);
+                            added++;
+                        }
                     } else {
-                        // Raw formats: open Import dialog to confirm resolution and framerate
+                        // Raw formats: enqueue and process in sequence through Import dialog
+                        mainWindow.pendingRawDrops.push(urlStr);
+                    }
+                }
+
+                // Start processing the first raw item if we still have capacity
+                if (mainWindow.pendingRawDrops.length > 0 && (mainWindow.videoCount + added) < 2) {
+                    // Respect current count and added compressed files
+                    let remainingSlots = 2 - (mainWindow.videoCount + added);
+                    if (remainingSlots > 0) {
+                        const nextUrl = mainWindow.pendingRawDrops.shift();
                         importDialog.mode = (mainWindow.videoCount > 0) ? "add" : "new";
-                        importDialog.selectedFile = urlStr;
+                        importDialog.selectedFile = nextUrl;
                         if (importDialog.prefillFromSelectedFile)
                             importDialog.prefillFromSelectedFile();
                         importDialog.open();
-                        break; // let user complete details via dialog
+                    } else {
+                        // No capacity: clear pending
+                        mainWindow.pendingRawDrops = [];
                     }
                 }
 
