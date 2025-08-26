@@ -55,6 +55,10 @@ class VideoRenderNodeTest : public QObject {
   private slots:
     void testSceneGraphInvocation();
     void testRectAndPrepareNullPaths();
+    void testFlagsAndRectWithItem();
+    void testPrepareAndRenderWithItemNoWindow();
+    void testPrepareWithWindowNoRhi();
+    void testRenderWithWindowNoCbRt();
 };
 
 void VideoRenderNodeTest::testSceneGraphInvocation() {
@@ -67,6 +71,52 @@ void VideoRenderNodeTest::testRectAndPrepareNullPaths() {
     QCOMPARE(r, QRectF());
     // prepare() and render() with null dependencies early-return without crash
     node.prepare();
+    node.render(nullptr);
+}
+
+void VideoRenderNodeTest::testFlagsAndRectWithItem() {
+    QQuickItem item;
+    item.setWidth(100);
+    item.setHeight(50);
+    VideoRenderer* vr = new VideoRenderer(nullptr, makeMetaVRN());
+    VideoRenderNode node(&item, vr);
+    QCOMPARE(node.flags() & QSGRenderNode::BoundedRectRendering, QSGRenderNode::BoundedRectRendering);
+    QCOMPARE(node.rect(), QRectF(0, 0, 100, 50));
+}
+
+void VideoRenderNodeTest::testPrepareAndRenderWithItemNoWindow() {
+    QQuickItem item;
+    item.setWidth(64);
+    item.setHeight(32);
+    VideoRenderer* vr = new VideoRenderer(nullptr, makeMetaVRN());
+    VideoRenderNode node(&item, vr);
+    // No window set on item, prepare should early-return
+    node.prepare();
+    // Also render should early-return on missing window
+    node.render(nullptr);
+}
+
+void VideoRenderNodeTest::testPrepareWithWindowNoRhi() {
+    QQuickWindow window; // not shown -> likely no RHI
+    QQuickItem item;
+    item.setWidth(10);
+    item.setHeight(20);
+    item.setParentItem(window.contentItem());
+    VideoRenderer* vr = new VideoRenderer(nullptr, makeMetaVRN());
+    VideoRenderNode node(&item, vr);
+    // window() exists, but rhi() is expected null before exposure => early return
+    node.prepare();
+}
+
+void VideoRenderNodeTest::testRenderWithWindowNoCbRt() {
+    QQuickWindow window; // not shown -> renderTarget()/commandBuffer() are null
+    QQuickItem item;
+    item.setWidth(10);
+    item.setHeight(20);
+    item.setParentItem(window.contentItem());
+    VideoRenderer* vr = new VideoRenderer(nullptr, makeMetaVRN());
+    VideoRenderNode node(&item, vr);
+    // Should early-return because cb/rt are null outside a render pass
     node.render(nullptr);
 }
 

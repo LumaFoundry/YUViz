@@ -51,6 +51,10 @@ class DiffRenderNodeTest : public QObject {
   private slots:
     void testSceneGraphInvocation();
     void testRectNull();
+    void testFlagsAndRectWithItem();
+    void testPrepareAndRenderWithItemNoWindow();
+    void testPrepareWithWindowNoRhi();
+    void testRenderWithWindowNoCbRt();
 };
 
 void DiffRenderNodeTest::testSceneGraphInvocation() {
@@ -63,6 +67,48 @@ void DiffRenderNodeTest::testRectNull() {
     QCOMPARE(r, QRectF());
     node.prepare();
     node.render(nullptr);
+}
+
+void DiffRenderNodeTest::testFlagsAndRectWithItem() {
+    QQuickItem item;
+    item.setWidth(120);
+    item.setHeight(60);
+    DiffRenderer* dr = new DiffRenderer(nullptr, makeMetaDRN());
+    DiffRenderNode node(&item, dr);
+    QCOMPARE(node.flags() & QSGRenderNode::BoundedRectRendering, QSGRenderNode::BoundedRectRendering);
+    QCOMPARE(node.rect(), QRectF(0, 0, 120, 60));
+}
+
+void DiffRenderNodeTest::testPrepareAndRenderWithItemNoWindow() {
+    QQuickItem item;
+    item.setWidth(40);
+    item.setHeight(20);
+    DiffRenderer* dr = new DiffRenderer(nullptr, makeMetaDRN());
+    DiffRenderNode node(&item, dr);
+    node.prepare();
+    node.render(nullptr);
+}
+
+void DiffRenderNodeTest::testPrepareWithWindowNoRhi() {
+    QQuickWindow window; // not exposed => no RHI
+    QQuickItem item;
+    item.setWidth(10);
+    item.setHeight(20);
+    item.setParentItem(window.contentItem());
+    DiffRenderer* dr = new DiffRenderer(nullptr, makeMetaDRN());
+    DiffRenderNode node(&item, dr);
+    node.prepare(); // early-return at !rhi
+}
+
+void DiffRenderNodeTest::testRenderWithWindowNoCbRt() {
+    QQuickWindow window; // not in a render pass => no cb/rt
+    QQuickItem item;
+    item.setWidth(10);
+    item.setHeight(20);
+    item.setParentItem(window.contentItem());
+    DiffRenderer* dr = new DiffRenderer(nullptr, makeMetaDRN());
+    DiffRenderNode node(&item, dr);
+    node.render(nullptr); // early-return at !cb || !rt
 }
 
 int main(int argc, char** argv) {
