@@ -1008,8 +1008,8 @@ ApplicationWindow {
     DropArea {
         id: globalDropArea
         anchors.fill: parent
-        // Accept file list drops from OS
-        keys: ["text/uri-list"]
+        // Let Qt map platform-specific file drags to urls; don't over-restrict keys
+        // (Windows Explorer may not always advertise text/uri-list)
         onEntered: (drag) => {
             // Signal to the OS that this target accepts the drag to avoid snap-back
             try { drag.accepted = true; } catch (e) {}
@@ -1018,9 +1018,25 @@ ApplicationWindow {
             try {
                 // Explicitly accept the proposed action so macOS animates the drop into the app
                 if (event && event.acceptProposedAction) event.acceptProposedAction();
+                try { event.accepted = true; } catch (e) {}
 
-                if (!event || !event.urls || event.urls.length === 0)
+                // Activate the app on drop for Windows/macOS
+                try { mainWindow.raise(); mainWindow.requestActivate(); } catch (e) {}
+
+                if (!event)
                     return;
+
+                // Normalize dropped items to an array of url-like strings
+                let items = [];
+                if (event.urls && event.urls.length > 0) {
+                    items = event.urls;
+                } else if (event.text && event.text.length > 0) {
+                    // Windows sometimes provides newline-separated file paths in text
+                    const lines = event.text.split(/\r?\n/).map(s => s.trim()).filter(s => s.length > 0);
+                    items = lines;
+                } else {
+                    return;
+                }
 
                 // Helper to normalize to string URL
                 function toUrlString(u) {
@@ -1042,14 +1058,15 @@ ApplicationWindow {
 
                 // Process at most availableSlots files
                 let added = 0;
-                for (let i = 0; i < event.urls.length && added < availableSlots; ++i) {
-                    const urlStr = toUrlString(event.urls[i]);
-                    if (!urlStr || urlStr.indexOf("://") === -1)
+                for (let i = 0; i < items.length && added < availableSlots; ++i) {
+                    const urlStr = toUrlString(items[i]);
+                    if (!urlStr)
                         continue;
 
-                    // Simple filename extraction for detection
-                    const parts = urlStr.split('/');
-                    const filename = parts.length ? parts[parts.length - 1] : urlStr;
+                    // Cross-platform filename extraction for detection
+                    const normalizedForName = urlStr.replace(/\\/g, '/');
+                    const parts = normalizedForName.split('/');
+                    const filename = parts.length ? parts[parts.length - 1] : normalizedForName;
                     const detected = VideoFormatUtils.detectFormatFromExtension(filename);
 
                     // Always clear rectangles before changing loaded videos
