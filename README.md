@@ -199,3 +199,6 @@ For the change to take effect, you must either restart your terminal or run `sou
 
 #### `main.cpp` - Application Entry Point
 - Initializes application, processes command line arguments
+
+### License
+This project is licensed under the MIT License. See `LICENSE.txt` for details.
