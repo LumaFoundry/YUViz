@@ -201,4 +201,4 @@ For the change to take effect, you must either restart your terminal or run `sou
 - Initializes application, processes command line arguments
 
 ### License
-This project is licensed under the MIT License. See `LICENSE.txt` for details.
+This project is licensed under the APACHE 2.0 License. See `LICENSE.txt` for details.
